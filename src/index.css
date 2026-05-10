@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Globals tuned for the Midnight Editorial Minimalism design language.
+ * Phase 1 only uses these for the dev harness; the real UI will lean on
+ * Tailwind utilities and these tokens together. */
+
+:root {
+  color-scheme: dark;
+  /* Use the warm-charcoal background even before React mounts so there's no
+   * white flash on launch — flashes wake people up. */
+  background-color: #0B0D10;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background-color: #0B0D10;
+  color: #E6DFD3;
+  /* Disable selection/long-press menus by default for a more app-like feel */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  /* Prevent overscroll bounce */
+  overscroll-behavior: none;
+  /* Honor portrait-only by ignoring landscape adjustments */
+}
+
+/* Sliders should look soft and substantial late at night */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: rgba(207, 198, 182, 0.18);
+  border-radius: 999px;
+  outline: none;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #9BB7AE;
+  cursor: pointer;
+  box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.7);
+}
+input[type='range']::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #9BB7AE;
+  cursor: pointer;
+  border: 0;
+}

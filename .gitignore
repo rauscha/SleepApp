@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+.env
+.env.*
+!.env.example
+.vite
+.cache
+*.log
+# Vite leaves these on Windows when cross-mount perms prevent cleanup
+vite.config.ts.timestamp-*.mjs
+# Per-machine Claude Code settings (analogue of .env.local — never share)
+.claude/settings.local.json
