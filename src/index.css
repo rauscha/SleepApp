@@ -62,3 +62,18 @@ input[type='range']::-moz-range-thumb {
   cursor: pointer;
   border: 0;
 }
+
+/* Honor the system "reduce motion" setting. Sleep audiences include people
+ * sensitive to motion triggers (migraine, vestibular). Disable transitions
+ * and animations globally when the OS asks. We keep the audio-side
+ * scheduling untouched — only visual motion is suppressed. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

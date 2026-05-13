@@ -198,20 +198,20 @@ export class FileLayer implements Layer {
       if (idx >= 0) this.liveSources.splice(idx, 1);
     };
 
-    // Schedule the next iteration to start (loopOffset - crossfade) seconds
-    // from now. We use setTimeout to fire slightly *before* it's due so we
-    // can call source.start() with a precise AudioContext time. Browsers
-    // can deliver setTimeout late, so we schedule the audio a small lookahead
-    // ahead of "now" — an absolute AudioContext time means the timer firing
-    // late doesn't cause a glitch.
+    // Schedule the next iteration ASAP after THIS iteration starts, not just
+    // before the next one is due. iOS Safari throttles setTimeout to ~1Hz
+    // when the page is backgrounded; firing the chain timer just after the
+    // current iteration starts gives ~(loopOffset - crossfade) seconds of
+    // slack before the next iteration is actually due. Audio scheduling is
+    // on the AudioContext clock once source.start() is called, so timer
+    // latency on the main thread cannot cause a loop seam.
     if (this.playing) {
       const nextIterationTime = startTime + variant.loopOffsetSeconds - this.crossfadeSeconds;
-      const timerDelayMs = (nextIterationTime - this.ctx.currentTime) * 1000 - 1500;
-      // Lookahead: 1500ms before the intended audio start, we run the
-      // scheduling code. If timerDelayMs ≤ 0 we just fire ASAP.
+      const startInMs = Math.max(0, (startTime - this.ctx.currentTime) * 1000);
+      const timerDelayMs = startInMs + 100;
       this.nextScheduleTimer = setTimeout(() => {
         if (this.playing) this.scheduleIteration(nextIterationTime, false);
-      }, Math.max(0, timerDelayMs));
+      }, timerDelayMs);
     }
   }
 
@@ -241,14 +241,20 @@ export class FileLayer implements Layer {
       clearTimeout(this.nextScheduleTimer);
       this.nextScheduleTimer = null;
     }
-    // Fade out everything that's currently audible over the crossfade
-    // duration so we leave with the same gentleness we entered with.
+    // Ramp the LAYER's master output to 0 over the crossfade duration.
+    // We deliberately do NOT touch the per-iteration gain nodes here:
+    // they may be inside an active setValueCurveAtTime window (from
+    // scheduleEqualPowerCrossfade) and scheduling new events during that
+    // window can throw InvalidStateError on some Web Audio implementations.
+    // Ramping the downstream master is mathematically equivalent (the
+    // signal still fades to silence) and avoids any cancel/curve conflict.
     const now = this.ctx.currentTime;
     const fade = this.crossfadeSeconds;
+    const current = this.output.gain.value;
+    this.output.gain.cancelScheduledValues(now);
+    this.output.gain.setValueAtTime(current, now);
+    this.output.gain.linearRampToValueAtTime(0, now + fade);
     for (const live of this.liveSources) {
-      live.gain.gain.cancelScheduledValues(now);
-      live.gain.gain.setValueAtTime(live.gain.gain.value, now);
-      live.gain.gain.linearRampToValueAtTime(0, now + fade);
       try {
         live.source.stop(now + fade + 0.05);
       } catch {
@@ -260,6 +266,12 @@ export class FileLayer implements Layer {
   }
 
   setVolume(value: number): void {
+    // Ignore volume changes after stop() — we are fading the master output
+    // to 0 and a slider drag mid-fade should not fight the fade.
+    if (!this.playing) {
+      this.currentVolume = Math.max(0, Math.min(1, value));
+      return;
+    }
     this.currentVolume = Math.max(0, Math.min(1, value));
     const now = this.ctx.currentTime;
     this.output.gain.cancelScheduledValues(now);

@@ -22,6 +22,7 @@ export class NoiseGenerator implements Layer {
   private color: NoiseColor;
   private playing = false;
   private currentVolume = 0;
+  private hasUserSetVolume = false;
   private readonly targetVolume: number = 0.5;
 
   constructor(
@@ -65,7 +66,15 @@ export class NoiseGenerator implements Layer {
     });
     this.node.connect(this.output);
     this.playing = true;
-    this.setVolume(this.currentVolume || this.targetVolume);
+    // Default to targetVolume only on the very first start, before the user
+    // has explicitly chosen a level. A subsequent setVolume(0) must be
+    // honoured — `||` would silently restore 0.5%.
+    const initial = this.hasUserSetVolume ? this.currentVolume : this.targetVolume;
+    this.currentVolume = initial;
+    const now = this.ctx.currentTime;
+    this.output.gain.cancelScheduledValues(now);
+    this.output.gain.setValueAtTime(this.output.gain.value, now);
+    this.output.gain.linearRampToValueAtTime(initial, now + 0.05);
   }
 
   async stop(): Promise<void> {
@@ -90,6 +99,7 @@ export class NoiseGenerator implements Layer {
   setVolume(value: number): void {
     const v = Math.max(0, Math.min(1, value));
     this.currentVolume = v;
+    this.hasUserSetVolume = true;
     if (!this.playing) return;
     const now = this.ctx.currentTime;
     this.output.gain.cancelScheduledValues(now);

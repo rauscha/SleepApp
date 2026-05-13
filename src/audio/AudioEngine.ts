@@ -124,18 +124,41 @@ export class AudioEngine {
     this.emit({ kind: 'layer-added', id: layer.id });
   }
 
-  async removeLayer(id: string): Promise<void> {
+  /**
+   * Remove a layer. The layer is unregistered immediately so callers can
+   * proceed without waiting for the fade-out. The returned Promise resolves
+   * once the fade has finished and the layer's nodes have been torn down;
+   * callers that don't care can ignore it.
+   *
+   * This non-blocking shape is what Phase-2 scene transitions need: the
+   * brief specifies overlapping fades, so the outgoing scene's layers must
+   * be "logically gone" the instant the new scene is asked for, even though
+   * their tails are still playing.
+   */
+  removeLayer(id: string): Promise<void> {
     const layer = this.layers.get(id);
-    if (!layer) return;
-    await layer.stop();
-    try {
-      layer.output.disconnect();
-    } catch {
-      /* noop */
-    }
-    layer.dispose();
+    if (!layer) return Promise.resolve();
+    // Unregister synchronously so the engine no longer counts this layer
+    // toward the soft cap, and so listeners see the change immediately.
     this.layers.delete(id);
     this.emit({ kind: 'layer-removed', id });
+    return layer
+      .stop()
+      .catch((err) => {
+        console.warn(`[AudioEngine] layer "${id}" stop() rejected:`, err);
+      })
+      .then(() => {
+        try {
+          layer.output.disconnect();
+        } catch {
+          /* noop */
+        }
+        try {
+          layer.dispose();
+        } catch (err) {
+          console.warn(`[AudioEngine] layer "${id}" dispose() threw:`, err);
+        }
+      });
   }
 
   getLayers(): readonly Layer[] {

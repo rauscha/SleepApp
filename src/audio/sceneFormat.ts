@@ -76,18 +76,22 @@ export interface SceneVariantDefinition {
 }
 
 /**
- * Suggested layer loop offsets for incommensurate looping. Each row is
- * one possible offset; pick a different row per layer in a scene so the
- * combined pattern doesn't repeat for hours.
+ * Suggested layer loop offsets for incommensurate looping. Pick a different
+ * value per layer in a scene so the combined pattern doesn't repeat for
+ * many hours (Brian Eno *Music for Airports* technique).
  *
- * These are deliberately prime-adjacent (the durations themselves don't
- * have to be exactly prime — what matters is that the GCDs are large
- * enough that the LCM of all layer durations is many hours).
+ * All values are exact primes — pairwise gcd is 1, so the LCM of any
+ * subset is their product. Even the smallest pair (251 × 409 = 102,659 s
+ * ≈ 28.5 hours) won't repeat within an overnight session.
+ *
+ * (The previous values 253, 407, 511, 689, 893 were "prime-adjacent" — but
+ * 253 = 11·23 and 407 = 11·37 share gcd 11, giving an LCM of only ~2.6 h,
+ * which IS audible across an 8-hour sleep. These five are true primes.)
  */
 export const PRIME_ADJACENT_LOOP_OFFSETS_SECONDS: readonly number[] = [
-  253, // 4:13
-  407, // 6:47
-  511, // 8:31
-  689, // 11:29
-  893, // 14:53
+  251, // 4:11
+  409, // 6:49
+  521, // 8:41
+  691, // 11:31
+  887, // 14:47
 ] as const;

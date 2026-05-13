@@ -11,17 +11,20 @@
 
 export class SpectrumAnalyser {
   readonly node: AnalyserNode;
-  private readonly buffer: Uint8Array;
+  // Explicit ArrayBuffer-backed Uint8Array: TS 5.7+ narrowed the generic
+  // and getByteFrequencyData() now requires Uint8Array<ArrayBuffer>, not
+  // the default Uint8Array<ArrayBufferLike>.
+  private readonly buffer: Uint8Array<ArrayBuffer>;
 
   constructor(ctx: AudioContext, fftSize = 1024) {
     this.node = ctx.createAnalyser();
     this.node.fftSize = fftSize;
     this.node.smoothingTimeConstant = 0.7;
-    this.buffer = new Uint8Array(this.node.frequencyBinCount);
+    this.buffer = new Uint8Array(new ArrayBuffer(this.node.frequencyBinCount));
   }
 
   /** Returns a fresh frequency-domain snapshot in [0, 255] per bin. */
-  snapshot(): Uint8Array {
+  snapshot(): Uint8Array<ArrayBuffer> {
     this.node.getByteFrequencyData(this.buffer);
     return this.buffer;
   }

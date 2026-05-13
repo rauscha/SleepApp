@@ -55,13 +55,43 @@ function read(): UserSettings {
   }
 }
 
-function write(settings: UserSettings): void {
-  cache = settings;
+// Debounce the localStorage write. The in-memory cache is updated
+// synchronously so reads remain consistent, but the actual persist is
+// coalesced — a slider drag firing 60 setSetting calls per second now
+// produces one write at the tail of the gesture instead of 60.
+let writeTimer: ReturnType<typeof setTimeout> | null = null;
+const WRITE_DEBOUNCE_MS = 200;
+
+function flushWrite(settings: UserSettings): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch (err) {
     console.warn('[storage/settings] write failed', err);
   }
+}
+
+function write(settings: UserSettings): void {
+  cache = settings;
+  if (writeTimer !== null) clearTimeout(writeTimer);
+  writeTimer = setTimeout(() => {
+    writeTimer = null;
+    if (cache) flushWrite(cache);
+  }, WRITE_DEBOUNCE_MS);
+}
+
+// Flush any pending write before the page unloads so we never lose the
+// last 200 ms of slider drags. Guarded against non-browser environments
+// (e.g. server-side rendering, tests) — typeof check is intentionally cheap.
+if (typeof window !== 'undefined') {
+  // pagehide is more reliable than beforeunload for PWAs and on iOS Safari
+  // (which sometimes skips beforeunload when the app is backgrounded).
+  window.addEventListener('pagehide', () => {
+    if (writeTimer !== null) {
+      clearTimeout(writeTimer);
+      writeTimer = null;
+      if (cache) flushWrite(cache);
+    }
+  });
 }
 
 function mergeWithDefaults(partial: Partial<UserSettings>): UserSettings {

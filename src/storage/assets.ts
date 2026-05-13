@@ -23,7 +23,7 @@ let dbPromise: Promise<IDBDatabase> | null = null;
 
 function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
-  dbPromise = new Promise((resolve, reject) => {
+  const promise = new Promise<IDBDatabase>((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onerror = () => reject(req.error);
     req.onsuccess = () => resolve(req.result);
@@ -37,6 +37,14 @@ function openDb(): Promise<IDBDatabase> {
       }
     };
   });
+  // If the open fails (rare — quota/permission/private-mode), drop the
+  // cached promise so the NEXT call can retry. Otherwise every subsequent
+  // call returns the same rejection forever, locking us out for the
+  // lifetime of the page.
+  promise.catch(() => {
+    if (dbPromise === promise) dbPromise = null;
+  });
+  dbPromise = promise;
   return dbPromise;
 }
 
@@ -76,8 +84,18 @@ export async function listStories(): Promise<StoryMetadata[]> {
 }
 
 export async function deleteStory(id: string): Promise<void> {
-  await withStore(STORE_METADATA, 'readwrite', (store) => store.delete(id));
-  await withStore(STORE_AUDIO, 'readwrite', (store) => store.delete(id));
+  // Delete metadata and audio atomically in a single transaction. With two
+  // separate transactions a partial failure could orphan one without the
+  // other, leaving the library in an inconsistent state.
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction([STORE_METADATA, STORE_AUDIO], 'readwrite');
+    tx.objectStore(STORE_METADATA).delete(id);
+    tx.objectStore(STORE_AUDIO).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
 }
 
 export async function saveStoryAudio(asset: StoredAudioAsset): Promise<void> {

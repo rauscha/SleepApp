@@ -117,7 +117,7 @@ function Spectrum() {
 
   useEffect(() => {
     const analyser = engine.bus.analyser;
-    const buf = new Uint8Array(analyser.frequencyBinCount);
+    const buf = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
     let raf = 0;
     const draw = () => {
       const canvas = canvasRef.current;
@@ -220,9 +220,13 @@ function NoiseSection() {
             layer.start();
             setPlaying(true);
           }}
-          onStop={async () => {
+          onStop={() => {
             if (layerRef.current) {
-              await engine.removeLayer(layerRef.current.id);
+              // Fire-and-forget: removeLayer unregisters synchronously and
+              // fades + disposes in the background. UI flips to Stopped
+              // immediately; audio tail completes in 0.2–5s depending on
+              // the layer.
+              void engine.removeLayer(layerRef.current.id);
               layerRef.current = null;
             }
             setPlaying(false);
@@ -348,9 +352,13 @@ function TinnitusMaskSection({
             layerRef.current.start();
             setPlaying(true);
           }}
-          onStop={async () => {
+          onStop={() => {
             if (layerRef.current) {
-              await engine.removeLayer(layerRef.current.id);
+              // Fire-and-forget: removeLayer unregisters synchronously and
+              // fades + disposes in the background. UI flips to Stopped
+              // immediately; audio tail completes in 0.2–5s depending on
+              // the layer.
+              void engine.removeLayer(layerRef.current.id);
               layerRef.current = null;
             }
             setPlaying(false);
@@ -421,9 +429,13 @@ function CrossfadeSection() {
               setBuilding(false);
             }
           }}
-          onStop={async () => {
+          onStop={() => {
             if (layerRef.current) {
-              await engine.removeLayer(layerRef.current.id);
+              // Fire-and-forget: removeLayer unregisters synchronously and
+              // fades + disposes in the background. UI flips to Stopped
+              // immediately; audio tail completes in 0.2–5s depending on
+              // the layer.
+              void engine.removeLayer(layerRef.current.id);
               layerRef.current = null;
             }
             setPlaying(false);
@@ -506,6 +518,11 @@ function Slider({
         max={1}
         step={0.01}
         value={value}
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={1}
+        aria-valuenow={value}
+        aria-valuetext={`${Math.round(value * 100)} percent`}
         onChange={(e) => onChange(parseFloat(e.target.value))}
       />
     </label>

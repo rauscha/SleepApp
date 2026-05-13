@@ -78,8 +78,15 @@ class NoiseProcessor extends AudioWorkletProcessor {
     this.pinkRunningSum += newVal;
     this.pinkRows[row] = newVal;
     // Add a fresh white sample on top so high-frequency content isn't lost.
-    const sample = (this.pinkRunningSum + (Math.random() * 2 - 1)) / 8;
-    return sample; // ~ ±1
+    // Divisor 16 keeps RMS comparable to the original /8 tuning while
+    // bringing the absolute worst-case peak (sum of 16 rows ±1 plus 1 white
+    // ÷ 16 = ±1.0625) close to ±1. A hard-clamp safety net guarantees
+    // [-1, 1] even when the limiter on the master bus is bypassed downstream
+    // (e.g. for a Phase-3 mixer that disables the limiter for some scene).
+    let sample = (this.pinkRunningSum + (Math.random() * 2 - 1)) / 16;
+    if (sample > 1) sample = 1;
+    else if (sample < -1) sample = -1;
+    return sample;
   }
 
   /**
