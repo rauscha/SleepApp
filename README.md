@@ -4,26 +4,36 @@
 
 Personal sleep app — soundscapes, AI-generated sleep stories, and AI-generated guided meditations. Progressive Web App. Single user, no accounts, no backend in v1.
 
-This repo currently contains **Phase 1** from the build brief: the audio engine foundation. The UI you see when you run it is a *development harness* (a control panel to exercise the engine), NOT the real Tonight UI — that's Phase 3.
+The app is in active development. Phases 1 and 2 are complete; Phase 3 (the real Tonight UI) is in progress.
 
 ## What's implemented
 
-- AudioContext lifecycle management (`src/audio/AudioEngine.ts`) — handles user-gesture unlock, suspend/resume on visibility change, and AudioWorklet module loading.
-- Master bus with soft limiter (`src/audio/MasterBus.ts`) — DynamicsCompressorNode tuned as a brick-wall limiter, plus an exponential fade-to-silence used by the timer.
-- Synthesized white / pink / brown noise (`src/audio/NoiseGenerator.ts` + `public/worklets/noise-processor.js`) — true infinite generation per sample, no loop.
-- Tinnitus tone matcher (`src/audio/ToneMatcher.ts`) — pure sine, log-spaced 2–12 kHz, click-free start/stop.
-- Tinnitus masking layer (`src/audio/TinnitusMaskLayer.ts`) — band-passed white noise with a runtime-tunable center frequency and bandwidth.
-- Seamless file-loop layer (`src/audio/FileLayer.ts`) — equal-power crossfade with variant rotation and incommensurate loop offsets.
-- Storage abstraction (`src/storage/`) — settings in localStorage, audio assets in IndexedDB, single-source-of-truth API so a backend swap requires no consumer changes.
-- Phase-1 dev harness UI (`src/App.tsx`) — exercise everything above end-to-end.
+**Phase 1 — Audio engine**
+- AudioContext lifecycle management (`src/audio/AudioEngine.ts`) — user-gesture unlock, suspend/resume on visibility change, AudioWorklet loading.
+- Master bus with soft limiter (`src/audio/MasterBus.ts`) — DynamicsCompressorNode tuned as a brick-wall limiter, plus exponential fade-to-silence for the sleep timer.
+- Synthesized white / pink / brown noise (`src/audio/NoiseGenerator.ts` + `public/worklets/noise-processor.js`) — true infinite generation per sample, no period.
+- Seamless file-loop layer (`src/audio/FileLayer.ts`) — equal-power crossfade, variant rotation, incommensurate loop offsets, 3-iteration pipeline for iOS Safari robustness.
+- Storage abstraction (`src/storage/`) — settings in localStorage, audio assets in IndexedDB.
+- Tinnitus engine (`ToneMatcher.ts`, `TinnitusMaskLayer.ts`) — built, shelved from UI pending better UX design.
 
-## What's *not* done yet
+**Phase 2 — Scenes**
+- Multi-layer scene format (`src/audio/sceneFormat.ts`) with JSON scene definitions in `public/scenes/`.
+- `SceneCoordinator` — 8-second cross-scene fade, synthetic fallback when real audio files are missing.
+- 3 starter scenes: Forest midday, Rain on window, Fireplace (Pixabay sources).
+- Surprise Me.
 
-This is exactly the Phase-1 list. Following phases (per brief §11):
-- **Phase 2** — multi-layer scenes, JSON scene format, variant pool, Surprise Me.
-- **Phase 3** — the real Tonight UI, House Blends, mixer, settings, Build Your Own, Lush vs Nightstand modes.
-- **Phase 4** — ElevenLabs + Claude integration, story generation pipeline, library screen.
-- **Phase 5** — timer UI wiring, PWA manifest + offline, iOS Safari background-audio testing, perf profiling.
+**Phase 3 — Tonight UI (in progress)**
+- Three-screen router: Tonight → Player → (Harness dev tools).
+- Tonight screen: House Blend cards with per-scene gradients (placeholder for real photos), last-played CTA, Surprise me.
+- Player screen: big stop button, master volume, collapsible per-layer mixer.
+- CI workflow (`.github/workflows/ci.yml`): typecheck + test + build on PR and push.
+
+## What's next
+
+See `NEXT_STEPS.md` for the current priority list. Short version:
+- **Phase 3 remaining:** sleep timer chip, Nightstand mode, Settings screen.
+- **Phase 4:** pre-generated meditations (bundled), on-demand sleep stories (ElevenLabs + Claude, user's own API keys).
+- **Phase 5:** PWA manifest, iOS overnight device test, service worker.
 
 ## Running it
 

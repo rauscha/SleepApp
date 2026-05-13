@@ -11,6 +11,8 @@ import type { SceneDefinition } from './sceneFormat';
 export interface SceneIndexEntry {
   id: string;
   label: string;
+  /** One-line evocation of the scene — shown on the Tonight cards. */
+  description?: string;
   /** Path to the full SceneDefinition JSON, relative to the site root. */
   url: string;
 }

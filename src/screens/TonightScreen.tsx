@@ -1,13 +1,12 @@
 // Tonight — the default screen.
 //
 // Brief §7: one primary action per view. The primary action here is
-// "start tonight's wind-down." A user who's used the app at least once
-// has a last-played scene that the brief implies should be the headline
-// pick. We surface that as the big card; secondary affordances (other
-// scenes, dev tools) are quiet below it.
+// "start tonight's wind-down." The last-played scene is the headline
+// pick; secondary scenes are quieter below it.
 //
-// This screen does NOT manage playback — it kicks startScene() and
-// hands navigation control to the parent (PlayerScreen takes over).
+// Cards use per-scene gradient backgrounds as placeholders for real
+// photographs. When photos land, swap the inline gradient style for an
+// <img> or CSS background-image — everything else stays the same.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getAudioEngine } from '../audio/AudioEngine';
@@ -24,10 +23,21 @@ import type { SceneIndex, SceneIndexEntry } from '../audio/sceneRegistry';
 import { getSetting, setSetting } from '../storage';
 
 export interface TonightScreenProps {
-  /** Called after the user picks a scene and playback has been kicked. */
   onPlaybackStarted: () => void;
-  /** Called when the user taps the discrete "Dev tools" link. */
   onDevToolsRequested: () => void;
+}
+
+// Per-scene gradient colours — dark, photographic in feel, blending
+// into ink-950 (#0B0D10) at the bottom. Swap for real photos later.
+const SCENE_GRADIENTS: Record<string, [string, string]> = {
+  'forest-day':     ['#182A1E', '#0B0D10'],
+  'rain-on-window': ['#161D2A', '#0B0D10'],
+  'fireplace':      ['#2A1810', '#0B0D10'],
+};
+
+function sceneGradient(id: string): string {
+  const [from, to] = SCENE_GRADIENTS[id] ?? ['#1E2028', '#0B0D10'];
+  return `linear-gradient(to bottom, ${from}, ${to})`;
 }
 
 export function TonightScreen({
@@ -46,23 +56,14 @@ export function TonightScreen({
   useEffect(() => {
     let cancelled = false;
     fetchSceneIndex()
-      .then((idx) => {
-        if (!cancelled) setIndex(idx);
-      })
-      .catch((err) => {
-        if (!cancelled) setIndexError(String(err));
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((idx) => { if (!cancelled) setIndex(idx); })
+      .catch((err) => { if (!cancelled) setIndexError(String(err)); });
+    return () => { cancelled = true; };
   }, []);
 
-  // If a scene is already playing (e.g. user navigated back here mid-
-  // session) just send them to the player. Doesn't fight HMR either.
+  // If a scene is already playing (mid-session nav or HMR), send to player.
   useEffect(() => {
-    if (coordinator.getCurrentScene()) {
-      onPlaybackStarted();
-    }
+    if (coordinator.getCurrentScene()) onPlaybackStarted();
   }, [coordinator, onPlaybackStarted]);
 
   const handlePick = useCallback(
@@ -88,7 +89,15 @@ export function TonightScreen({
     [coordinator, onPlaybackStarted]
   );
 
-  // Order: last-played first, then the rest in index order.
+  const handleSurpriseMe = useCallback(() => {
+    if (!index || index.scenes.length === 0) return;
+    const choices = index.scenes.filter((s) => s.id !== lastSceneId);
+    const pool = choices.length > 0 ? choices : index.scenes;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pick) void handlePick(pick);
+  }, [index, lastSceneId, handlePick]);
+
+  // Last-played scene first, then the rest in index order.
   const orderedScenes: SceneIndexEntry[] = useMemo(() => {
     if (!index) return [];
     if (!lastSceneId) return index.scenes;
@@ -97,53 +106,69 @@ export function TonightScreen({
     return [last, ...index.scenes.filter((s) => s.id !== lastSceneId)];
   }, [index, lastSceneId]);
 
+  const isLoading = index === null && indexError === null;
+
   return (
-    <div className="min-h-screen bg-ink-950 text-stone-100 px-6 py-10 max-w-md mx-auto flex flex-col">
-      <header className="mb-10">
+    <div className="min-h-screen bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-5 py-10">
+      <header className="mb-9 px-1">
         <h1 className="font-serif text-stone-50 text-4xl leading-tight">
           Tonight
         </h1>
         <p className="text-stone-400 text-sm mt-2">
           {lastSceneId
-            ? 'Pick up where you left off — or try something different.'
+            ? 'Pick up where you left off, or try something new.'
             : 'A place to land at the end of the day.'}
         </p>
       </header>
 
       {indexError && (
-        <p className="text-ember-400 text-sm mb-4">
+        <p className="text-ember-400 text-sm mb-4 px-1">
           Couldn't load scenes: {indexError}
         </p>
       )}
 
-      <div className="space-y-4 flex-1">
-        {orderedScenes.map((entry, idx) => {
-          const isPrimary = idx === 0;
-          const isBusy = busySceneId === entry.id;
-          return (
-            <SceneCard
-              key={entry.id}
-              entry={entry}
-              primary={isPrimary}
-              busy={isBusy}
-              disabled={busySceneId !== null && busySceneId !== entry.id}
-              onClick={() => handlePick(entry)}
-            />
-          );
-        })}
+      <div className="flex-1 space-y-3">
+        {isLoading && <SkeletonCards />}
+
+        {orderedScenes.map((entry, idx) => (
+          <SceneCard
+            key={entry.id}
+            entry={entry}
+            primary={idx === 0}
+            isLastPlayed={entry.id === lastSceneId}
+            busy={busySceneId === entry.id}
+            disabled={busySceneId !== null && busySceneId !== entry.id}
+            gradient={sceneGradient(entry.id)}
+            onClick={() => handlePick(entry)}
+          />
+        ))}
+
+        {orderedScenes.length > 1 && (
+          <div className="pt-3 flex justify-center">
+            <button
+              onClick={handleSurpriseMe}
+              disabled={busySceneId !== null}
+              className="text-sm text-stone-400 hover:text-stone-200 active:text-moon-300
+                         transition-colors duration-slow disabled:opacity-40
+                         px-4 py-2"
+            >
+              Surprise me
+            </button>
+          </div>
+        )}
       </div>
 
       {startError && (
-        <p className="mt-4 text-xs text-ember-400 break-words">
-          Couldn't start scene: {startError}
+        <p className="mt-4 text-xs text-ember-400 break-words px-1">
+          Couldn't start: {startError}
         </p>
       )}
 
-      <footer className="mt-12 pt-6 border-t border-ink-700 flex justify-between items-center text-xs text-stone-400">
-        <span>Phase 3 preview</span>
+      <footer className="mt-10 pt-5 border-t border-ink-700 flex justify-end px-1">
         <button
           onClick={onDevToolsRequested}
-          className="text-stone-400 hover:text-stone-200 active:text-moon-300 transition-colors duration-slow"
+          className="text-xs text-stone-500 hover:text-stone-300 active:text-moon-300
+                     transition-colors duration-slow"
         >
           Dev tools →
         </button>
@@ -155,39 +180,100 @@ export function TonightScreen({
 function SceneCard({
   entry,
   primary,
+  isLastPlayed,
   busy,
   disabled,
+  gradient,
   onClick,
 }: {
   entry: SceneIndexEntry;
   primary: boolean;
+  isLastPlayed: boolean;
   busy: boolean;
   disabled: boolean;
+  gradient: string;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
       disabled={busy || disabled}
-      className={
-        'w-full text-left rounded-softer p-5 transition-all duration-slow ease-exhale ' +
-        'disabled:opacity-50 ' +
-        (primary
-          ? 'bg-moon-700 text-stone-50 hover:bg-moon-600 active:bg-moon-500'
-          : 'bg-ink-800 text-stone-100 hover:bg-ink-700 active:bg-ink-600')
-      }
+      aria-label={`Play ${entry.label}`}
+      className={[
+        'w-full text-left rounded-softer overflow-hidden',
+        'transition-all duration-slow ease-exhale',
+        'disabled:opacity-40',
+        primary
+          ? 'shadow-ambient active:scale-[0.985]'
+          : 'active:scale-[0.99]',
+      ].join(' ')}
     >
-      <div className="flex justify-between items-center mb-1">
-        <h2 className="font-serif text-2xl leading-tight">{entry.label}</h2>
-        {primary && (
-          <span className="text-[10px] uppercase tracking-widest text-stone-300">
-            last played
-          </span>
+      {/* Gradient photo placeholder */}
+      <div
+        className={primary ? 'px-6 pt-10 pb-8' : 'px-5 pt-6 pb-5'}
+        style={{ background: gradient }}
+      >
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <h2
+            className={[
+              'font-serif text-stone-50 leading-tight',
+              primary ? 'text-3xl' : 'text-xl',
+            ].join(' ')}
+          >
+            {entry.label}
+          </h2>
+          <div className="flex flex-col items-end gap-1 shrink-0 mt-0.5">
+            {isLastPlayed && (
+              <span className="text-[10px] uppercase tracking-widest text-stone-400">
+                last played
+              </span>
+            )}
+            {busy ? (
+              <span className="text-xs text-stone-300">Loading…</span>
+            ) : (
+              <span
+                className={[
+                  'text-xs',
+                  primary ? 'text-moon-300' : 'text-stone-400',
+                ].join(' ')}
+              >
+                {primary ? 'Begin →' : '→'}
+              </span>
+            )}
+          </div>
+        </div>
+        {entry.description && (
+          <p
+            className={[
+              'text-stone-400 leading-relaxed',
+              primary ? 'text-sm' : 'text-xs',
+            ].join(' ')}
+          >
+            {entry.description}
+          </p>
         )}
       </div>
-      <p className="text-sm text-stone-300">
-        {busy ? 'Loading…' : primary ? 'Begin' : 'Switch to this'}
-      </p>
     </button>
+  );
+}
+
+function SkeletonCards() {
+  return (
+    <>
+      <div className="rounded-softer overflow-hidden animate-pulse">
+        <div className="bg-ink-800 px-6 pt-10 pb-8">
+          <div className="h-8 w-40 bg-ink-600 rounded mb-3" />
+          <div className="h-4 w-64 bg-ink-700 rounded" />
+        </div>
+      </div>
+      {[0, 1].map((i) => (
+        <div key={i} className="rounded-softer overflow-hidden animate-pulse">
+          <div className="bg-ink-800 px-5 pt-6 pb-5">
+            <div className="h-6 w-32 bg-ink-600 rounded mb-2" />
+            <div className="h-3 w-52 bg-ink-700 rounded" />
+          </div>
+        </div>
+      ))}
+    </>
   );
 }

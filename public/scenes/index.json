@@ -3,16 +3,19 @@
     {
       "id": "forest-day",
       "label": "Forest, midday",
+      "description": "Soft canopy wind, scattered birds at distance, a slow creek behind it all.",
       "url": "/scenes/forest-day.json"
     },
     {
       "id": "rain-on-window",
       "label": "Rain on the window",
+      "description": "Steady rain against glass, distant rain on pavement, a bass rumble miles off.",
       "url": "/scenes/rain-on-window.json"
     },
     {
       "id": "fireplace",
       "label": "Fireplace",
+      "description": "Slow wood fire close at hand, a distant room-mic crackle behind it.",
       "url": "/scenes/fireplace.json"
     }
   ]
