@@ -30,13 +30,13 @@ When countdown hits zero: `MasterBus.fadeToSilence(90)` fires a 90-second fade,
 then scene stops and app returns to Tonight. Manual Stop during a fade cancels
 the fade completion callback and restores master volume.
 
-### P3-3 Nightstand mode
-- Lush = current Player screen.
-- Nightstand = full black, no chrome visible; tap anywhere reveals dim controls
-  for ~3 seconds then hides again.
-- Implementation: idle timer (~30s of no interaction) auto-engages Nightstand;
-  a single `boolean` state toggle swaps the two layouts. Needs `useIdleTimer`
-  hook and `onTouchStart`/`onClick` wake handler.
+### P3-3 ✅ Nightstand mode
+Full black screen (`fixed inset-0 bg-black`); tap anywhere reveals dim controls
+(opacity-40) for 3s, then back to black. Auto-engages after 30s idle in Lush.
+Controls show: scene name, timer countdown if running, Stop button, "Lush mode"
+exit link. Timer firing while in Nightstand auto-wakes controls so the user
+sees "Fading…". Manual "Nightstand mode" button at the bottom of the Lush layout.
+Implemented via `useIdleTimer` and `useWakeTimer` hooks in PlayerScreen.tsx.
 
 ### P3-4 Settings screen
 Reachable from Tonight footer. Knobs: master volume (redundant with Player but

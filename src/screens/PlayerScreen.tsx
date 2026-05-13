@@ -1,12 +1,15 @@
 // Player — what you stare at while falling asleep.
 //
-// Brief §7: "very dim chrome, big 44px+ play/pause." Timer chip sits in
-// the header: tap to cycle through durations (15/30/60/90 min or off).
-// When the countdown reaches zero, MasterBus.fadeToSilence() fires over
-// TIMER_FADE_SECONDS, then the scene stops and the app returns to Tonight.
+// Two display modes:
+//   Lush      — the full player UI (default).
+//   Nightstand — pure black screen, tap anywhere to reveal dim controls
+//                for WAKE_DURATION_MS. Auto-engages after IDLE_TIMEOUT_MS
+//                of no interaction; also reachable via the "Nightstand"
+//                button at the bottom of the Lush layout.
 //
-// The user can still tap Stop manually during a timer fade — the fade
-// completion callback is cancelled and the normal stop path runs instead.
+// Sleep timer chip: tap in top-right → pick 15/30/60/90 min → countdown.
+// When countdown hits zero, MasterBus.fadeToSilence(90s) runs, then scene
+// stops and the app returns to Tonight. Manual Stop cancels the fade.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getAudioEngine } from '../audio/AudioEngine';
@@ -17,9 +20,19 @@ import {
 import type { Scene } from '../audio/Scene';
 import { getSetting, setSetting } from '../storage';
 
+// ---------------------------------------------------------------------------
+// Constants
+
+const IDLE_TIMEOUT_MS = 30_000;  // inactivity before auto-nightstand
+const WAKE_DURATION_MS = 3_000;  // how long a tap reveals controls
+
 const TIMER_OPTIONS_MINUTES = [15, 30, 60, 90] as const;
-/** How long MasterBus fades to silence when the timer fires. */
-const TIMER_FADE_SECONDS = 90;
+const TIMER_FADE_SECONDS = 90;   // MasterBus fade duration when timer fires
+
+// ---------------------------------------------------------------------------
+// Types
+
+type DisplayMode = 'lush' | 'nightstand';
 
 type TimerMode =
   | { status: 'off' }
@@ -27,11 +40,85 @@ type TimerMode =
   | { status: 'running'; endsAt: number }
   | { status: 'fading' };
 
+// ---------------------------------------------------------------------------
+// Helpers
+
 function formatMs(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
   const m = Math.floor(s / 60);
   return `${m}:${String(s % 60).padStart(2, '0')}`;
 }
+
+// ---------------------------------------------------------------------------
+// Hooks
+
+/**
+ * Returns true after `timeoutMs` of no user activity on `window`.
+ * Only tracks activity when `active` is true — pass false to pause it
+ * (e.g. while in Nightstand mode where we don't want the timer to reset
+ * on the taps that wake controls).
+ */
+function useIdleTimer(timeoutMs: number, active: boolean): boolean {
+  const [isIdle, setIsIdle] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const reset = useCallback(() => {
+    setIsIdle(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setIsIdle(true), timeoutMs);
+  }, [timeoutMs]);
+
+  useEffect(() => {
+    if (!active) {
+      setIsIdle(false);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
+    }
+    const events = ['touchstart', 'mousedown', 'mousemove', 'keydown'] as const;
+    const handler = () => reset();
+    events.forEach((ev) =>
+      window.addEventListener(ev, handler, { passive: true })
+    );
+    reset(); // start the initial countdown
+    return () => {
+      events.forEach((ev) => window.removeEventListener(ev, handler));
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [active, reset]);
+
+  return isIdle;
+}
+
+/**
+ * Returns [awake, wake]. Calling wake() reveals controls for `durationMs`,
+ * after which awake flips back to false automatically. Calling wake() again
+ * before the timeout resets the countdown.
+ */
+function useWakeTimer(durationMs: number): [boolean, () => void] {
+  const [awake, setAwake] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const wake = useCallback(() => {
+    setAwake(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      setAwake(false);
+    }, durationMs);
+  }, [durationMs]);
+
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
+
+  return [awake, wake];
+}
+
+// ---------------------------------------------------------------------------
+// PlayerScreen
 
 export interface PlayerScreenProps {
   onExit: () => void;
@@ -50,11 +137,19 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
   );
   const [, setTick] = useState(0);
 
-  // --- Timer state ---
+  // Display mode
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('lush');
+  const [awake, wake] = useWakeTimer(WAKE_DURATION_MS);
+  const isIdle = useIdleTimer(IDLE_TIMEOUT_MS, displayMode === 'lush');
+
+  // Auto-engage Nightstand after idle timeout
+  useEffect(() => {
+    if (isIdle) setDisplayMode('nightstand');
+  }, [isIdle]);
+
+  // Sleep timer
   const [timer, setTimer] = useState<TimerMode>({ status: 'off' });
   const [remaining, setRemaining] = useState(0);
-  // Holds the timeout ID for the post-fade stop+exit call so we can
-  // cancel it if the user taps Stop manually during a fade.
   const fadeExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -62,7 +157,6 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync scene state via polling (simple; avoids an event-channel build).
   useEffect(() => {
     const id = setInterval(() => {
       const current = coordinator.getCurrentScene();
@@ -72,15 +166,15 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     return () => clearInterval(id);
   }, [coordinator]);
 
-  // Countdown tick — runs only while timer is 'running'.
+  // Countdown tick
   useEffect(() => {
     if (timer.status !== 'running') return;
     setRemaining(timer.endsAt - Date.now());
     const id = setInterval(() => {
       const ms = timer.endsAt - Date.now();
       if (ms <= 0) {
-        // Countdown hit zero — kick the bus fade, then stop the scene.
         setTimer({ status: 'fading' });
+        wake(); // surface controls in Nightstand so user sees "Fading…"
         engine.bus.fadeToSilence(TIMER_FADE_SECONDS);
         fadeExitTimer.current = setTimeout(() => {
           fadeExitTimer.current = null;
@@ -92,19 +186,14 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
       }
     }, 500);
     return () => clearInterval(id);
-  }, [timer, engine, coordinator, onExit]);
+  }, [timer, engine, coordinator, wake, onExit]);
 
   const handleStop = useCallback(() => {
-    // Cancel any pending fade-completion timer.
     if (fadeExitTimer.current) {
       clearTimeout(fadeExitTimer.current);
       fadeExitTimer.current = null;
     }
-    // If we were fading the bus, restore volume so the next session starts
-    // at a normal level.
-    if (timer.status === 'fading') {
-      engine.bus.cancelFade(masterVolume, 0.1);
-    }
+    if (timer.status === 'fading') engine.bus.cancelFade(masterVolume, 0.1);
     setTimer({ status: 'off' });
     coordinator.stopScene(DEFAULT_SCENE_FIRST_START_SECONDS);
     setScene(null);
@@ -120,15 +209,10 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
       clearTimeout(fadeExitTimer.current);
       fadeExitTimer.current = null;
     }
-    // If the bus was already fading, restore volume.
-    if (timer.status === 'fading') {
-      engine.bus.cancelFade(masterVolume, 1);
-    }
+    if (timer.status === 'fading') engine.bus.cancelFade(masterVolume, 1);
     setTimer({ status: 'off' });
   }, [timer, engine, masterVolume]);
 
-  // Empty state — should rarely render; the router only mounts us after
-  // a scene starts, but a cold navigation or HMR can leave this blank.
   if (!scene) {
     return (
       <div className="min-h-screen bg-ink-950 text-stone-100 flex items-center justify-center px-8">
@@ -147,12 +231,25 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     );
   }
 
+  if (displayMode === 'nightstand') {
+    return (
+      <NightstandView
+        scene={scene}
+        timer={timer}
+        remaining={remaining}
+        awake={awake}
+        onTap={wake}
+        onStop={handleStop}
+        onExitNightstand={() => setDisplayMode('lush')}
+      />
+    );
+  }
+
   const layers = scene.getLayers();
 
   return (
     <div className="min-h-screen bg-ink-950 text-stone-100 flex flex-col px-6 py-8 max-w-md mx-auto">
       <header className="mb-10">
-        {/* Nav row */}
         <div className="flex items-center justify-between mb-7">
           <button
             onClick={onExit}
@@ -172,7 +269,6 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
           />
         </div>
 
-        {/* Duration picker — inline, appears below nav row when picking */}
         {timer.status === 'picking' && (
           <div className="flex gap-2 justify-end mb-5">
             {TIMER_OPTIONS_MINUTES.map((m) => (
@@ -201,14 +297,12 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         </p>
       </header>
 
-      {/* Stop button */}
       <div className="flex-1 flex flex-col justify-center items-center mb-8">
         <button
           onClick={handleStop}
           className="w-32 h-32 rounded-full bg-ember-500 text-ink-950 font-serif text-xl
                      transition-all duration-slow ease-exhale
-                     active:scale-95 active:bg-ember-400
-                     shadow-ambient"
+                     active:scale-95 active:bg-ember-400 shadow-ambient"
           style={{ minWidth: 44, minHeight: 44 }}
           aria-label="Stop scene"
         >
@@ -221,7 +315,6 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         </p>
       </div>
 
-      {/* Master volume */}
       <div className="mb-6">
         <label className="block">
           <span className="block text-xs text-stone-400 mb-2">
@@ -245,7 +338,6 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         </label>
       </div>
 
-      {/* Mixer drawer */}
       <div>
         <button
           onClick={() => setMixerOpen((open) => !open)}
@@ -271,9 +363,100 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
           </div>
         )}
       </div>
+
+      <div className="mt-8 flex justify-center">
+        <button
+          onClick={() => setDisplayMode('nightstand')}
+          className="text-xs text-stone-500 hover:text-stone-300
+                     active:text-moon-300 transition-colors duration-slow
+                     px-3 py-2"
+        >
+          Nightstand mode
+        </button>
+      </div>
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// NightstandView
+
+function NightstandView({
+  scene,
+  timer,
+  remaining,
+  awake,
+  onTap,
+  onStop,
+  onExitNightstand,
+}: {
+  scene: Scene;
+  timer: TimerMode;
+  remaining: number;
+  awake: boolean;
+  onTap: () => void;
+  onStop: () => void;
+  onExitNightstand: () => void;
+}) {
+  return (
+    // Full-viewport black. onClick on the outer div catches taps on the
+    // dark areas; inner buttons call stopPropagation to avoid double-waking.
+    <div
+      className="fixed inset-0 bg-black flex flex-col items-center justify-center cursor-default"
+      onClick={onTap}
+      role="main"
+      aria-label="Nightstand mode — tap anywhere to see controls"
+    >
+      {/* Controls overlay — always in DOM; visibility driven by opacity only
+          so the Stop button retains its position and tap area. */}
+      <div
+        className={[
+          'flex flex-col items-center gap-8 px-8 w-full max-w-xs',
+          'transition-opacity duration-slow ease-exhale',
+          awake ? 'opacity-40 pointer-events-auto' : 'opacity-0 pointer-events-none',
+        ].join(' ')}
+      >
+        {/* Scene name + timer status */}
+        <div className="text-center">
+          <p className="text-stone-300 text-sm tracking-wide">
+            {scene.definition.label}
+          </p>
+          {timer.status === 'running' && (
+            <p className="text-moon-300 text-xs mt-1">{formatMs(remaining)}</p>
+          )}
+          {timer.status === 'fading' && (
+            <p className="text-stone-400 text-xs mt-1 italic">Fading…</p>
+          )}
+        </div>
+
+        {/* Stop button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onStop(); }}
+          className="w-28 h-28 rounded-full bg-ember-500 text-ink-950
+                     font-serif text-xl transition-transform duration-slow
+                     active:scale-95"
+          style={{ minWidth: 44, minHeight: 44 }}
+          aria-label="Stop scene"
+        >
+          Stop
+        </button>
+
+        {/* Exit to Lush */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onExitNightstand(); }}
+          className="text-xs text-stone-400 hover:text-stone-200
+                     transition-colors duration-slow px-4 py-2"
+          aria-label="Exit Nightstand mode"
+        >
+          Lush mode
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-components
 
 function TimerChip({
   timer,
