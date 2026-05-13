@@ -134,3 +134,13 @@ export function resetSettings(): void {
     /* noop */
   }
 }
+
+/**
+ * Drop only the in-memory cache so the next read pulls from localStorage
+ * fresh. The localStorage payload is left intact — unlike resetSettings,
+ * which is a factory reset. Exists for tests that need to simulate a
+ * cold-load scenario.
+ */
+export function __invalidateCacheForTests(): void {
+  cache = null;
+}
