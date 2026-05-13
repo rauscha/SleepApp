@@ -24,7 +24,17 @@
 // The loop is driven by chained scheduling: when iteration N starts,
 // we schedule iteration N+1 to start at (N's start time + N's loopLength
 // - crossfadeSeconds). Equal-power gain ramps are scheduled on each
-// iteration's gain node. A safety setTimeout queues the next chain step.
+// iteration's gain node.
+//
+// Pipeline depth (LOOKAHEAD_COUNT). start() pre-fills three iterations
+// at exact AudioContext times. Audio scheduled via source.start(t) is
+// locked to the audio clock, so even if iOS Safari throttles the main-
+// thread setTimeout to ~1Hz when the page backgrounds (or freezes JS
+// entirely for tens of seconds under the page-lifecycle frozen state),
+// the next two iterations after the head play seamlessly without needing
+// the main thread at all. The chain timer becomes a once-per-iteration
+// "top up the tail by one" trigger with ~(LOOKAHEAD_COUNT - 1) iteration
+// periods of slack before the pipeline drains.
 
 import { scheduleEqualPowerCrossfade } from './crossfade';
 import type { AudioEngine } from './AudioEngine';
@@ -76,6 +86,14 @@ interface LiveSource {
 }
 
 export class FileLayer implements Layer {
+  /**
+   * How many iterations to keep scheduled ahead at any moment. Three
+   * iterations means the audio survives ~2 full iteration periods of
+   * timer throttling — comfortably more than iOS Safari's ~30s worst
+   * case for backgrounded tabs.
+   */
+  private static readonly LOOKAHEAD_COUNT = 3;
+
   readonly id: string;
   readonly label: string;
   readonly output: GainNode;
@@ -91,6 +109,20 @@ export class FileLayer implements Layer {
   private lastVariantIndex = -1;
   private liveSources: LiveSource[] = [];
   private nextScheduleTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * The most recently scheduled iteration's start time and loop offset —
+   * everything the chain timer needs to compute the next iteration's
+   * start time without consulting liveSources (which may have already
+   * removed the relevant entry via source.onended).
+   */
+  private pipelineTail: { startTime: number; loopOffset: number } | null =
+    null;
+  /**
+   * The startedAt of the most recent iteration the chain timer has
+   * already fired on. Used so armChainTimer picks the NEXT upcoming
+   * iteration as its target, never re-firing on one already handled.
+   */
+  private lastHandledStartTime = -Infinity;
 
   constructor(engine: AudioEngine, opts: FileLayerOptions) {
     if (opts.variants.length === 0) {
@@ -131,15 +163,33 @@ export class FileLayer implements Layer {
   start(): void {
     if (this.playing) return;
     this.playing = true;
-    this.scheduleIteration(this.ctx.currentTime, /* isFirst */ true);
+    this.lastHandledStartTime = -Infinity;
+    // Pre-fill the pipeline. Each iteration past the first is scheduled
+    // at a future AudioContext time and locked to the audio clock at
+    // source.start(t) — the main thread plays no further role for those
+    // iterations. This is the slack that absorbs setTimeout throttling.
+    let nextStart = this.ctx.currentTime;
+    for (let i = 0; i < FileLayer.LOOKAHEAD_COUNT; i++) {
+      const variant = this.scheduleSingleIteration(
+        nextStart,
+        /* isFirst */ i === 0
+      );
+      nextStart =
+        nextStart + variant.loopOffsetSeconds - this.crossfadeSeconds;
+    }
+    this.armChainTimer();
   }
 
   /**
-   * Schedule one playback iteration starting at `startTime`. Sets up the
-   * follow-up timer that will schedule the NEXT iteration at the right
-   * moment so they overlap by `crossfadeSeconds`.
+   * Schedule exactly ONE playback iteration starting at `startTime`. Pure
+   * scheduling — caller is responsible for chaining. Returns the variant
+   * used (so the caller can compute the next iteration's start time from
+   * its loop offset).
    */
-  private scheduleIteration(startTime: number, isFirst: boolean): void {
+  private scheduleSingleIteration(
+    startTime: number,
+    isFirst: boolean
+  ): AudioVariant {
     const variant = this.pickNextVariant();
     const source = this.ctx.createBufferSource();
     source.buffer = variant.buffer;
@@ -152,6 +202,10 @@ export class FileLayer implements Layer {
     source.start(startTime);
 
     // Schedule fade-in (and fade-out for the previous iteration if any).
+    // "Previous" is the iteration most recently pushed to liveSources,
+    // i.e. the one we are crossfading IN over. With pre-fill at start(),
+    // that's the iteration scheduled in the loop iteration just before
+    // this one.
     const prev = this.liveSources[this.liveSources.length - 1];
     if (isFirst || !prev) {
       // First iteration: just fade in alone, no outgoing partner.
@@ -169,14 +223,11 @@ export class FileLayer implements Layer {
       );
     }
 
-    // Schedule fade-out at the end of THIS iteration's loop offset.
-    // (The next iteration's gain ramp will be scheduled when that iteration
-    // is created, so we only need to know that the next one starts at
-    // startTime + loopOffset - crossfade. The fade-out is handled by the
-    // next iteration's call to scheduleEqualPowerCrossfade.)
-    // We DO need to schedule the source.stop() so this buffer doesn't keep
-    // playing forever:
-    const sourceEndTime = startTime + variant.loopOffsetSeconds + this.crossfadeSeconds;
+    // Schedule source.stop() so this buffer doesn't keep playing past the
+    // end of its loop offset + crossfade tail. The next iteration's own
+    // crossfade handles the gain ramp down.
+    const sourceEndTime =
+      startTime + variant.loopOffsetSeconds + this.crossfadeSeconds;
     source.stop(sourceEndTime + 0.05);
 
     const live: LiveSource = {
@@ -198,21 +249,52 @@ export class FileLayer implements Layer {
       if (idx >= 0) this.liveSources.splice(idx, 1);
     };
 
-    // Schedule the next iteration ASAP after THIS iteration starts, not just
-    // before the next one is due. iOS Safari throttles setTimeout to ~1Hz
-    // when the page is backgrounded; firing the chain timer just after the
-    // current iteration starts gives ~(loopOffset - crossfade) seconds of
-    // slack before the next iteration is actually due. Audio scheduling is
-    // on the AudioContext clock once source.start() is called, so timer
-    // latency on the main thread cannot cause a loop seam.
-    if (this.playing) {
-      const nextIterationTime = startTime + variant.loopOffsetSeconds - this.crossfadeSeconds;
-      const startInMs = Math.max(0, (startTime - this.ctx.currentTime) * 1000);
-      const timerDelayMs = startInMs + 100;
-      this.nextScheduleTimer = setTimeout(() => {
-        if (this.playing) this.scheduleIteration(nextIterationTime, false);
-      }, timerDelayMs);
-    }
+    this.pipelineTail = {
+      startTime,
+      loopOffset: variant.loopOffsetSeconds,
+    };
+    return variant;
+  }
+
+  /**
+   * Arm a one-shot timer that fires ~100ms after the next not-yet-handled
+   * iteration starts. When it fires, we extend the pipeline tail by one
+   * iteration and re-arm. The chain timer is the only thing that needs
+   * the main thread to keep audio going past the pre-filled iterations —
+   * but because the pipeline is LOOKAHEAD_COUNT deep, it has wide latitude
+   * to fire late without causing a loop seam.
+   */
+  private armChainTimer(): void {
+    if (!this.playing) return;
+    // Pick the next upcoming iteration we haven't already fired the
+    // chain timer on. Tracking lastHandledStartTime explicitly (rather
+    // than relying on a time-window heuristic against the audio clock)
+    // avoids re-firing on the same iteration multiple times in tight
+    // succession — which would otherwise extend the pipeline unbounded.
+    const target = this.liveSources.find(
+      (l) => l.startedAt > this.lastHandledStartTime
+    );
+    if (!target) return;
+    const now = this.ctx.currentTime;
+    const timerDelayMs = Math.max(0, (target.startedAt - now) * 1000) + 100;
+    this.nextScheduleTimer = setTimeout(() => {
+      this.nextScheduleTimer = null;
+      if (!this.playing || !this.pipelineTail) return;
+      this.lastHandledStartTime = target.startedAt;
+      const nextStart =
+        this.pipelineTail.startTime +
+        this.pipelineTail.loopOffset -
+        this.crossfadeSeconds;
+      // If we've fallen so far behind that nextStart is already in the
+      // past, source.start(past_time) starts immediately with no crossfade
+      // — an audible seam. That's the pipeline-drained failure mode the
+      // lookahead exists to prevent, so getting here means the timer was
+      // delayed for >~(LOOKAHEAD_COUNT - 1) iteration periods. We still
+      // recover by starting "just-now" rather than throwing.
+      const safeStart = Math.max(nextStart, this.ctx.currentTime + 0.01);
+      this.scheduleSingleIteration(safeStart, /* isFirst */ false);
+      this.armChainTimer();
+    }, timerDelayMs);
   }
 
   private pickNextVariant(): AudioVariant {
@@ -272,6 +354,10 @@ export class FileLayer implements Layer {
       clearTimeout(this.nextScheduleTimer);
       this.nextScheduleTimer = null;
     }
+    // The pipeline is done; null this out so any latent timer that fires
+    // before the cancelled handler runs (race window is theoretical, not
+    // observed) doesn't try to chain onto stale state.
+    this.pipelineTail = null;
     const fade = Math.max(0.05, durationSeconds ?? this.crossfadeSeconds);
     const now = this.ctx.currentTime;
     // Ramp the LAYER's master output to 0 over `fade`. We deliberately do
@@ -336,6 +422,7 @@ export class FileLayer implements Layer {
       }
     }
     this.liveSources.length = 0;
+    this.pipelineTail = null;
     try {
       this.output.disconnect();
     } catch {
