@@ -27,10 +27,17 @@ import { generateTestPadBuffer } from './audio/synth/testPad';
 // This page exposes every audio-engine feature behind sliders and buttons
 // so you can verify the engine end-to-end.
 
+// Tinnitus matcher + mask harness UI is shelved (see comment in App's
+// JSX). Flip to true to bring it back; the engine classes never went away.
+const SHOW_TINNITUS_HARNESS = false;
+
 export function App() {
   const engine = useMemo(() => getAudioEngine(), []);
   const [unlocked, setUnlocked] = useState(false);
-  const [settings, setSettings] = useState(() => getAllSettings());
+  // Settings is read-only here; the only mutating consumer (tinnitus
+  // matcher save) is currently shelved. MasterSection mutates settings
+  // through setSetting directly, not via this state.
+  const [settings] = useState(() => getAllSettings());
   const [contextState, setContextState] = useState(engine.state);
 
   useEffect(() => {
@@ -71,24 +78,36 @@ export function App() {
       <Divider />
       <NoiseSection />
       <Divider />
-      <ToneMatcherSection
-        initialHz={settings.tinnitus.centerHz}
-        onSave={(hz, bw) => {
-          setSetting('tinnitus', {
-            ...settings.tinnitus,
-            centerHz: hz,
-            bandwidthHz: bw,
-            hasCalibrated: true,
-          });
-          setSettings(getAllSettings());
-        }}
-      />
-      <Divider />
-      <TinnitusMaskSection
-        centerHz={settings.tinnitus.centerHz}
-        bandwidthHz={settings.tinnitus.bandwidthHz}
-      />
-      <Divider />
+      {/*
+        Tinnitus matcher + mask shelved — evidence for tinnitus masking as a
+        sleep aid is weak, and the in-app experience needs work (broader
+        surround noise, lower default volume, and a high-tone artefact heard
+        even when the layer is "off" that needs root-cause analysis). The
+        engine classes (ToneMatcher, TinnitusMaskLayer) and the stored user
+        settings remain in place. To revive the harness UI: flip
+        SHOW_TINNITUS_HARNESS to true.
+
+        Scene definitions all have `tinnitus.enabledByDefault: false`, so
+        scenes will not spin up a TinnitusMaskLayer unless the user opts in
+        explicitly through a future settings flow.
+      */}
+      {SHOW_TINNITUS_HARNESS && (
+        <>
+          <Divider />
+          <ToneMatcherSection
+            initialHz={settings.tinnitus.centerHz}
+            onSave={() => {
+              /* save flow removed during shelving; rewire when reviving */
+            }}
+          />
+          <Divider />
+          <TinnitusMaskSection
+            centerHz={settings.tinnitus.centerHz}
+            bandwidthHz={settings.tinnitus.bandwidthHz}
+          />
+          <Divider />
+        </>
+      )}
       <CrossfadeSection />
       <Divider />
       <MasterSection
@@ -101,11 +120,12 @@ export function App() {
 
 function UnlockGate({ onUnlock }: { onUnlock: () => Promise<void> }) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   return (
     <div className="min-h-screen flex items-center justify-center px-8 bg-ink-950">
-      <div className="text-center">
+      <div className="text-center max-w-md">
         <h1 className="font-serif text-stone-50 text-4xl mb-3">Ready to wind down?</h1>
-        <p className="text-stone-300 text-base mb-8 max-w-xs">
+        <p className="text-stone-300 text-base mb-8 max-w-xs mx-auto">
           Tap to begin. The audio engine wakes up here.
         </p>
         <button
@@ -113,8 +133,13 @@ function UnlockGate({ onUnlock }: { onUnlock: () => Promise<void> }) {
           disabled={busy}
           onClick={async () => {
             setBusy(true);
+            setError(null);
             try {
               await onUnlock();
+            } catch (err) {
+              const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+              console.error('[UnlockGate] unlock failed:', err);
+              setError(message);
             } finally {
               setBusy(false);
             }
@@ -122,6 +147,11 @@ function UnlockGate({ onUnlock }: { onUnlock: () => Promise<void> }) {
         >
           {busy ? 'Waking up...' : 'Begin'}
         </button>
+        {error && (
+          <p className="mt-6 text-xs text-ember-400 break-words text-left bg-ink-800 p-3 rounded-soft">
+            <strong>Unlock failed:</strong> {error}
+          </p>
+        )}
       </div>
     </div>
   );

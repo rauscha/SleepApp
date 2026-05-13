@@ -89,7 +89,17 @@ export class AudioEngine {
     if (this.workletPromise) return this.workletPromise;
     const ctx = this.ensureContext();
     if (!ctx.audioWorklet) {
-      throw new Error('AudioWorklet not supported in this browser.');
+      // Include diagnostic info — the most common cause is an older browser
+      // that supports AudioContext but not the AudioWorklet add-on (iOS
+      // Safari < 14.1, Android Chrome < 66). The userAgent is included so
+      // we can verify on the affected device.
+      const ctor = (ctx as unknown as { constructor: { name: string } }).constructor.name;
+      const isSecure = typeof window !== 'undefined' ? window.isSecureContext : 'unknown';
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
+      throw new Error(
+        `AudioWorklet not supported here. ` +
+          `AudioContext=${ctor}, secureContext=${isSecure}. UA: ${ua}`
+      );
     }
     const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
     this.workletPromise = ctx.audioWorklet

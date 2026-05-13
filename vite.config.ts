@@ -10,6 +10,11 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    // Allow tailnet hosts (e.g. crane-desk.saiga-wage.ts.net) when proxied
+    // via `tailscale serve`. Leading-dot is Vite's wildcard for subdomains —
+    // covers every device in this tailnet without disabling host protection
+    // entirely. localhost / LAN-IP access is unaffected.
+    allowedHosts: ['.saiga-wage.ts.net'],
   },
   build: {
     target: 'es2022',
