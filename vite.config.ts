@@ -15,6 +15,12 @@ export default defineConfig({
     // covers every device in this tailnet without disabling host protection
     // entirely. localhost / LAN-IP access is unaffected.
     allowedHosts: ['.saiga-wage.ts.net'],
+    // Don't trigger a Vite page reload when test files change — Vitest
+    // runs them separately, and a full reload in the running app kills
+    // any in-progress audio session.
+    watch: {
+      ignored: ['**/*.test.ts', '**/*.test.tsx'],
+    },
   },
   build: {
     target: 'es2022',

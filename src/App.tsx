@@ -22,18 +22,80 @@ import type { Scene } from './audio/Scene';
 import { getAllSettings, setSetting } from './storage';
 import type { NoiseColor } from './audio/types';
 import { generateTestPadBuffer } from './audio/synth/testPad';
+import { TonightScreen } from './screens/TonightScreen';
+import { PlayerScreen } from './screens/PlayerScreen';
 
-// Phase-1 development harness. NOT the real Tonight UI -- that's Phase 3.
-// This page exposes every audio-engine feature behind sliders and buttons
-// so you can verify the engine end-to-end.
+// App is a thin three-way router between the Phase 3 screens and the
+// Phase 1 dev harness. The harness stays reachable from Tonight via a
+// discrete "Dev tools" link — useful for spectrum inspection, the
+// crossfade demo, and the noise generators that aren't in the Player.
 
-// Tinnitus matcher + mask harness UI is shelved (see comment in App's
+type Screen = 'tonight' | 'player' | 'harness';
+const SCREEN_KEY = 'sleep-app:current-screen:v1';
+
+function loadInitialScreen(): Screen {
+  try {
+    const v = localStorage.getItem(SCREEN_KEY);
+    if (v === 'tonight' || v === 'player' || v === 'harness') return v;
+  } catch {
+    /* localStorage unavailable (private mode etc.) — fall through */
+  }
+  return 'tonight';
+}
+
+// Tinnitus matcher + mask harness UI is shelved (see comment in Harness'
 // JSX). Flip to true to bring it back; the engine classes never went away.
 const SHOW_TINNITUS_HARNESS = false;
 
 export function App() {
   const engine = useMemo(() => getAudioEngine(), []);
-  const [unlocked, setUnlocked] = useState(false);
+  // If the engine is already up (singleton survived an HMR), skip the
+  // unlock gate — there's no second user gesture required and asking
+  // for one would lose the AudioContext we already have.
+  const [unlocked, setUnlocked] = useState(
+    () => engine.isInitialized && engine.isWorkletReady
+  );
+  const [screen, setScreen] = useState<Screen>(loadInitialScreen);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SCREEN_KEY, screen);
+    } catch {
+      /* noop */
+    }
+  }, [screen]);
+
+  if (!unlocked) {
+    return (
+      <UnlockGate
+        onUnlock={async () => {
+          await engine.unlock();
+          await engine.loadNoiseWorklet();
+          setUnlocked(true);
+        }}
+      />
+    );
+  }
+
+  if (screen === 'tonight') {
+    return (
+      <TonightScreen
+        onPlaybackStarted={() => setScreen('player')}
+        onDevToolsRequested={() => setScreen('harness')}
+      />
+    );
+  }
+  if (screen === 'player') {
+    return <PlayerScreen onExit={() => setScreen('tonight')} />;
+  }
+  return <Harness onBackToTonight={() => setScreen('tonight')} />;
+}
+
+// Harness — the original Phase-1 dev surface, now reached via the Dev
+// tools link from Tonight. Exposes every engine feature individually so
+// regressions surface visually.
+function Harness({ onBackToTonight }: { onBackToTonight: () => void }) {
+  const engine = useMemo(() => getAudioEngine(), []);
   // Settings is read-only here; the only mutating consumer (tinnitus
   // matcher save) is currently shelved. MasterSection mutates settings
   // through setSetting directly, not via this state.
@@ -47,26 +109,21 @@ export function App() {
     return unsub;
   }, [engine]);
 
-  if (!unlocked) {
-    return (
-      <UnlockGate
-        onUnlock={async () => {
-          await engine.unlock();
-          await engine.loadNoiseWorklet();
-          setUnlocked(true);
-          setContextState(engine.state);
-        }}
-      />
-    );
-  }
-
   return (
     <div className="min-h-screen bg-ink-950 text-stone-100 px-6 py-8 max-w-md mx-auto">
-      <header className="mb-8">
-        <h1 className="text-stone-50 font-serif text-3xl">Sleep -- engine harness</h1>
-        <p className="text-stone-300 text-sm mt-1">
-          Phase 1 development surface. AudioContext: {contextState}
-        </p>
+      <header className="mb-8 flex justify-between items-start gap-4">
+        <div>
+          <h1 className="text-stone-50 font-serif text-3xl">Engine harness</h1>
+          <p className="text-stone-300 text-sm mt-1">
+            Dev surface. AudioContext: {contextState}
+          </p>
+        </div>
+        <button
+          onClick={onBackToTonight}
+          className="text-xs text-stone-400 hover:text-stone-200 transition-colors duration-slow shrink-0 mt-2"
+        >
+          ← Tonight
+        </button>
       </header>
 
       <Spectrum />
