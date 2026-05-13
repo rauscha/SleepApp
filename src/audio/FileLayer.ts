@@ -236,20 +236,52 @@ export class FileLayer implements Layer {
 
   async stop(): Promise<void> {
     if (!this.playing) return;
+    const fade = this.scheduleFadeOut();
+    await wait((fade + 0.1) * 1000);
+    this.liveSources.length = 0;
+  }
+
+  /**
+   * Schedule a fade-out and queue disposal in a fire-and-forget tail.
+   * Returns immediately so the caller can run a parallel fade-in on
+   * another layer (the cross-scene case from §3.5 of the brief).
+   */
+  fadeAndDispose(durationSeconds: number): void {
+    if (!this.playing) {
+      this.dispose();
+      return;
+    }
+    const fade = this.scheduleFadeOut(durationSeconds);
+    // Tail teardown — runs after the fade has completed. AudioParam
+    // ramps already locked everything to the AudioContext clock, so a
+    // late timer can't introduce a glitch.
+    setTimeout(() => {
+      this.dispose();
+    }, (fade + 0.1) * 1000);
+  }
+
+  /**
+   * Internal: cancel the schedule timer, mark the layer not-playing,
+   * and ramp every live source to 0 over `durationSeconds` (defaults
+   * to crossfadeSeconds). Schedules each source.stop just past the
+   * fade end. Returns the fade duration actually used.
+   */
+  private scheduleFadeOut(durationSeconds?: number): number {
     this.playing = false;
     if (this.nextScheduleTimer) {
       clearTimeout(this.nextScheduleTimer);
       this.nextScheduleTimer = null;
     }
-    // Ramp the LAYER's master output to 0 over the crossfade duration.
-    // We deliberately do NOT touch the per-iteration gain nodes here:
-    // they may be inside an active setValueCurveAtTime window (from
-    // scheduleEqualPowerCrossfade) and scheduling new events during that
-    // window can throw InvalidStateError on some Web Audio implementations.
-    // Ramping the downstream master is mathematically equivalent (the
-    // signal still fades to silence) and avoids any cancel/curve conflict.
+    const fade = Math.max(0.05, durationSeconds ?? this.crossfadeSeconds);
     const now = this.ctx.currentTime;
-    const fade = this.crossfadeSeconds;
+    // Ramp the LAYER's master output to 0 over `fade`. We deliberately do
+    // NOT touch the per-iteration gain nodes: they may be inside an active
+    // setValueCurveAtTime window (from scheduleEqualPowerCrossfade), and
+    // scheduling new events during that window can throw InvalidStateError
+    // on some Web Audio implementations. Ramping the downstream master is
+    // mathematically equivalent (signal still fades to silence) and avoids
+    // any cancel/curve conflict. The parameterized `fade` lets the cross-
+    // scene 8-second fade in §3.5 use this same path.
     const current = this.output.gain.value;
     this.output.gain.cancelScheduledValues(now);
     this.output.gain.setValueAtTime(current, now);
@@ -261,8 +293,7 @@ export class FileLayer implements Layer {
         /* already stopped */
       }
     }
-    await wait((fade + 0.1) * 1000);
-    this.liveSources.length = 0;
+    return fade;
   }
 
   setVolume(value: number): void {

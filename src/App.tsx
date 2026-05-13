@@ -1,9 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getAudioEngine } from './audio/AudioEngine';
 import { NoiseGenerator } from './audio/NoiseGenerator';
 import { TinnitusMaskLayer } from './audio/TinnitusMaskLayer';
 import { ToneMatcher } from './audio/ToneMatcher';
 import { FileLayer } from './audio/FileLayer';
+import {
+  DEFAULT_SCENE_CROSSFADE_SECONDS,
+  DEFAULT_SCENE_FIRST_START_SECONDS,
+  getSceneCoordinator,
+} from './audio/SceneCoordinator';
+import type { VariantLoadOutcome } from './audio/SceneCoordinator';
+import {
+  fetchSceneDefinition,
+  fetchSceneIndex,
+} from './audio/sceneRegistry';
+import type {
+  SceneIndex,
+  SceneIndexEntry,
+} from './audio/sceneRegistry';
+import type { Scene } from './audio/Scene';
 import { getAllSettings, setSetting } from './storage';
 import type { NoiseColor } from './audio/types';
 import { generateTestPadBuffer } from './audio/synth/testPad';
@@ -48,6 +63,11 @@ export function App() {
       </header>
 
       <Spectrum />
+      <Divider />
+      <ScenesSection
+        tinnitusCenterHz={settings.tinnitus.centerHz}
+        tinnitusBandwidthHz={settings.tinnitus.bandwidthHz}
+      />
       <Divider />
       <NoiseSection />
       <Divider />
@@ -444,6 +464,196 @@ function CrossfadeSection() {
       </div>
     </Section>
   );
+}
+
+function ScenesSection({
+  tinnitusCenterHz,
+  tinnitusBandwidthHz,
+}: {
+  tinnitusCenterHz: number;
+  tinnitusBandwidthHz: number;
+}) {
+  const engine = useMemo(() => getAudioEngine(), []);
+  const coordinator = useMemo(() => getSceneCoordinator(engine), [engine]);
+
+  const [index, setIndex] = useState<SceneIndex | null>(null);
+  const [indexError, setIndexError] = useState<string | null>(null);
+  const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
+  const [loadingSceneId, setLoadingSceneId] = useState<string | null>(null);
+  const [variantOutcomes, setVariantOutcomes] = useState<VariantLoadOutcome[]>([]);
+  const [layerSummary, setLayerSummary] = useState<LayerSummary[]>([]);
+  // Refresh tick to re-render layer summary as the user moves sliders.
+  const [, setTick] = useState(0);
+
+  // Refresh layer summary every 250ms while a scene is live so per-layer
+  // volume sliders stay in sync if any other code path moves them.
+  useEffect(() => {
+    if (!activeSceneId) return;
+    const interval = setInterval(() => {
+      const scene = coordinator.getCurrentScene();
+      if (scene) setLayerSummary(summarizeScene(scene));
+    }, 250);
+    return () => clearInterval(interval);
+  }, [activeSceneId, coordinator]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchSceneIndex()
+      .then((idx) => {
+        if (!cancelled) setIndex(idx);
+      })
+      .catch((err) => {
+        if (!cancelled) setIndexError(String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleStart = useCallback(
+    async (entry: SceneIndexEntry) => {
+      setLoadingSceneId(entry.id);
+      setVariantOutcomes([]);
+      try {
+        const def = await fetchSceneDefinition(entry);
+        const collected: VariantLoadOutcome[] = [];
+        const scene = await coordinator.startScene(def, {
+          tinnitus: {
+            centerHz: tinnitusCenterHz,
+            bandwidthHz: tinnitusBandwidthHz,
+          },
+          fallbackToSynthetic: true,
+          onVariantLoaded: (info) => collected.push(info),
+          fadeSeconds: DEFAULT_SCENE_CROSSFADE_SECONDS,
+          firstFadeSeconds: DEFAULT_SCENE_FIRST_START_SECONDS,
+        });
+        setVariantOutcomes(collected);
+        setActiveSceneId(scene.id);
+        setLayerSummary(summarizeScene(scene));
+      } catch (err) {
+        console.error('[ScenesSection] start failed:', err);
+        setVariantOutcomes([
+          {
+            elementId: '(scene)',
+            variantId: '(load)',
+            url: entry.url,
+            status: 'failed',
+            error: err,
+          },
+        ]);
+      } finally {
+        setLoadingSceneId(null);
+      }
+    },
+    [coordinator, tinnitusCenterHz, tinnitusBandwidthHz]
+  );
+
+  const handleStop = useCallback(() => {
+    coordinator.stopScene(DEFAULT_SCENE_FIRST_START_SECONDS);
+    setActiveSceneId(null);
+    setLayerSummary([]);
+  }, [coordinator]);
+
+  const fallbackCount = variantOutcomes.filter(
+    (o) => o.status === 'fallback-synthetic'
+  ).length;
+  const failedCount = variantOutcomes.filter((o) => o.status === 'failed').length;
+
+  return (
+    <Section title="Scenes (Phase 2)">
+      <p className="text-xs text-stone-300 mb-3">
+        Multi-layer scenes with an 8-second cross-scene fade. Audio files
+        are placeholders; missing files fall back to a synthesized pad so
+        the engine works before George Vlad recordings land in
+        <code className="text-moon-300"> /public/audio/</code>.
+      </p>
+
+      {indexError && (
+        <p className="text-ember-400 text-xs mb-3">Index error: {indexError}</p>
+      )}
+
+      <div className="flex gap-2 flex-wrap mb-3">
+        {index?.scenes.map((entry) => {
+          const isActive = entry.id === activeSceneId;
+          const isLoading = entry.id === loadingSceneId;
+          return (
+            <button
+              key={entry.id}
+              disabled={isLoading}
+              onClick={() => handleStart(entry)}
+              className={
+                'px-3 py-1 rounded-soft text-sm transition-all duration-slow ease-exhale ' +
+                (isActive ? 'bg-moon-500 text-ink-950' : 'bg-ink-800 text-stone-200') +
+                ' disabled:opacity-50'
+              }
+            >
+              {isLoading ? 'Loading…' : entry.label}
+            </button>
+          );
+        })}
+        {activeSceneId && (
+          <button
+            onClick={handleStop}
+            className="px-3 py-1 rounded-soft text-sm bg-ember-500 text-ink-950"
+          >
+            Stop
+          </button>
+        )}
+      </div>
+
+      {variantOutcomes.length > 0 && (
+        <p className="text-xs text-stone-400 mb-3">
+          Variants loaded: {variantOutcomes.length - fallbackCount - failedCount}
+          {fallbackCount > 0 && (
+            <span className="text-moon-300">
+              {' '}
+              · {fallbackCount} synthesized fallback
+              {fallbackCount === 1 ? '' : 's'}
+            </span>
+          )}
+          {failedCount > 0 && (
+            <span className="text-ember-400">
+              {' '}
+              · {failedCount} failed
+            </span>
+          )}
+        </p>
+      )}
+
+      {layerSummary.length > 0 && (
+        <div className="space-y-3 bg-ink-800 rounded-soft p-3">
+          {layerSummary.map((row) => (
+            <div key={row.id}>
+              <Slider
+                label={`${row.label} — ${Math.round(row.volume * 100)}%`}
+                value={row.volume}
+                onChange={(v) => {
+                  const scene = coordinator.getCurrentScene();
+                  if (!scene) return;
+                  scene.setLayerVolume(row.id, v);
+                  setTick((t) => t + 1);
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+interface LayerSummary {
+  id: string;
+  label: string;
+  volume: number;
+}
+
+function summarizeScene(scene: Scene): LayerSummary[] {
+  return scene.getLayers().map((layer) => ({
+    id: layer.id,
+    label: layer.label,
+    volume: layer.getVolume(),
+  }));
 }
 
 function MasterSection({

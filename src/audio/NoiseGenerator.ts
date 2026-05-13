@@ -96,6 +96,25 @@ export class NoiseGenerator implements Layer {
     this.playing = false;
   }
 
+  /**
+   * Begin fade-out and queue disposal asynchronously. Returns
+   * immediately so a Scene-level cross-fade can run another layer's
+   * fade-in in parallel.
+   */
+  fadeAndDispose(durationSeconds: number): void {
+    if (!this.playing) {
+      this.dispose();
+      return;
+    }
+    const fade = Math.max(0.05, durationSeconds);
+    const now = this.ctx.currentTime;
+    this.output.gain.cancelScheduledValues(now);
+    this.output.gain.setValueAtTime(this.output.gain.value, now);
+    this.output.gain.linearRampToValueAtTime(0, now + fade);
+    this.playing = false;
+    setTimeout(() => this.dispose(), (fade + 0.1) * 1000);
+  }
+
   setVolume(value: number): void {
     const v = Math.max(0, Math.min(1, value));
     this.currentVolume = v;

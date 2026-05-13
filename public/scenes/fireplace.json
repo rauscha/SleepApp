@@ -1,0 +1,80 @@
+{
+  "id": "fireplace",
+  "label": "Fireplace",
+  "description": "Slow wood fire, room tone behind it, a faint settle of the house. Crackles steady, never sharp.",
+  "synth": {
+    "color": "brown",
+    "defaultVolume": 0.14
+  },
+  "tinnitus": {
+    "enabledByDefault": false,
+    "defaultVolume": 0.2
+  },
+  "elements": [
+    {
+      "id": "fire-close",
+      "label": "Fire crackle (close)",
+      "loopOffsetSeconds": 253,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.55,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "close-1",
+          "url": "/audio/fireplace/fire-close/close-1.mp3",
+          "attribution": "PLACEHOLDER — Vlad cabin-fire close mic take. Prefer steady crackle pulse — no hissing wet wood."
+        },
+        {
+          "id": "close-2",
+          "url": "/audio/fireplace/fire-close/close-2.mp3",
+          "attribution": "PLACEHOLDER — second Vlad close-fire variant."
+        },
+        {
+          "id": "close-3",
+          "url": "/audio/fireplace/fire-close/close-3.mp3",
+          "attribution": "PLACEHOLDER — third Vlad close-fire variant. Trim out any sharp pops."
+        }
+      ]
+    },
+    {
+      "id": "fire-distant",
+      "label": "Fire crackle (distant)",
+      "loopOffsetSeconds": 407,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.35,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "distant-1",
+          "url": "/audio/fireplace/fire-distant/distant-1.mp3",
+          "attribution": "PLACEHOLDER — Vlad room-mic fire take, mic ~3m back."
+        },
+        {
+          "id": "distant-2",
+          "url": "/audio/fireplace/fire-distant/distant-2.mp3",
+          "attribution": "PLACEHOLDER — second distant-fire variant."
+        }
+      ]
+    },
+    {
+      "id": "room-tone",
+      "label": "Room tone",
+      "loopOffsetSeconds": 689,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.2,
+      "variantRotation": "sequential",
+      "variants": [
+        {
+          "id": "room-1",
+          "url": "/audio/fireplace/room-tone/room-1.mp3",
+          "attribution": "PLACEHOLDER — Vlad interior room ambience, no HVAC hum, no traffic."
+        },
+        {
+          "id": "room-2",
+          "url": "/audio/fireplace/room-tone/room-2.mp3",
+          "attribution": "PLACEHOLDER — second Vlad room tone variant."
+        }
+      ]
+    }
+  ]
+}
