@@ -138,6 +138,25 @@ export class AudioEngine {
     this.emit({ kind: 'layer-removed', id });
   }
 
+  /**
+   * Non-blocking variant of removeLayer for cross-scene transitions.
+   * Initiates the fade synchronously, removes the layer from the
+   * registry immediately, and tears down nodes in a fire-and-forget
+   * tail after the fade completes. This is what makes the brief's
+   * 8-second overlapping cross-scene fade actually overlap — both
+   * scenes' layers fade simultaneously instead of sequentially.
+   */
+  fadeOutLayer(id: string, durationSeconds: number): void {
+    const layer = this.layers.get(id);
+    if (!layer) return;
+    this.layers.delete(id);
+    layer.fadeAndDispose(durationSeconds);
+    // The layer's output disconnect happens inside its own dispose()
+    // after the fade tail. We do not disconnect here — the audio still
+    // needs to flow to the bus until the fade-out finishes.
+    this.emit({ kind: 'layer-removed', id });
+  }
+
   getLayers(): readonly Layer[] {
     return Array.from(this.layers.values());
   }

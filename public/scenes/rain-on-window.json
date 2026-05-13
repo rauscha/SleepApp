@@ -1,0 +1,80 @@
+{
+  "id": "rain-on-window",
+  "label": "Rain on the window",
+  "description": "Steady rain against glass, distant rain on pavement, occasional far-off rumble. No thunder cracks — only the bass of weather a few miles off.",
+  "synth": {
+    "color": "brown",
+    "defaultVolume": 0.16
+  },
+  "tinnitus": {
+    "enabledByDefault": false,
+    "defaultVolume": 0.2
+  },
+  "elements": [
+    {
+      "id": "rain-on-glass",
+      "label": "Rain on glass",
+      "loopOffsetSeconds": 407,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.6,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "glass-1",
+          "url": "/audio/rain-on-window/rain-on-glass/glass-1.mp3",
+          "attribution": "PLACEHOLDER — Vlad indoor-rain take, mic close to glass. Skip variants with traffic bleed."
+        },
+        {
+          "id": "glass-2",
+          "url": "/audio/rain-on-window/rain-on-glass/glass-2.mp3",
+          "attribution": "PLACEHOLDER — second Vlad glass variant, lighter density."
+        },
+        {
+          "id": "glass-3",
+          "url": "/audio/rain-on-window/rain-on-glass/glass-3.mp3",
+          "attribution": "PLACEHOLDER — third Vlad glass variant, slightly heavier density (no wind howl)."
+        }
+      ]
+    },
+    {
+      "id": "rain-pavement",
+      "label": "Rain on pavement (distant)",
+      "loopOffsetSeconds": 511,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.3,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "pavement-1",
+          "url": "/audio/rain-on-window/rain-pavement/pavement-1.mp3",
+          "attribution": "PLACEHOLDER — Vlad outdoor-rain ambience at distance."
+        },
+        {
+          "id": "pavement-2",
+          "url": "/audio/rain-on-window/rain-pavement/pavement-2.mp3",
+          "attribution": "PLACEHOLDER — second Vlad pavement variant. No vehicles."
+        }
+      ]
+    },
+    {
+      "id": "distant-thunder-rumble",
+      "label": "Distant thunder (rumble only)",
+      "loopOffsetSeconds": 893,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.22,
+      "variantRotation": "sequential",
+      "variants": [
+        {
+          "id": "rumble-1",
+          "url": "/audio/rain-on-window/distant-thunder-rumble/rumble-1.mp3",
+          "attribution": "PLACEHOLDER — Vlad mountain-storm take, low-frequency rumble only. NO sharp cracks: cracks wake the user. EQ-cut anything above ~600 Hz if needed."
+        },
+        {
+          "id": "rumble-2",
+          "url": "/audio/rain-on-window/distant-thunder-rumble/rumble-2.mp3",
+          "attribution": "PLACEHOLDER — second rumble variant, even quieter."
+        }
+      ]
+    }
+  ]
+}

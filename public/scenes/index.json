@@ -1,0 +1,19 @@
+{
+  "scenes": [
+    {
+      "id": "forest-day",
+      "label": "Forest, midday",
+      "url": "/scenes/forest-day.json"
+    },
+    {
+      "id": "rain-on-window",
+      "label": "Rain on the window",
+      "url": "/scenes/rain-on-window.json"
+    },
+    {
+      "id": "fireplace",
+      "label": "Fireplace",
+      "url": "/scenes/fireplace.json"
+    }
+  ]
+}

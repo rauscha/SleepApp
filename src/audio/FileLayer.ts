@@ -236,15 +236,44 @@ export class FileLayer implements Layer {
 
   async stop(): Promise<void> {
     if (!this.playing) return;
+    const fade = this.scheduleFadeOut();
+    await wait((fade + 0.1) * 1000);
+    this.liveSources.length = 0;
+  }
+
+  /**
+   * Schedule a fade-out and queue disposal in a fire-and-forget tail.
+   * Returns immediately so the caller can run a parallel fade-in on
+   * another layer (the cross-scene case from §3.5 of the brief).
+   */
+  fadeAndDispose(durationSeconds: number): void {
+    if (!this.playing) {
+      this.dispose();
+      return;
+    }
+    const fade = this.scheduleFadeOut(durationSeconds);
+    // Tail teardown — runs after the fade has completed. AudioParam
+    // ramps already locked everything to the AudioContext clock, so a
+    // late timer can't introduce a glitch.
+    setTimeout(() => {
+      this.dispose();
+    }, (fade + 0.1) * 1000);
+  }
+
+  /**
+   * Internal: cancel the schedule timer, mark the layer not-playing,
+   * and ramp every live source to 0 over `durationSeconds` (defaults
+   * to crossfadeSeconds). Schedules each source.stop just past the
+   * fade end. Returns the fade duration actually used.
+   */
+  private scheduleFadeOut(durationSeconds?: number): number {
     this.playing = false;
     if (this.nextScheduleTimer) {
       clearTimeout(this.nextScheduleTimer);
       this.nextScheduleTimer = null;
     }
-    // Fade out everything that's currently audible over the crossfade
-    // duration so we leave with the same gentleness we entered with.
+    const fade = Math.max(0.05, durationSeconds ?? this.crossfadeSeconds);
     const now = this.ctx.currentTime;
-    const fade = this.crossfadeSeconds;
     for (const live of this.liveSources) {
       live.gain.gain.cancelScheduledValues(now);
       live.gain.gain.setValueAtTime(live.gain.gain.value, now);
@@ -255,8 +284,7 @@ export class FileLayer implements Layer {
         /* already stopped */
       }
     }
-    await wait((fade + 0.1) * 1000);
-    this.liveSources.length = 0;
+    return fade;
   }
 
   setVolume(value: number): void {

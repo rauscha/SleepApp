@@ -24,6 +24,16 @@ export interface Layer {
   /** Stop producing audio. Should fade-down internally so there's no click. */
   stop(): Promise<void>;
 
+  /**
+   * Begin a fade to silence and queue disposal asynchronously. Returns
+   * immediately — the audio is already on the AudioContext clock once
+   * scheduled, so the registry can drop the layer without waiting.
+   *
+   * Used by Scene crossfades where we need outgoing and incoming layers
+   * to fade simultaneously rather than sequentially.
+   */
+  fadeAndDispose(durationSeconds: number): void;
+
   /** Set this layer's volume in [0, 1]. Smoothed internally so changes don't click. */
   setVolume(value: number): void;
 
