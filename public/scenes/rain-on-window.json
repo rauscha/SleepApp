@@ -14,7 +14,7 @@
     {
       "id": "rain-on-glass",
       "label": "Rain on glass",
-      "loopOffsetSeconds": 407,
+      "loopOffsetSeconds": 409,
       "crossfadeSeconds": 5,
       "defaultVolume": 0.6,
       "variantRotation": "random",
@@ -39,7 +39,7 @@
     {
       "id": "rain-pavement",
       "label": "Rain on pavement (distant)",
-      "loopOffsetSeconds": 511,
+      "loopOffsetSeconds": 521,
       "crossfadeSeconds": 5,
       "defaultVolume": 0.3,
       "variantRotation": "random",
@@ -59,7 +59,7 @@
     {
       "id": "distant-thunder-rumble",
       "label": "Distant thunder (rumble only)",
-      "loopOffsetSeconds": 893,
+      "loopOffsetSeconds": 887,
       "crossfadeSeconds": 5,
       "defaultVolume": 0.22,
       "variantRotation": "sequential",

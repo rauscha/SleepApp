@@ -554,6 +554,19 @@ function ScenesSection({
     setLayerSummary([]);
   }, [coordinator]);
 
+  // Surprise Me — pick a random scene that isn't currently playing, then
+  // route through handleStart (which cross-fades when a scene is live and
+  // first-fades when not). If there's only one scene available, just play
+  // it; if it's already the active scene, no-op (no point cross-fading to
+  // self).
+  const handleSurpriseMe = useCallback(() => {
+    if (!index || index.scenes.length === 0) return;
+    const choices = index.scenes.filter((s) => s.id !== activeSceneId);
+    const pool = choices.length > 0 ? choices : index.scenes;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pick) void handleStart(pick);
+  }, [index, activeSceneId, handleStart]);
+
   const fallbackCount = variantOutcomes.filter(
     (o) => o.status === 'fallback-synthetic'
   ).length;
@@ -597,6 +610,16 @@ function ScenesSection({
             className="px-3 py-1 rounded-soft text-sm bg-ember-500 text-ink-950"
           >
             Stop
+          </button>
+        )}
+        {index && index.scenes.length > 1 && (
+          <button
+            onClick={handleSurpriseMe}
+            disabled={loadingSceneId !== null}
+            className="px-3 py-1 rounded-soft text-sm bg-ink-700 text-stone-100 disabled:opacity-50"
+            title="Pick a random scene (skips the current one)"
+          >
+            Surprise me
           </button>
         )}
       </div>

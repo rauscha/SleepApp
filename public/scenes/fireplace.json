@@ -14,7 +14,7 @@
     {
       "id": "fire-close",
       "label": "Fire crackle (close)",
-      "loopOffsetSeconds": 253,
+      "loopOffsetSeconds": 251,
       "crossfadeSeconds": 5,
       "defaultVolume": 0.55,
       "variantRotation": "random",
@@ -39,7 +39,7 @@
     {
       "id": "fire-distant",
       "label": "Fire crackle (distant)",
-      "loopOffsetSeconds": 407,
+      "loopOffsetSeconds": 409,
       "crossfadeSeconds": 5,
       "defaultVolume": 0.35,
       "variantRotation": "random",
@@ -59,7 +59,7 @@
     {
       "id": "room-tone",
       "label": "Room tone",
-      "loopOffsetSeconds": 689,
+      "loopOffsetSeconds": 691,
       "crossfadeSeconds": 5,
       "defaultVolume": 0.2,
       "variantRotation": "sequential",
