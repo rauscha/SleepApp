@@ -61,22 +61,38 @@ A1 (iOS FileLayer scheduler) ✅ fixed in commit e70dc49.
 
 ---
 
-## Phase 4 — AI content (after Phase 3 is solid)
+## Phase 4 — AI content ✅ Done
 
-### Meditations — pre-generated, bundled
-- Build `tools/gen-meditations.ts` CLI: Claude writes script → ElevenLabs v3
-  synthesises → saves MP3 + metadata JSON under `public/meditations/`.
-- Run on your machine once; files ship with the app. Zero per-user cost.
-- Design the Claude prompt first: body-scan or breath-focus arc, 10–15 min,
-  deliberately dull, `[softly]` / `[pause]` ElevenLabs markers.
+### Meditations — pre-generated, bundled ✅
+- `tools/gen-meditation.ts` CLI: Claude writes script → ElevenLabs v3 synthesises →
+  saves MP3 to `public/meditations/` + updates `index.json`.
+- Run with: `ANTHROPIC_API_KEY=… ELEVEN_LABS_API_KEY=… npx tsx tools/gen-meditation.ts --title "…" --style body-scan --voice tide`
+- Args: `--title`, `--style` (body-scan|breath-focus|visualization), `--voice` (tide|stone), `--id` (filename stem)
+- `public/meditations/index.json` is the catalog. Commit it + the MP3s and rebuild.
 
-### Sleep stories — on-demand, user's own API keys
-- Settings paste fields: ElevenLabs key + Anthropic key → stored in
-  localStorage (never leaves the device).
-- Story flow: Claude script (~3000 words, $0.05–0.10) → ElevenLabs v3 audio
-  (~$1–3, the dominant cost) → IndexedDB storage.
-- Regenerate UI surfaces cost warning ("~$2 to regenerate").
-- Generation can take 60+ seconds — run in a background tab; show progress.
+### Library screen ✅
+- Reachable from Tonight footer ("Library" link).
+- Two tabs: Meditations (from `public/meditations/index.json`) and Stories (IndexedDB).
+- Empty-state guidance for both tabs when no content exists.
+- Stories tab has "Generate new story →" button + per-story delete.
+
+### ContentPlayerScreen ✅
+- Howler.js with `html5: true` for iOS background audio.
+- Seekable progress bar, play/pause (▶/⏸/↺), duration display.
+- Handles both direct URLs (meditations) and blob URLs (stories from IndexedDB).
+- Blob URLs are revoked in App.tsx when leaving the player.
+
+### Sleep stories — on-demand ✅
+- Settings API key fields are now live (ElevenLabs + Anthropic), type=password with show/hide toggle.
+- `src/services/storyGenerator.ts`: Claude writes 2800–3200 word script → ElevenLabs v3 → IndexedDB.
+- `StoryGeneratorScreen`: theme input, voice picker (Hush/Ember/Glen), cost note, live step progress.
+- Stories appear in Library → Stories tab; can be played or deleted.
+
+### Voice IDs to update
+The app ships with ElevenLabs premade voice IDs as stand-ins. Once custom voices are
+created via Voice Design:
+- Update `STORY_VOICE_IDS` in `src/services/storyGenerator.ts`
+- Update `VOICE_IDS` in `tools/gen-meditation.ts`
 
 ---
 

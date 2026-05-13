@@ -25,21 +25,34 @@ import { generateTestPadBuffer } from './audio/synth/testPad';
 import { TonightScreen } from './screens/TonightScreen';
 import { PlayerScreen } from './screens/PlayerScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { LibraryScreen } from './screens/LibraryScreen';
+import type { ContentItem } from './screens/LibraryScreen';
+import { ContentPlayerScreen } from './screens/ContentPlayerScreen';
+import { StoryGeneratorScreen } from './screens/StoryGeneratorScreen';
 
 // App is a thin three-way router between the Phase 3 screens and the
 // Phase 1 dev harness. The harness stays reachable from Tonight via a
 // discrete "Dev tools" link — useful for spectrum inspection, the
 // crossfade demo, and the noise generators that aren't in the Player.
 
-type Screen = 'tonight' | 'player' | 'harness' | 'settings';
+type Screen =
+  | 'tonight'
+  | 'player'
+  | 'library'
+  | 'content-player'
+  | 'story-generator'
+  | 'settings'
+  | 'harness';
+
+const PERSISTENT_SCREENS = new Set(['tonight', 'player', 'settings', 'harness']);
 const SCREEN_KEY = 'sleep-app:current-screen:v1';
 
 function loadInitialScreen(): Screen {
   try {
-    const v = localStorage.getItem(SCREEN_KEY);
-    if (v === 'tonight' || v === 'player' || v === 'harness' || v === 'settings') return v;
+    const v = localStorage.getItem(SCREEN_KEY) as Screen | null;
+    if (v && PERSISTENT_SCREENS.has(v)) return v;
   } catch {
-    /* localStorage unavailable (private mode etc.) — fall through */
+    /* localStorage unavailable */
   }
   return 'tonight';
 }
@@ -50,21 +63,40 @@ const SHOW_TINNITUS_HARNESS = false;
 
 export function App() {
   const engine = useMemo(() => getAudioEngine(), []);
-  // If the engine is already up (singleton survived an HMR), skip the
-  // unlock gate — there's no second user gesture required and asking
-  // for one would lose the AudioContext we already have.
   const [unlocked, setUnlocked] = useState(
     () => engine.isInitialized && engine.isWorkletReady
   );
   const [screen, setScreen] = useState<Screen>(loadInitialScreen);
+  // Active content item for ContentPlayerScreen. Blob URLs must be revoked
+  // when leaving the content-player screen.
+  const [activeContent, setActiveContent] = useState<ContentItem | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(SCREEN_KEY, screen);
-    } catch {
-      /* noop */
+    if (PERSISTENT_SCREENS.has(screen)) {
+      try {
+        localStorage.setItem(SCREEN_KEY, screen);
+      } catch {
+        /* noop */
+      }
     }
   }, [screen]);
+
+  const playContent = useCallback((item: ContentItem) => {
+    // Track blob URLs so we can revoke them on back.
+    if (item.audioUrl.startsWith('blob:')) blobUrlRef.current = item.audioUrl;
+    setActiveContent(item);
+    setScreen('content-player');
+  }, []);
+
+  const leaveContentPlayer = useCallback(() => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+    setActiveContent(null);
+    setScreen('library');
+  }, []);
 
   if (!unlocked) {
     return (
@@ -82,6 +114,7 @@ export function App() {
     return (
       <TonightScreen
         onPlaybackStarted={() => setScreen('player')}
+        onLibraryRequested={() => setScreen('library')}
         onSettingsRequested={() => setScreen('settings')}
         onDevToolsRequested={() => setScreen('harness')}
       />
@@ -89,6 +122,33 @@ export function App() {
   }
   if (screen === 'player') {
     return <PlayerScreen onExit={() => setScreen('tonight')} />;
+  }
+  if (screen === 'library') {
+    return (
+      <LibraryScreen
+        onBack={() => setScreen('tonight')}
+        onPlay={playContent}
+        onGenerateStory={() => setScreen('story-generator')}
+      />
+    );
+  }
+  if (screen === 'content-player' && activeContent) {
+    return (
+      <ContentPlayerScreen
+        title={activeContent.title}
+        description={activeContent.description}
+        audioUrl={activeContent.audioUrl}
+        onBack={leaveContentPlayer}
+      />
+    );
+  }
+  if (screen === 'story-generator') {
+    return (
+      <StoryGeneratorScreen
+        onBack={() => setScreen('library')}
+        onDone={() => setScreen('library')}
+      />
+    );
   }
   if (screen === 'settings') {
     return <SettingsScreen onBack={() => setScreen('tonight')} />;

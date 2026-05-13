@@ -2,12 +2,10 @@
 //
 // Sections:
 //   Playback  — master volume, default sleep timer
-//   AI features (coming soon) — ElevenLabs + Anthropic API key fields
-//                                (disabled; Phase 4 work)
+//   AI features — ElevenLabs + Anthropic API key fields (live, Phase 4)
 //
-// API key fields are rendered now so the layout is established and the
-// wiring is obvious when Phase 4 arrives. They are explicitly `disabled`
-// with an explanatory note — no data is sent anywhere.
+// Keys are stored in localStorage only and never leave the device.
+// Fields use type=password with a show/hide toggle.
 
 import { useMemo, useState } from 'react';
 import { getAudioEngine } from '../audio/AudioEngine';
@@ -29,7 +27,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
   const engine = useMemo(() => getAudioEngine(), []);
   const [settings, setSettings] = useState(() => getAllSettings());
 
-  function update<K extends 'masterVolume' | 'defaultTimerMinutes'>(
+  function update<K extends 'masterVolume' | 'defaultTimerMinutes' | 'elevenLabsApiKey' | 'anthropicApiKey'>(
     key: K,
     value: (typeof settings)[K]
   ) {
@@ -73,7 +71,6 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
               onChange={(e) => {
                 const v = parseFloat(e.target.value);
                 update('masterVolume', v);
-                // Apply live if the audio engine is running.
                 if (engine.isInitialized) engine.bus.setMasterVolume(v);
               }}
             />
@@ -81,10 +78,9 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
         </div>
 
         <div>
-          <p className="text-sm text-stone-300 mb-3">Default sleep timer</p>
+          <p className="text-sm text-stone-300 mb-2">Default sleep timer</p>
           <p className="text-xs text-stone-500 mb-3">
-            When set, the timer starts automatically every time you begin a
-            scene.
+            When set, the timer starts automatically every time you begin a scene.
           </p>
           <div className="flex flex-wrap gap-2">
             {TIMER_OPTIONS.map((opt) => {
@@ -111,24 +107,28 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
 
       <div className="h-px bg-ink-700 mb-8" />
 
-      {/* ── AI features (Phase 4) ─────────────────────────────────────── */}
+      {/* ── AI features ──────────────────────────────────────────────── */}
       <section className="mb-8 px-1">
         <h2 className="font-serif text-stone-300 text-lg mb-2">AI features</h2>
         <p className="text-xs text-stone-500 mb-5">
-          Sleep story and meditation generation will use your own ElevenLabs
-          and Anthropic keys — no accounts, no subscription, no data leaves
-          your device. Coming in a future update.
+          Your keys are stored in this browser only and are never sent
+          anywhere except directly to ElevenLabs and Anthropic from your
+          device.
         </p>
 
         <ApiKeyField
           label="ElevenLabs API key"
           placeholder="elevenlabs_…"
-          hint="Used for voice synthesis"
+          hint="Used for voice synthesis · ~$1–3 per story"
+          value={settings.elevenLabsApiKey ?? ''}
+          onChange={(v) => update('elevenLabsApiKey', v || null)}
         />
         <ApiKeyField
           label="Anthropic API key"
           placeholder="sk-ant-…"
-          hint="Used for story scripts"
+          hint="Used to write story scripts · ~$0.10 per story"
+          value={settings.anthropicApiKey ?? ''}
+          onChange={(v) => update('anthropicApiKey', v || null)}
         />
       </section>
 
@@ -147,26 +147,48 @@ function ApiKeyField({
   label,
   placeholder,
   hint,
+  value,
+  onChange,
 }: {
   label: string;
   placeholder: string;
   hint: string;
+  value: string;
+  onChange: (v: string) => void;
 }) {
+  const [visible, setVisible] = useState(false);
   return (
     <div className="mb-5">
       <label className="block">
         <span className="block text-sm text-stone-400 mb-1">{label}</span>
         <span className="block text-xs text-stone-600 mb-2">{hint}</span>
-        <input
-          type="password"
-          disabled
-          placeholder={placeholder}
-          className="w-full bg-ink-800 text-stone-500 text-xs rounded-soft px-3 py-2.5
-                     border border-ink-600 placeholder-ink-500
-                     disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label={label}
-          aria-disabled="true"
-        />
+        <div className="relative">
+          <input
+            type={visible ? 'text' : 'password'}
+            value={value}
+            placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full bg-ink-800 text-stone-200 text-xs rounded-soft
+                       px-3 py-2.5 pr-12 border border-ink-600
+                       placeholder-ink-500 focus:outline-none
+                       focus:border-moon-600 transition-colors"
+            aria-label={label}
+          />
+          {value && (
+            <button
+              type="button"
+              onClick={() => setVisible((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2
+                         text-xs text-stone-500 hover:text-stone-300
+                         transition-colors"
+              aria-label={visible ? 'Hide key' : 'Show key'}
+            >
+              {visible ? 'hide' : 'show'}
+            </button>
+          )}
+        </div>
       </label>
     </div>
   );

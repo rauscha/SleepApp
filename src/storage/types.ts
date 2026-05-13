@@ -44,6 +44,31 @@ export interface UserSettings {
   defaultTimerMinutes: number | null;
 }
 
+// ---------------------------------------------------------------------------
+// Meditation types (pre-generated, bundled as static files)
+
+/** Metadata for a single bundled meditation. Lives in public/meditations/index.json. */
+export interface MeditationMetadata {
+  id: string;
+  title: string;
+  description: string;
+  style: 'body-scan' | 'breath-focus' | 'visualization';
+  /** Duration in seconds. */
+  durationSeconds: number;
+  /** Voice name (maps to an ElevenLabs voice ID). */
+  voiceId: string;
+  /** ISO 8601 timestamp when this meditation was generated. */
+  createdAt: string;
+  /** Path to the MP3 relative to /meditations/, e.g. "morning-scan.mp3". */
+  audioPath: string;
+}
+
+export interface MeditationIndex {
+  meditations: MeditationMetadata[];
+}
+
+// ---------------------------------------------------------------------------
+
 /** Metadata for a generated sleep story, stored in localStorage. */
 export interface StoryMetadata {
   id: string;

@@ -24,6 +24,7 @@ import { getSetting, setSetting } from '../storage';
 
 export interface TonightScreenProps {
   onPlaybackStarted: () => void;
+  onLibraryRequested: () => void;
   onSettingsRequested: () => void;
   onDevToolsRequested: () => void;
 }
@@ -43,6 +44,7 @@ function sceneGradient(id: string): string {
 
 export function TonightScreen({
   onPlaybackStarted,
+  onLibraryRequested,
   onSettingsRequested,
   onDevToolsRequested,
 }: TonightScreenProps) {
@@ -167,13 +169,22 @@ export function TonightScreen({
       )}
 
       <footer className="mt-10 pt-5 border-t border-ink-700 flex justify-between items-center px-1">
-        <button
-          onClick={onSettingsRequested}
-          className="text-xs text-stone-500 hover:text-stone-300 active:text-moon-300
-                     transition-colors duration-slow"
-        >
-          Settings
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={onLibraryRequested}
+            className="text-xs text-stone-500 hover:text-stone-300 active:text-moon-300
+                       transition-colors duration-slow"
+          >
+            Library
+          </button>
+          <button
+            onClick={onSettingsRequested}
+            className="text-xs text-stone-500 hover:text-stone-300 active:text-moon-300
+                       transition-colors duration-slow"
+          >
+            Settings
+          </button>
+        </div>
         <button
           onClick={onDevToolsRequested}
           className="text-xs text-stone-500 hover:text-stone-300 active:text-moon-300
