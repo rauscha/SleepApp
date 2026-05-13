@@ -23,11 +23,12 @@ Scene cards with per-scene gradient backgrounds (placeholder for real photos),
 descriptions from the scene index, primary card taller, Surprise me button.
 Footer cleaned up. Loading skeleton.
 
-### P3-2 Player screen — sleep timer chip
-A timer chip in the Player header: tap to set duration (15 / 30 / 60 / 90 min
-or off). When the timer elapses, `MasterBus.fadeToSilence()` fires. The timer
-state (remaining time, countdown display) lives in PlayerScreen — no new
-engine work required.
+### P3-2 ✅ Player screen — sleep timer chip
+Timer chip in the Player header (top-right). Tap to open inline duration picker
+(15 / 30 / 60 / 90 min). Countdown shows "28:47" while running; tapping cancels.
+When countdown hits zero: `MasterBus.fadeToSilence(90)` fires a 90-second fade,
+then scene stops and app returns to Tonight. Manual Stop during a fade cancels
+the fade completion callback and restores master volume.
 
 ### P3-3 Nightstand mode
 - Lush = current Player screen.

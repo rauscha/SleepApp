@@ -1,15 +1,14 @@
 // Player — what you stare at while falling asleep.
 //
-// Brief §7: "very dim chrome, big 44px+ play/pause." This screen is the
-// minimum viable version of that: scene title, master volume, big stop
-// button, collapsible per-layer mixer.
+// Brief §7: "very dim chrome, big 44px+ play/pause." Timer chip sits in
+// the header: tap to cycle through durations (15/30/60/90 min or off).
+// When the countdown reaches zero, MasterBus.fadeToSilence() fires over
+// TIMER_FADE_SECONDS, then the scene stops and the app returns to Tonight.
 //
-// We deliberately do NOT auto-detect "no scene playing" and redirect away
-// — we trust the parent App router to only mount us when a scene exists.
-// If a scene IS in-flight when we mount (e.g. HMR mid-session), we re-sync
-// to it.
+// The user can still tap Stop manually during a timer fade — the fade
+// completion callback is cancelled and the normal stop path runs instead.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getAudioEngine } from '../audio/AudioEngine';
 import {
   DEFAULT_SCENE_FIRST_START_SECONDS,
@@ -18,8 +17,23 @@ import {
 import type { Scene } from '../audio/Scene';
 import { getSetting, setSetting } from '../storage';
 
+const TIMER_OPTIONS_MINUTES = [15, 30, 60, 90] as const;
+/** How long MasterBus fades to silence when the timer fires. */
+const TIMER_FADE_SECONDS = 90;
+
+type TimerMode =
+  | { status: 'off' }
+  | { status: 'picking' }
+  | { status: 'running'; endsAt: number }
+  | { status: 'fading' };
+
+function formatMs(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, '0')}`;
+}
+
 export interface PlayerScreenProps {
-  /** Called when the user explicitly stops or backs out of the player. */
   onExit: () => void;
 }
 
@@ -27,9 +41,6 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
   const engine = useMemo(() => getAudioEngine(), []);
   const coordinator = useMemo(() => getSceneCoordinator(engine), [engine]);
 
-  // We mirror coordinator.getCurrentScene() into local state so render
-  // cycles stay predictable. Polled every 500ms — cheap and avoids
-  // wiring an event channel through the coordinator just for the UI.
   const [scene, setScene] = useState<Scene | null>(() =>
     coordinator.getCurrentScene()
   );
@@ -39,13 +50,19 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
   );
   const [, setTick] = useState(0);
 
+  // --- Timer state ---
+  const [timer, setTimer] = useState<TimerMode>({ status: 'off' });
+  const [remaining, setRemaining] = useState(0);
+  // Holds the timeout ID for the post-fade stop+exit call so we can
+  // cancel it if the user taps Stop manually during a fade.
+  const fadeExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     engine.bus.setMasterVolume(masterVolume);
-    // Master volume only needs to push on mount + when user moves the
-    // slider; the slider handler does its own push too.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sync scene state via polling (simple; avoids an event-channel build).
   useEffect(() => {
     const id = setInterval(() => {
       const current = coordinator.getCurrentScene();
@@ -55,15 +72,63 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     return () => clearInterval(id);
   }, [coordinator]);
 
+  // Countdown tick — runs only while timer is 'running'.
+  useEffect(() => {
+    if (timer.status !== 'running') return;
+    setRemaining(timer.endsAt - Date.now());
+    const id = setInterval(() => {
+      const ms = timer.endsAt - Date.now();
+      if (ms <= 0) {
+        // Countdown hit zero — kick the bus fade, then stop the scene.
+        setTimer({ status: 'fading' });
+        engine.bus.fadeToSilence(TIMER_FADE_SECONDS);
+        fadeExitTimer.current = setTimeout(() => {
+          fadeExitTimer.current = null;
+          coordinator.stopScene(DEFAULT_SCENE_FIRST_START_SECONDS);
+          onExit();
+        }, (TIMER_FADE_SECONDS + 0.6) * 1000);
+      } else {
+        setRemaining(ms);
+      }
+    }, 500);
+    return () => clearInterval(id);
+  }, [timer, engine, coordinator, onExit]);
+
   const handleStop = useCallback(() => {
+    // Cancel any pending fade-completion timer.
+    if (fadeExitTimer.current) {
+      clearTimeout(fadeExitTimer.current);
+      fadeExitTimer.current = null;
+    }
+    // If we were fading the bus, restore volume so the next session starts
+    // at a normal level.
+    if (timer.status === 'fading') {
+      engine.bus.cancelFade(masterVolume, 0.1);
+    }
+    setTimer({ status: 'off' });
     coordinator.stopScene(DEFAULT_SCENE_FIRST_START_SECONDS);
     setScene(null);
     onExit();
-  }, [coordinator, onExit]);
+  }, [coordinator, engine, timer, masterVolume, onExit]);
 
-  // Empty state — shouldn't normally render because the router only
-  // mounts us when a scene exists, but a defensive fallback keeps us
-  // useful if the user navigates here cold somehow.
+  const startTimer = useCallback((minutes: number) => {
+    setTimer({ status: 'running', endsAt: Date.now() + minutes * 60_000 });
+  }, []);
+
+  const cancelTimer = useCallback(() => {
+    if (fadeExitTimer.current) {
+      clearTimeout(fadeExitTimer.current);
+      fadeExitTimer.current = null;
+    }
+    // If the bus was already fading, restore volume.
+    if (timer.status === 'fading') {
+      engine.bus.cancelFade(masterVolume, 1);
+    }
+    setTimer({ status: 'off' });
+  }, [timer, engine, masterVolume]);
+
+  // Empty state — should rarely render; the router only mounts us after
+  // a scene starts, but a cold navigation or HMR can leave this blank.
   if (!scene) {
     return (
       <div className="min-h-screen bg-ink-950 text-stone-100 flex items-center justify-center px-8">
@@ -82,25 +147,61 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     );
   }
 
-  const sceneLabel = scene.definition.label;
   const layers = scene.getLayers();
 
   return (
     <div className="min-h-screen bg-ink-950 text-stone-100 flex flex-col px-6 py-8 max-w-md mx-auto">
-      <header className="mb-12">
-        <button
-          onClick={onExit}
-          className="text-xs text-stone-400 hover:text-stone-200 transition-colors duration-slow mb-8"
-          aria-label="Back to scenes"
-        >
-          ← Scenes
-        </button>
+      <header className="mb-10">
+        {/* Nav row */}
+        <div className="flex items-center justify-between mb-7">
+          <button
+            onClick={onExit}
+            className="text-xs text-stone-400 hover:text-stone-200 transition-colors duration-slow"
+            aria-label="Back to scenes"
+          >
+            ← Scenes
+          </button>
+          <TimerChip
+            timer={timer}
+            remaining={remaining}
+            onTap={() => {
+              if (timer.status === 'off') setTimer({ status: 'picking' });
+              else if (timer.status === 'picking') setTimer({ status: 'off' });
+              else cancelTimer();
+            }}
+          />
+        </div>
+
+        {/* Duration picker — inline, appears below nav row when picking */}
+        {timer.status === 'picking' && (
+          <div className="flex gap-2 justify-end mb-5">
+            {TIMER_OPTIONS_MINUTES.map((m) => (
+              <button
+                key={m}
+                onClick={() => startTimer(m)}
+                className="px-3 py-1 rounded-soft text-xs text-stone-200
+                           bg-ink-700 hover:bg-ink-600 active:bg-moon-700
+                           transition-colors duration-slow"
+              >
+                {m} min
+              </button>
+            ))}
+          </div>
+        )}
+
         <h1 className="font-serif text-stone-50 text-3xl leading-tight">
-          {sceneLabel}
+          {scene.definition.label}
         </h1>
-        <p className="text-stone-400 text-sm mt-2">Playing</p>
+        <p className="text-stone-400 text-sm mt-1">
+          {timer.status === 'fading'
+            ? 'Fading out…'
+            : timer.status === 'running'
+            ? `Stops in ${formatMs(remaining)}`
+            : 'Playing'}
+        </p>
       </header>
 
+      {/* Stop button */}
       <div className="flex-1 flex flex-col justify-center items-center mb-8">
         <button
           onClick={handleStop}
@@ -114,10 +215,13 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
           Stop
         </button>
         <p className="text-stone-400 text-xs mt-4 max-w-xs text-center">
-          8-second fade. Tap Stop and walk away.
+          {timer.status === 'fading'
+            ? `${TIMER_FADE_SECONDS}s fade. Walk away.`
+            : '8-second fade. Tap Stop and walk away.'}
         </p>
       </div>
 
+      {/* Master volume */}
       <div className="mb-6">
         <label className="block">
           <span className="block text-xs text-stone-400 mb-2">
@@ -141,6 +245,7 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         </label>
       </div>
 
+      {/* Mixer drawer */}
       <div>
         <button
           onClick={() => setMixerOpen((open) => !open)}
@@ -167,6 +272,50 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         )}
       </div>
     </div>
+  );
+}
+
+function TimerChip({
+  timer,
+  remaining,
+  onTap,
+}: {
+  timer: TimerMode;
+  remaining: number;
+  onTap: () => void;
+}) {
+  let label: string;
+  let accent: string;
+
+  if (timer.status === 'running') {
+    label = formatMs(remaining);
+    accent = 'text-moon-300';
+  } else if (timer.status === 'fading') {
+    label = 'Fading…';
+    accent = 'text-stone-400 italic';
+  } else if (timer.status === 'picking') {
+    label = 'Timer ×';
+    accent = 'text-stone-300';
+  } else {
+    label = 'Timer';
+    accent = 'text-stone-500';
+  }
+
+  return (
+    <button
+      onClick={onTap}
+      aria-label={
+        timer.status === 'running'
+          ? `Cancel timer (${formatMs(remaining)} remaining)`
+          : timer.status === 'fading'
+          ? 'Cancel timer fade'
+          : 'Set sleep timer'
+      }
+      className={`text-xs transition-colors duration-slow ${accent}
+                  hover:text-stone-200 active:text-moon-300 px-1 py-1`}
+    >
+      {label}
+    </button>
   );
 }
 
