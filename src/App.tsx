@@ -24,19 +24,20 @@ import type { NoiseColor } from './audio/types';
 import { generateTestPadBuffer } from './audio/synth/testPad';
 import { TonightScreen } from './screens/TonightScreen';
 import { PlayerScreen } from './screens/PlayerScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
 
 // App is a thin three-way router between the Phase 3 screens and the
 // Phase 1 dev harness. The harness stays reachable from Tonight via a
 // discrete "Dev tools" link — useful for spectrum inspection, the
 // crossfade demo, and the noise generators that aren't in the Player.
 
-type Screen = 'tonight' | 'player' | 'harness';
+type Screen = 'tonight' | 'player' | 'harness' | 'settings';
 const SCREEN_KEY = 'sleep-app:current-screen:v1';
 
 function loadInitialScreen(): Screen {
   try {
     const v = localStorage.getItem(SCREEN_KEY);
-    if (v === 'tonight' || v === 'player' || v === 'harness') return v;
+    if (v === 'tonight' || v === 'player' || v === 'harness' || v === 'settings') return v;
   } catch {
     /* localStorage unavailable (private mode etc.) — fall through */
   }
@@ -81,12 +82,16 @@ export function App() {
     return (
       <TonightScreen
         onPlaybackStarted={() => setScreen('player')}
+        onSettingsRequested={() => setScreen('settings')}
         onDevToolsRequested={() => setScreen('harness')}
       />
     );
   }
   if (screen === 'player') {
     return <PlayerScreen onExit={() => setScreen('tonight')} />;
+  }
+  if (screen === 'settings') {
+    return <SettingsScreen onBack={() => setScreen('tonight')} />;
   }
   return <Harness onBackToTonight={() => setScreen('tonight')} />;
 }

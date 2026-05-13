@@ -147,9 +147,17 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     if (isIdle) setDisplayMode('nightstand');
   }, [isIdle]);
 
-  // Sleep timer
-  const [timer, setTimer] = useState<TimerMode>({ status: 'off' });
-  const [remaining, setRemaining] = useState(0);
+  // Sleep timer — auto-start from the user's default if one is set.
+  const [timer, setTimer] = useState<TimerMode>(() => {
+    const def = getSetting('defaultTimerMinutes');
+    return def !== null
+      ? { status: 'running', endsAt: Date.now() + def * 60_000 }
+      : { status: 'off' };
+  });
+  const [remaining, setRemaining] = useState(() => {
+    const def = getSetting('defaultTimerMinutes');
+    return def !== null ? def * 60_000 : 0;
+  });
   const fadeExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {

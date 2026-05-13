@@ -24,6 +24,7 @@ import { getSetting, setSetting } from '../storage';
 
 export interface TonightScreenProps {
   onPlaybackStarted: () => void;
+  onSettingsRequested: () => void;
   onDevToolsRequested: () => void;
 }
 
@@ -42,6 +43,7 @@ function sceneGradient(id: string): string {
 
 export function TonightScreen({
   onPlaybackStarted,
+  onSettingsRequested,
   onDevToolsRequested,
 }: TonightScreenProps) {
   const engine = useMemo(() => getAudioEngine(), []);
@@ -164,7 +166,14 @@ export function TonightScreen({
         </p>
       )}
 
-      <footer className="mt-10 pt-5 border-t border-ink-700 flex justify-end px-1">
+      <footer className="mt-10 pt-5 border-t border-ink-700 flex justify-between items-center px-1">
+        <button
+          onClick={onSettingsRequested}
+          className="text-xs text-stone-500 hover:text-stone-300 active:text-moon-300
+                     transition-colors duration-slow"
+        >
+          Settings
+        </button>
         <button
           onClick={onDevToolsRequested}
           className="text-xs text-stone-500 hover:text-stone-300 active:text-moon-300

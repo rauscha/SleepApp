@@ -38,11 +38,14 @@ exit link. Timer firing while in Nightstand auto-wakes controls so the user
 sees "Fading…". Manual "Nightstand mode" button at the bottom of the Lush layout.
 Implemented via `useIdleTimer` and `useWakeTimer` hooks in PlayerScreen.tsx.
 
-### P3-4 Settings screen
-Reachable from Tonight footer. Knobs: master volume (redundant with Player but
-useful here), sleep timer default duration, about/version line.
-Placeholder API key fields (ElevenLabs, Anthropic) for Phase 4 — render them
-as `disabled` inputs with "Coming in a future update" hint.
+### P3-4 ✅ Settings screen
+Reachable from "Settings" link in the Tonight footer. Sections:
+- **Playback**: master volume slider (applies live to running engine), default
+  sleep timer selector (Off/15/30/60/90 min). When a default is set, PlayerScreen
+  auto-starts the timer on every scene launch.
+- **AI features (coming soon)**: disabled ElevenLabs + Anthropic API key fields
+  with explanatory note; layout is ready for Phase 4 wiring.
+- **About**: v0.1.0, anti-tracking statement.
 
 ---
 
