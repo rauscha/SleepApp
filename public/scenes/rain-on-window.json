@@ -22,17 +22,12 @@
         {
           "id": "glass-1",
           "url": "/audio/rain-on-window/rain-on-glass/glass-1.mp3",
-          "attribution": "PLACEHOLDER — Vlad indoor-rain take, mic close to glass. Skip variants with traffic bleed."
+          "attribution": "Pixabay — see /audio/rain-on-window/rain-on-glass/glass-1.json. Flagged for replacement (mono source)."
         },
         {
           "id": "glass-2",
           "url": "/audio/rain-on-window/rain-on-glass/glass-2.mp3",
-          "attribution": "PLACEHOLDER — second Vlad glass variant, lighter density."
-        },
-        {
-          "id": "glass-3",
-          "url": "/audio/rain-on-window/rain-on-glass/glass-3.mp3",
-          "attribution": "PLACEHOLDER — third Vlad glass variant, slightly heavier density (no wind howl)."
+          "attribution": "Pixabay — see /audio/rain-on-window/rain-on-glass/glass-2.json. Flagged for replacement (24 kHz source, most-used variant)."
         }
       ]
     },
@@ -47,19 +42,14 @@
         {
           "id": "pavement-1",
           "url": "/audio/rain-on-window/rain-pavement/pavement-1.mp3",
-          "attribution": "PLACEHOLDER — Vlad outdoor-rain ambience at distance."
-        },
-        {
-          "id": "pavement-2",
-          "url": "/audio/rain-on-window/rain-pavement/pavement-2.mp3",
-          "attribution": "PLACEHOLDER — second Vlad pavement variant. No vehicles."
+          "attribution": "Pixabay — see /audio/rain-on-window/rain-pavement/pavement-1.json for license."
         }
       ]
     },
     {
       "id": "distant-thunder-rumble",
       "label": "Distant thunder (rumble only)",
-      "loopOffsetSeconds": 887,
+      "loopOffsetSeconds": 251,
       "crossfadeSeconds": 5,
       "defaultVolume": 0.22,
       "variantRotation": "sequential",
@@ -67,12 +57,12 @@
         {
           "id": "rumble-1",
           "url": "/audio/rain-on-window/distant-thunder-rumble/rumble-1.mp3",
-          "attribution": "PLACEHOLDER — Vlad mountain-storm take, low-frequency rumble only. NO sharp cracks: cracks wake the user. EQ-cut anything above ~600 Hz if needed."
+          "attribution": "Pixabay — see /audio/rain-on-window/distant-thunder-rumble/rumble-1.json. Low-passed at 600 Hz during processing — rumble only, no cracks."
         },
         {
           "id": "rumble-2",
           "url": "/audio/rain-on-window/distant-thunder-rumble/rumble-2.mp3",
-          "attribution": "PLACEHOLDER — second rumble variant, even quieter."
+          "attribution": "Pixabay — see /audio/rain-on-window/distant-thunder-rumble/rumble-2.json. Low-passed at 600 Hz during processing."
         }
       ]
     }

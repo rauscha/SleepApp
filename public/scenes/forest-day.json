@@ -12,6 +12,21 @@
   },
   "elements": [
     {
+      "id": "creek-trickle",
+      "label": "Slow creek",
+      "loopOffsetSeconds": 251,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.4,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "creek-1",
+          "url": "/audio/forest-day/creek-trickle/creek-1.mp3",
+          "attribution": "Pixabay — see /audio/forest-day/creek-trickle/creek-1.json for license + replace-when notes."
+        }
+      ]
+    },
+    {
       "id": "wind-in-leaves",
       "label": "Wind in leaves",
       "loopOffsetSeconds": 521,
@@ -22,24 +37,14 @@
         {
           "id": "wind-1",
           "url": "/audio/forest-day/wind-in-leaves/wind-1.mp3",
-          "attribution": "PLACEHOLDER — drop George Vlad forest-canopy take here. Save license at /audio/forest-day/wind-in-leaves/wind-1.json."
-        },
-        {
-          "id": "wind-2",
-          "url": "/audio/forest-day/wind-in-leaves/wind-2.mp3",
-          "attribution": "PLACEHOLDER — second Vlad wind variant. Avoid takes with prominent bird solos."
-        },
-        {
-          "id": "wind-3",
-          "url": "/audio/forest-day/wind-in-leaves/wind-3.mp3",
-          "attribution": "PLACEHOLDER — third Vlad wind variant. Even-toned, no gusts that startle."
+          "attribution": "Pixabay — see /audio/forest-day/wind-in-leaves/wind-1.json for license."
         }
       ]
     },
     {
       "id": "distant-birds",
       "label": "Distant birds",
-      "loopOffsetSeconds": 691,
+      "loopOffsetSeconds": 409,
       "crossfadeSeconds": 5,
       "defaultVolume": 0.35,
       "variantRotation": "random",
@@ -47,32 +52,12 @@
         {
           "id": "birds-1",
           "url": "/audio/forest-day/distant-birds/birds-1.mp3",
-          "attribution": "PLACEHOLDER — Vlad dawn-chorus take, prefer the second half (calmer birds)."
+          "attribution": "Pixabay — see /audio/forest-day/distant-birds/birds-1.json for license."
         },
         {
           "id": "birds-2",
           "url": "/audio/forest-day/distant-birds/birds-2.mp3",
-          "attribution": "PLACEHOLDER — second Vlad bird variant. No corvids; avoid alarm calls."
-        }
-      ]
-    },
-    {
-      "id": "creek-trickle",
-      "label": "Slow creek",
-      "loopOffsetSeconds": 409,
-      "crossfadeSeconds": 5,
-      "defaultVolume": 0.4,
-      "variantRotation": "random",
-      "variants": [
-        {
-          "id": "creek-1",
-          "url": "/audio/forest-day/creek-trickle/creek-1.mp3",
-          "attribution": "PLACEHOLDER — Vlad slow water take, avoid splashy waterfall energy."
-        },
-        {
-          "id": "creek-2",
-          "url": "/audio/forest-day/creek-trickle/creek-2.mp3",
-          "attribution": "PLACEHOLDER — second Vlad creek variant. Steady flow, no pebble percussion."
+          "attribution": "Pixabay — see /audio/forest-day/distant-birds/birds-2.json. Flagged for replacement (24 kHz source)."
         }
       ]
     }

@@ -1,0 +1,9 @@
+{
+  "source": "Pixabay",
+  "originalFilename": "freesound_community-thunder-48580.mp3",
+  "license": "Pixabay Content License — free, no attribution required, commercial use OK",
+  "downloadedAt": "2026-05-12",
+  "trimmedTo": "600s",
+  "outputFormat": "48 kHz / 192 kbps / stereo MP3",
+  "notes": "Re-encoded from Pixabay source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3."
+}

@@ -1,7 +1,7 @@
 {
   "id": "fireplace",
   "label": "Fireplace",
-  "description": "Slow wood fire, room tone behind it, a faint settle of the house. Crackles steady, never sharp.",
+  "description": "Slow wood fire close at hand with a distant room-mic crackle behind it. Crackles steady, never sharp.",
   "synth": {
     "color": "brown",
     "defaultVolume": 0.14
@@ -22,17 +22,7 @@
         {
           "id": "close-1",
           "url": "/audio/fireplace/fire-close/close-1.mp3",
-          "attribution": "PLACEHOLDER — Vlad cabin-fire close mic take. Prefer steady crackle pulse — no hissing wet wood."
-        },
-        {
-          "id": "close-2",
-          "url": "/audio/fireplace/fire-close/close-2.mp3",
-          "attribution": "PLACEHOLDER — second Vlad close-fire variant."
-        },
-        {
-          "id": "close-3",
-          "url": "/audio/fireplace/fire-close/close-3.mp3",
-          "attribution": "PLACEHOLDER — third Vlad close-fire variant. Trim out any sharp pops."
+          "attribution": "Pixabay — see /audio/fireplace/fire-close/close-1.json for license."
         }
       ]
     },
@@ -47,32 +37,7 @@
         {
           "id": "distant-1",
           "url": "/audio/fireplace/fire-distant/distant-1.mp3",
-          "attribution": "PLACEHOLDER — Vlad room-mic fire take, mic ~3m back."
-        },
-        {
-          "id": "distant-2",
-          "url": "/audio/fireplace/fire-distant/distant-2.mp3",
-          "attribution": "PLACEHOLDER — second distant-fire variant."
-        }
-      ]
-    },
-    {
-      "id": "room-tone",
-      "label": "Room tone",
-      "loopOffsetSeconds": 691,
-      "crossfadeSeconds": 5,
-      "defaultVolume": 0.2,
-      "variantRotation": "sequential",
-      "variants": [
-        {
-          "id": "room-1",
-          "url": "/audio/fireplace/room-tone/room-1.mp3",
-          "attribution": "PLACEHOLDER — Vlad interior room ambience, no HVAC hum, no traffic."
-        },
-        {
-          "id": "room-2",
-          "url": "/audio/fireplace/room-tone/room-2.mp3",
-          "attribution": "PLACEHOLDER — second Vlad room tone variant."
+          "attribution": "Pixabay — see /audio/fireplace/fire-distant/distant-1.json for license."
         }
       ]
     }
