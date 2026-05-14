@@ -49,6 +49,43 @@ function formatMs(ms: number): string {
   return `${m}:${String(s % 60).padStart(2, '0')}`;
 }
 
+/**
+ * Fullscreen helpers. The Fullscreen API needs a recent user gesture and
+ * is not supported in iOS Safari's standalone PWA mode at all. Both calls
+ * swallow rejections — the worst case is "Android status bar stays
+ * visible," which is the pre-fix behaviour. We are NEVER permitted to
+ * crash the app over a chrome-hiding nicety.
+ */
+function requestFullscreenSafe(): void {
+  const el = document.documentElement as HTMLElement & {
+    webkitRequestFullscreen?: () => Promise<void>;
+  };
+  try {
+    if (document.fullscreenElement) return;
+    const p = el.requestFullscreen
+      ? el.requestFullscreen({ navigationUI: 'hide' })
+      : el.webkitRequestFullscreen?.();
+    if (p && typeof (p as Promise<void>).catch === 'function') {
+      (p as Promise<void>).catch(() => undefined);
+    }
+  } catch {
+    /* Fullscreen unsupported (iOS standalone PWA) or rejected. */
+  }
+}
+
+function exitFullscreenSafe(): void {
+  const doc = document as Document & { webkitExitFullscreen?: () => Promise<void> };
+  try {
+    if (!document.fullscreenElement) return;
+    const p = doc.exitFullscreen ? doc.exitFullscreen() : doc.webkitExitFullscreen?.();
+    if (p && typeof (p as Promise<void>).catch === 'function') {
+      (p as Promise<void>).catch(() => undefined);
+    }
+  } catch {
+    /* noop */
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Hooks
 
@@ -142,10 +179,25 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
   const [awake, wake] = useWakeTimer(WAKE_DURATION_MS);
   const isIdle = useIdleTimer(IDLE_TIMEOUT_MS, displayMode === 'lush');
 
-  // Auto-engage Nightstand after idle timeout
+  // Auto-engage Nightstand after idle timeout. Try to go fullscreen as
+  // well — this usually fails because the idle path has no recent user
+  // gesture, but on browsers that grant fullscreen on "transient
+  // activation" persisting through the idle window we get it for free.
+  // Either way, the first tap-to-wake in nightstand re-requests it.
   useEffect(() => {
-    if (isIdle) setDisplayMode('nightstand');
+    if (isIdle) {
+      setDisplayMode('nightstand');
+      requestFullscreenSafe();
+    }
   }, [isIdle]);
+
+  // Always release fullscreen when the Player unmounts (back to Tonight,
+  // stop button, etc.) — leaving the rest of the app in fullscreen would
+  // hide the system bars from the user when they're picking their next
+  // scene, which is not what they want.
+  useEffect(() => {
+    return () => exitFullscreenSafe();
+  }, []);
 
   // Sleep timer — auto-start from the user's default if one is set.
   const [timer, setTimer] = useState<TimerMode>(() => {
@@ -246,9 +298,19 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         timer={timer}
         remaining={remaining}
         awake={awake}
-        onTap={wake}
+        onTap={() => {
+          // Each wake-tap is a user gesture — opportunistically re-request
+          // fullscreen so the status bar disappears even if the auto-engage
+          // path could not get it the first time. requestFullscreenSafe is
+          // a noop when we're already fullscreen.
+          requestFullscreenSafe();
+          wake();
+        }}
         onStop={handleStop}
-        onExitNightstand={() => setDisplayMode('lush')}
+        onExitNightstand={() => {
+          exitFullscreenSafe();
+          setDisplayMode('lush');
+        }}
       />
     );
   }
@@ -374,7 +436,13 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
 
       <div className="mt-8 flex justify-center">
         <button
-          onClick={() => setDisplayMode('nightstand')}
+          onClick={() => {
+            // Request fullscreen on the click itself — this is the user
+            // gesture the API requires, before React re-renders into the
+            // NightstandView.
+            requestFullscreenSafe();
+            setDisplayMode('nightstand');
+          }}
           className="text-xs text-stone-500 hover:text-stone-300
                      active:text-moon-300 transition-colors duration-slow
                      px-3 py-2"
