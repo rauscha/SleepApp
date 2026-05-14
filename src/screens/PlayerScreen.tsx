@@ -19,6 +19,7 @@ import {
 } from '../audio/SceneCoordinator';
 import type { Scene } from '../audio/Scene';
 import { getSetting, setSetting } from '../storage';
+import { exitFullscreenSafe, requestFullscreenSafe } from '../utils/fullscreen';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -47,43 +48,6 @@ function formatMs(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
   const m = Math.floor(s / 60);
   return `${m}:${String(s % 60).padStart(2, '0')}`;
-}
-
-/**
- * Fullscreen helpers. The Fullscreen API needs a recent user gesture and
- * is not supported in iOS Safari's standalone PWA mode at all. Both calls
- * swallow rejections — the worst case is "Android status bar stays
- * visible," which is the pre-fix behaviour. We are NEVER permitted to
- * crash the app over a chrome-hiding nicety.
- */
-function requestFullscreenSafe(): void {
-  const el = document.documentElement as HTMLElement & {
-    webkitRequestFullscreen?: () => Promise<void>;
-  };
-  try {
-    if (document.fullscreenElement) return;
-    const p = el.requestFullscreen
-      ? el.requestFullscreen({ navigationUI: 'hide' })
-      : el.webkitRequestFullscreen?.();
-    if (p && typeof (p as Promise<void>).catch === 'function') {
-      (p as Promise<void>).catch(() => undefined);
-    }
-  } catch {
-    /* Fullscreen unsupported (iOS standalone PWA) or rejected. */
-  }
-}
-
-function exitFullscreenSafe(): void {
-  const doc = document as Document & { webkitExitFullscreen?: () => Promise<void> };
-  try {
-    if (!document.fullscreenElement) return;
-    const p = doc.exitFullscreen ? doc.exitFullscreen() : doc.webkitExitFullscreen?.();
-    if (p && typeof (p as Promise<void>).catch === 'function') {
-      (p as Promise<void>).catch(() => undefined);
-    }
-  } catch {
-    /* noop */
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -307,10 +271,7 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
           wake();
         }}
         onStop={handleStop}
-        onExitNightstand={() => {
-          exitFullscreenSafe();
-          setDisplayMode('lush');
-        }}
+        onExitNightstand={() => setDisplayMode('lush')}
       />
     );
   }
@@ -437,9 +398,10 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
       <div className="mt-8 flex justify-center">
         <button
           onClick={() => {
-            // Request fullscreen on the click itself — this is the user
-            // gesture the API requires, before React re-renders into the
-            // NightstandView.
+            // Fullscreen is normally already engaged from the scene-pick
+            // in TonightScreen. Re-request anyway: if the user dismissed
+            // it via a system gesture we want it back, and this click is
+            // a fresh user activation.
             requestFullscreenSafe();
             setDisplayMode('nightstand');
           }}

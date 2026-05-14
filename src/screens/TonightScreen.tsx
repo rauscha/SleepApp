@@ -21,6 +21,7 @@ import {
 } from '../audio/sceneRegistry';
 import type { SceneIndex, SceneIndexEntry } from '../audio/sceneRegistry';
 import { getSetting, setSetting } from '../storage';
+import { requestFullscreenSafe } from '../utils/fullscreen';
 
 export interface TonightScreenProps {
   onPlaybackStarted: () => void;
@@ -72,6 +73,12 @@ export function TonightScreen({
 
   const handlePick = useCallback(
     async (entry: SceneIndexEntry) => {
+      // Request fullscreen synchronously, before any await — the tap that
+      // got us here is the user gesture the Fullscreen API requires, and
+      // it expires once we yield to the event loop. iOS standalone PWA
+      // silently no-ops; Android Chrome hides system bars for the rest
+      // of the player session.
+      requestFullscreenSafe();
       setBusySceneId(entry.id);
       setStartError(null);
       try {
