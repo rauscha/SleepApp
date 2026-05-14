@@ -1,12 +1,52 @@
-import { defineConfig } from 'vite';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+
+// Injects a precache manifest into public/sw.js after build. The service
+// worker needs the exact hashed JS/CSS filenames to addAll() them on
+// install — without that, the first offline visit hangs at the splash
+// because the SW only caches the unhashed app-shell URLs. Runs as a
+// post-bundle string replace, not a virtual import, so the SW file
+// remains a plain JS file that runs unmodified in dev.
+function swPrecachePlugin(): Plugin {
+  return {
+    name: 'sw-precache-inject',
+    apply: 'build',
+    writeBundle: {
+      sequential: true,
+      handler(_options, bundle) {
+        const precache: string[] = ['/', '/manifest.json', '/icons/icon.svg'];
+        for (const key of Object.keys(bundle)) {
+          if (key.startsWith('assets/') &&
+              (key.endsWith('.js') || key.endsWith('.css'))) {
+            precache.push('/' + key);
+          }
+        }
+        const swPath = resolve('dist/sw.js');
+        const original = readFileSync(swPath, 'utf8');
+        const marker = '/* @sw-precache */ []';
+        if (!original.includes(marker)) {
+          throw new Error(
+            `sw-precache-inject: marker "${marker}" not found in dist/sw.js`
+          );
+        }
+        const replaced = original.replace(
+          marker,
+          `/* @sw-precache */ ${JSON.stringify(precache)}`
+        );
+        writeFileSync(swPath, replaced, 'utf8');
+      },
+    },
+  };
+}
 
 // Vite config for the Sleep App PWA.
 // We keep the audio worklet as a static asset under /worklets so we can pass
 // the URL directly to AudioContext.audioWorklet.addModule(). Vite will serve
 // /public/* at the site root.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), swPrecachePlugin()],
   server: {
     port: 5173,
     host: true,
@@ -21,6 +61,16 @@ export default defineConfig({
     watch: {
       ignored: ['**/*.test.ts', '**/*.test.tsx'],
     },
+  },
+  // Preview serves the production build. PWA install on Android needs
+  // HTTPS, so the expected access pattern is `tailscale serve --bg
+  // --https=443 http://localhost:4173` and then visit
+  // https://<device>.saiga-wage.ts.net from the phone. Mirror the dev
+  // server's tailnet allowance here so Vite's Host filter doesn't reject it.
+  preview: {
+    port: 4173,
+    host: true,
+    allowedHosts: ['.saiga-wage.ts.net'],
   },
   build: {
     target: 'es2022',

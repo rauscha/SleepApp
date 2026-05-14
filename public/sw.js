@@ -24,22 +24,41 @@
 // Bumping CACHE_VERSION cleans old caches on the next activation. Don't
 // bump it casually — every active install will re-download all audio.
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const AUDIO_CACHE = `sleep-audio-${CACHE_VERSION}`;
 const SCENE_CACHE = `sleep-scenes-${CACHE_VERSION}`;
 const SHELL_CACHE = `sleep-shell-${CACHE_VERSION}`;
 const KNOWN_CACHES = new Set([AUDIO_CACHE, SCENE_CACHE, SHELL_CACHE]);
 
-const APP_SHELL = ['/', '/index.html', '/manifest.json'];
+// Precache manifest. The marker comment is what the vite-build-time
+// plugin (`swPrecachePlugin` in vite.config.ts) substitutes with the
+// actual hashed asset list. In dev — or any environment where the build
+// step hasn't run — this array is empty and the SW falls back to lazy
+// stale-while-revalidate.
+const APP_SHELL = /* @sw-precache */ [];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches
-      .open(SHELL_CACHE)
-      // App-shell precache is best-effort: a failure here would block the
-      // worker from installing at all, which is worse than running without
-      // a precache.
-      .then((cache) => cache.addAll(APP_SHELL).catch(() => undefined))
+    (async () => {
+      const cache = await caches.open(SHELL_CACHE);
+      // Add each URL individually so a single 404 doesn't fail the whole
+      // precache — addAll() is atomic, addAll([404]) rejects the lot.
+      await Promise.all(
+        APP_SHELL.map(async (url) => {
+          try {
+            // cache: 'reload' to bypass the HTTP cache — we want the freshest
+            // copy of each asset at install time, not whatever happens to be
+            // in the browser's disk cache.
+            const res = await fetch(url, { cache: 'reload' });
+            if (res.ok && res.status === 200) {
+              await cache.put(url, res);
+            }
+          } catch {
+            // Best-effort: missing one asset is recoverable via lazy SWR.
+          }
+        })
+      );
+    })()
   );
   // Intentionally NOT calling self.skipWaiting(). The current worker keeps
   // serving any open tab — audio sessions are not interrupted. The new
