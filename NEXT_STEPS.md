@@ -1,6 +1,6 @@
 # Next steps — current project state
 
-Last updated after: Phase 5 quick-wins (lazy-loading, doc sync)
+Last updated after: Phase 5 PWA scaffold (manifest, service worker, icon stub)
 
 ---
 
@@ -12,7 +12,7 @@ Last updated after: Phase 5 quick-wins (lazy-loading, doc sync)
 | 2 | ✅ Done | Multi-layer scenes, coprime offsets, Surprise Me, Pixabay sources |
 | 3 | ✅ Done | Tonight + Player + Nightstand + Settings; CI; A1 iOS fix shipped |
 | 4 | ✅ Done | AI meditations (CLI pipeline) + AI sleep stories (on-demand in-app) |
-| 5 | 🔄 In progress | Polish — lazy-loading ✅, reduced-motion ✅, PWA/iOS test/perf next |
+| 5 | 🔄 In progress | Polish — lazy-loading ✅, reduced-motion ✅, manifest ✅, service worker ✅, iOS overnight test next |
 
 ---
 
@@ -29,19 +29,39 @@ Initial JS dropped from ~247 kB → 192 kB. Fallback is a silent dark screen
 Implemented in `src/index.css` lines 70–78. Disables animations and
 transitions when the OS asks; audio scheduling is untouched.
 
-### P5-3 PWA manifest + icons (blocked on icon art)
-`manifest.json` with 192/512/maskable icons. Service worker registration.
-**Blocked on:** icon art from user. See `USER_TODO.md`.
+### P5-3 ✅ PWA manifest + icons
+`public/manifest.json` shipped with name/short_name, dark theme/background,
+portrait-standalone display. SVG icon at `/icons/icon.svg` works as both
+`purpose: any` and `purpose: maskable` (artwork sits in the inner 60% so
+the maskable mask doesn't crop it). Linked from `index.html` as both
+`<link rel="manifest">` and `<link rel="apple-touch-icon">`.
 
-### P5-4 Service worker — audio asset caching
-Cache `/audio/**` and `/scenes/**` aggressively (immutable hashed names).
-HTML/JS/CSS use stale-while-revalidate. The risk: wrong cache policy means
-a silent gap mid-night — the One Thing's worst failure mode. Plan caching
-strategy before writing code; ideally test on a throttled connection first.
+The icon is a placeholder — sage crescent on ink-950, no typography. Swap
+for bitmap PNG art once a final design lands (USER_TODO entry).
+
+### P5-4 ✅ Service worker — audio asset caching
+`public/sw.js` shipped. Strategy:
+- `/audio/**`, `/worklets/**`, `/meditations/**` — **cache-first** (audio is
+  immutable per file; once cached, never re-fetch unless evicted)
+- `/scenes/**` — **stale-while-revalidate** (config JSON; serve cached, refresh
+  in background)
+- HTML navigations — **network-first** with cache fallback (so app updates
+  arrive, but offline still loads)
+- Hashed JS/CSS — **stale-while-revalidate**
+
+Safety choices to avoid the silent-gap failure mode:
+- `skipWaiting()` is deliberately **not** called. A new worker waits until
+  the next cold start — running audio sessions are never disturbed.
+- `cacheFirst` only stores status === 200 (rejects 206 partial-content so
+  range requests can't poison the cache with truncated buffers).
+- Register only in `import.meta.env.PROD` — dev's `/src/*` paths would
+  pollute the cache and HMR doesn't compose with SW interception.
 
 ### P5-5 iOS device test (overnight)
 Lock the phone, run 8 hours, listen at wake for any seam or fade-to-silence.
-Needs physical device. See `USER_TODO.md`.
+Needs physical device. See `USER_TODO.md`. With the SW in place this is
+**also** the right time to verify offline behaviour: airplane-mode mid-night
+should keep audio running from cache.
 
 ---
 

@@ -13,3 +13,15 @@ createRoot(root).render(
     </ErrorBoundary>
   </StrictMode>
 );
+
+// Service worker registration. Production-only — Vite's dev server serves
+// modules from /src/* paths the SW doesn't know about, and HMR doesn't play
+// well with a precaching SW. The SW is the resilience layer for cold starts
+// on flaky connections; intercepting dev traffic gains us nothing.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('Service worker registration failed:', err);
+    });
+  });
+}

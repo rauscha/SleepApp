@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Sleep app icon">
+  <rect width="512" height="512" rx="96" fill="#0B0D10"/>
+  <!-- Crescent: full disc minus an offset disc. Centred in the inner 60%
+       so the artwork is safe inside a maskable circle. -->
+  <defs>
+    <mask id="crescent">
+      <rect width="512" height="512" fill="black"/>
+      <circle cx="256" cy="256" r="120" fill="white"/>
+      <circle cx="304" cy="232" r="120" fill="black"/>
+    </mask>
+  </defs>
+  <rect width="512" height="512" fill="#7FA098" mask="url(#crescent)"/>
+</svg>

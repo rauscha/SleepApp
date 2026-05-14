@@ -1,0 +1,25 @@
+{
+  "name": "Sleep",
+  "short_name": "Sleep",
+  "description": "A quiet app that puts you to sleep and lets you stay there.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B0D10",
+  "theme_color": "#0B0D10",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

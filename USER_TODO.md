@@ -97,6 +97,27 @@ photos land, swap the inline `style={{ background: gradient }}` for an
 
 ---
 
+## PWA icon — replace placeholder
+
+The app ships an SVG placeholder at `public/icons/icon.svg` (sage crescent
+on ink background). It satisfies the manifest and renders fine on Android
+home screens. Two limitations worth knowing:
+
+- iOS Safari prefers raster apple-touch-icon. Older iOS versions may show
+  a generic glyph until you provide PNGs.
+- The current art has no typography or photography — it's a Phase 5
+  scaffold, not a real brand mark.
+
+- [ ] **Final icon art.** When ready, output:
+  - `public/icons/icon-192.png` (192×192)
+  - `public/icons/icon-512.png` (512×512)
+  - `public/icons/icon-maskable-512.png` (512×512, art inside inner 80%)
+  - `public/icons/apple-touch-icon.png` (180×180, no transparency)
+  Then update `public/manifest.json` `icons[]` and `index.html`'s
+  `<link rel="apple-touch-icon">` to point at the PNGs.
+
+---
+
 ## ElevenLabs Voice Design — custom voices
 
 The app ships with ElevenLabs premade voice IDs as stand-ins. To replace
