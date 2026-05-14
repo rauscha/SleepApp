@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getAudioEngine } from './audio/AudioEngine';
 import { NoiseGenerator } from './audio/NoiseGenerator';
 import { TinnitusMaskLayer } from './audio/TinnitusMaskLayer';
@@ -24,11 +24,37 @@ import type { NoiseColor } from './audio/types';
 import { generateTestPadBuffer } from './audio/synth/testPad';
 import { TonightScreen } from './screens/TonightScreen';
 import { PlayerScreen } from './screens/PlayerScreen';
-import { SettingsScreen } from './screens/SettingsScreen';
-import { LibraryScreen } from './screens/LibraryScreen';
 import type { ContentItem } from './screens/LibraryScreen';
-import { ContentPlayerScreen } from './screens/ContentPlayerScreen';
-import { StoryGeneratorScreen } from './screens/StoryGeneratorScreen';
+
+// Lazy-load post-Tonight screens. Together these pull in Howler (~30 kB),
+// the Library + StoryGenerator UI trees, and the storyGenerator service —
+// none of which is needed for the primary flow (Tonight → Player). The
+// initial bundle now contains only the audio engine + Tonight/Player.
+// A user who only ever taps Begin → scene card never downloads any of this.
+const SettingsScreen = lazy(() =>
+  import('./screens/SettingsScreen').then((m) => ({ default: m.SettingsScreen }))
+);
+const LibraryScreen = lazy(() =>
+  import('./screens/LibraryScreen').then((m) => ({ default: m.LibraryScreen }))
+);
+const ContentPlayerScreen = lazy(() =>
+  import('./screens/ContentPlayerScreen').then((m) => ({
+    default: m.ContentPlayerScreen,
+  }))
+);
+const StoryGeneratorScreen = lazy(() =>
+  import('./screens/StoryGeneratorScreen').then((m) => ({
+    default: m.StoryGeneratorScreen,
+  }))
+);
+
+// Fallback for lazy chunk loads. Matches the body bg so the swap is silent —
+// no white flash, no spinner. The chunks are tiny on a warm cache; on a cold
+// cache the user sees a brief dark hold which is preferable to a wake-up
+// flash at 2am.
+function ScreenFallback() {
+  return <div className="min-h-screen bg-ink-950" aria-hidden="true" />;
+}
 
 // App is a thin three-way router between the Phase 3 screens and the
 // Phase 1 dev harness. The harness stays reachable from Tonight via a
@@ -125,33 +151,43 @@ export function App() {
   }
   if (screen === 'library') {
     return (
-      <LibraryScreen
-        onBack={() => setScreen('tonight')}
-        onPlay={playContent}
-        onGenerateStory={() => setScreen('story-generator')}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <LibraryScreen
+          onBack={() => setScreen('tonight')}
+          onPlay={playContent}
+          onGenerateStory={() => setScreen('story-generator')}
+        />
+      </Suspense>
     );
   }
   if (screen === 'content-player' && activeContent) {
     return (
-      <ContentPlayerScreen
-        title={activeContent.title}
-        description={activeContent.description}
-        audioUrl={activeContent.audioUrl}
-        onBack={leaveContentPlayer}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <ContentPlayerScreen
+          title={activeContent.title}
+          description={activeContent.description}
+          audioUrl={activeContent.audioUrl}
+          onBack={leaveContentPlayer}
+        />
+      </Suspense>
     );
   }
   if (screen === 'story-generator') {
     return (
-      <StoryGeneratorScreen
-        onBack={() => setScreen('library')}
-        onDone={() => setScreen('library')}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <StoryGeneratorScreen
+          onBack={() => setScreen('library')}
+          onDone={() => setScreen('library')}
+        />
+      </Suspense>
     );
   }
   if (screen === 'settings') {
-    return <SettingsScreen onBack={() => setScreen('tonight')} />;
+    return (
+      <Suspense fallback={<ScreenFallback />}>
+        <SettingsScreen onBack={() => setScreen('tonight')} />
+      </Suspense>
+    );
   }
   return <Harness onBackToTonight={() => setScreen('tonight')} />;
 }
