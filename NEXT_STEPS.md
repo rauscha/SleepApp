@@ -1,6 +1,6 @@
 # Next steps — current project state
 
-Last updated after: Phase 5 PWA scaffold (manifest, service worker, icon stub)
+Last updated after: Phase 5 content drop — meditation starter set + scene photos for Forest, Rain, Fireplace
 
 ---
 
@@ -11,7 +11,7 @@ Last updated after: Phase 5 PWA scaffold (manifest, service worker, icon stub)
 | 1 | ✅ Done | Audio engine — noise synth, FileLayer crossfade, tinnitus (shelved), storage |
 | 2 | ✅ Done | Multi-layer scenes, coprime offsets, Surprise Me, Pixabay sources |
 | 3 | ✅ Done | Tonight + Player + Nightstand + Settings; CI; A1 iOS fix shipped |
-| 4 | ✅ Done | AI meditations (CLI pipeline) + AI sleep stories (on-demand in-app) |
+| 4 | ✅ Done | AI meditations (CLI pipeline) + AI sleep stories (on-demand in-app). Starter set of 3 meditations shipped — body-scan/breath-focus/visualization. |
 | 5 | 🔄 In progress | Polish — lazy-loading ✅, reduced-motion ✅, manifest ✅, service worker ✅, iOS overnight test next |
 
 ---
@@ -78,8 +78,11 @@ should keep audio running from cache.
 
 ## Open questions
 
-1. **Photo assets** — House Blend cards still use gradient placeholders.
-   See `USER_TODO.md` for the photo brief.
+1. ~~**Photo assets**~~ — **resolved for the 3 shipped scenes.** Forest,
+   Rain, Fireplace photos live at `public/scenes/photos/<id>.jpg` and
+   render under a dark overlay gradient in `TonightScreen.tsx`. Raw
+   sources stay in untracked `ACR-photos/`. Photos for any future scenes
+   (waterfall, beach, forest-night, etc.) still TODO.
 2. **Variant pool minimum** — five of eight scene elements ship with only
    one variant. Crossfade still works (same-buffer rotation), but the
    rotation pool isn't doing useful work yet. See `USER_TODO.md` for

@@ -18,3 +18,12 @@ vite.config.ts.timestamp-*.mjs
 # Raw audio source files — pre-processing inputs, kept locally only.
 # The processed outputs go in public/audio/ and DO get committed.
 raw-sounds/
+
+# Raw photo source files — pre-processing inputs, kept locally only.
+# The processed outputs go in public/scenes/photos/ and DO get committed.
+ACR-photos/
+
+# Local secrets — API keys pasted into untracked txt files during dev.
+elevenlabs.txt
+anthropic.txt
+*.secret.txt

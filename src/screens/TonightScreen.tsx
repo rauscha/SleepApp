@@ -4,9 +4,9 @@
 // "start tonight's wind-down." The last-played scene is the headline
 // pick; secondary scenes are quieter below it.
 //
-// Cards use per-scene gradient backgrounds as placeholders for real
-// photographs. When photos land, swap the inline gradient style for an
-// <img> or CSS background-image — everything else stays the same.
+// Cards layer a dark vertical gradient over the per-scene photograph
+// (in public/scenes/photos/). Scenes without a photo fall back to the
+// gradient-only treatment used before photos landed.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getAudioEngine } from '../audio/AudioEngine';
@@ -30,15 +30,30 @@ export interface TonightScreenProps {
   onDevToolsRequested: () => void;
 }
 
-// Per-scene gradient colours — dark, photographic in feel, blending
-// into ink-950 (#0B0D10) at the bottom. Swap for real photos later.
+// Per-scene photo paths (served from /public). Scenes not listed here
+// fall back to the gradient-only treatment via SCENE_GRADIENTS.
+const SCENE_PHOTOS: Record<string, string> = {
+  'forest-day':     '/scenes/photos/forest-day.jpg',
+  'rain-on-window': '/scenes/photos/rain-on-window.jpg',
+  'fireplace':      '/scenes/photos/fireplace.jpg',
+};
+
+// Fallback gradients for scenes without photos (and scenes that haven't
+// been shipped yet — the brief reserves slots for more).
 const SCENE_GRADIENTS: Record<string, [string, string]> = {
   'forest-day':     ['#182A1E', '#0B0D10'],
   'rain-on-window': ['#161D2A', '#0B0D10'],
   'fireplace':      ['#2A1810', '#0B0D10'],
 };
 
-function sceneGradient(id: string): string {
+// Photo cards layer a top→bottom dark gradient over the image so the
+// editorial-serif title and stone-400 description stay legible even on
+// bright source frames.
+const PHOTO_OVERLAY = 'linear-gradient(to bottom, rgba(11,13,16,0.35) 0%, rgba(11,13,16,0.55) 55%, rgba(11,13,16,0.95) 100%)';
+
+function sceneBackground(id: string): string {
+  const photo = SCENE_PHOTOS[id];
+  if (photo) return `${PHOTO_OVERLAY}, url(${photo}) center/cover no-repeat`;
   const [from, to] = SCENE_GRADIENTS[id] ?? ['#1E2028', '#0B0D10'];
   return `linear-gradient(to bottom, ${from}, ${to})`;
 }
@@ -149,7 +164,7 @@ export function TonightScreen({
             isLastPlayed={entry.id === lastSceneId}
             busy={busySceneId === entry.id}
             disabled={busySceneId !== null && busySceneId !== entry.id}
-            gradient={sceneGradient(entry.id)}
+            background={sceneBackground(entry.id)}
             onClick={() => handlePick(entry)}
           />
         ))}
@@ -210,7 +225,7 @@ function SceneCard({
   isLastPlayed,
   busy,
   disabled,
-  gradient,
+  background,
   onClick,
 }: {
   entry: SceneIndexEntry;
@@ -218,7 +233,7 @@ function SceneCard({
   isLastPlayed: boolean;
   busy: boolean;
   disabled: boolean;
-  gradient: string;
+  background: string;
   onClick: () => void;
 }) {
   return (
@@ -235,10 +250,13 @@ function SceneCard({
           : 'active:scale-[0.99]',
       ].join(' ')}
     >
-      {/* Gradient photo placeholder */}
       <div
-        className={primary ? 'px-6 pt-10 pb-8' : 'px-5 pt-6 pb-5'}
-        style={{ background: gradient }}
+        className={[
+          primary
+            ? 'px-6 pt-10 pb-8 min-h-[200px] flex flex-col justify-end'
+            : 'px-5 pt-6 pb-5 min-h-[120px] flex flex-col justify-end',
+        ].join(' ')}
+        style={{ background }}
       >
         <div className="flex items-start justify-between gap-3 mb-2">
           <h2
