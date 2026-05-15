@@ -1,6 +1,8 @@
 # Next steps — current project state
 
-Last updated after: Phase 5 content drop — meditation starter set + scene photos for Forest, Rain, Fireplace
+Last updated: end of session 2026-05-14. Phase 5 content shipped (3 meditations + 3 scene photos), HTTPS dev server wired, iOS overnight test running on wife's iPhone.
+
+**Next session (2026-05-15 AM): voice design** — design 5 custom ElevenLabs voices (Hush, Ember, Glen, Tide, Stone), wire IDs, regenerate the 3 meditations. See `USER_TODO.md` § "ElevenLabs Voice Design". Also: collect iOS overnight test result + sleep-stories smoke test.
 
 ---
 
@@ -12,7 +14,7 @@ Last updated after: Phase 5 content drop — meditation starter set + scene phot
 | 2 | ✅ Done | Multi-layer scenes, coprime offsets, Surprise Me, Pixabay sources |
 | 3 | ✅ Done | Tonight + Player + Nightstand + Settings; CI; A1 iOS fix shipped |
 | 4 | ✅ Done | AI meditations (CLI pipeline) + AI sleep stories (on-demand in-app). Starter set of 3 meditations shipped — body-scan/breath-focus/visualization. |
-| 5 | 🔄 In progress | Polish — lazy-loading ✅, reduced-motion ✅, manifest ✅, service worker ✅, iOS overnight test next |
+| 5 | 🔄 In progress | Polish — lazy-loading ✅, reduced-motion ✅, manifest ✅, service worker ✅, scene photos ✅, HTTPS dev server ✅, iOS overnight test 🔄 running tonight |
 
 ---
 
@@ -57,11 +59,25 @@ Safety choices to avoid the silent-gap failure mode:
 - Register only in `import.meta.env.PROD` — dev's `/src/*` paths would
   pollute the cache and HMR doesn't compose with SW interception.
 
-### P5-5 iOS device test (overnight)
-Lock the phone, run 8 hours, listen at wake for any seam or fade-to-silence.
-Needs physical device. See `USER_TODO.md`. With the SW in place this is
-**also** the right time to verify offline behaviour: airplane-mode mid-night
-should keep audio running from cache.
+### P5-5 iOS device test (overnight) — 🔄 running 2026-05-14 → 2026-05-15
+Wife is running the test on her iPhone tonight. Result + any seam/
+fade-to-silence reports expected in the AM. With the SW in place this
+also exercises offline behaviour (airplane-mode mid-night should keep
+audio running from cache). See `USER_TODO.md`.
+
+### P5-6 ✅ HTTPS dev server (basic-ssl)
+`@vitejs/plugin-basic-ssl` ships a self-signed cert so the dev + preview
+servers are reachable over HTTPS from phones on the LAN — required
+because AudioWorklet (and other secure-context-only Web APIs) refuse
+plain HTTP unless served from `localhost`. Phone hits
+`https://crane-desk:5173/` or LAN-IP equivalent, taps through the cert
+warning once, AudioWorklet loads. Commit 133108e.
+
+### P5-7 Scene photos for shipped scenes — ✅
+Forest, Rain, Fireplace photos shipped (commit 7e46293). Layered
+under a top→bottom dark gradient (`PHOTO_OVERLAY`) in `TonightScreen.tsx`
+so text stays legible on bright frames. Raw originals + 9 future-scene
+photos sit in untracked `ACR-photos/`.
 
 ---
 

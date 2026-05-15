@@ -8,17 +8,11 @@ docs. When you finish one, tick the checkbox.
 
 ## TTS / AI content — status
 
-**Both pipelines are wired, but neither has shipped content yet.**
-
-- **Meditations** — `public/meditations/index.json` is `{"meditations":[]}`.
-  No meditations have been generated. The CLI (`tools/gen-meditation.ts`)
-  is ready; nothing has been run.
+- **Meditations** — ✅ 3 shipped (commit 7e46293, 2026-05-14): body-scan-01,
+  breath-01, forest-01. Library → Meditations tab populated. Voices still
+  point at ElevenLabs premades — custom Voice Design pending (see below).
 - **Sleep stories** — generated in-browser by the user, saved to IndexedDB.
-  Nothing pre-bundled. Each user-browser starts empty.
-
-So to clarify: the engine, the UI, the prompts, the voice mappings are all
-in place. The content itself does not exist. See "Generate meditations" and
-"Generate one sleep story to verify the flow" below.
+  Nothing pre-bundled. Smoke test still TODO (see below).
 
 ---
 
@@ -64,36 +58,32 @@ sound bath). Adding any of these is one new file under
 
 ## Photos — for House Blend cards
 
-`TonightScreen.tsx` currently renders each scene card with a gradient
-placeholder (see `SCENE_GRADIENTS` at the top of the file). When real
-photos land, swap the inline `style={{ background: gradient }}` for an
-`<img>` or `background-image`.
+- [x] **Forest, midday** — `public/scenes/photos/forest-day.jpg` (110 KB)
+- [x] **Rain on the window** — `public/scenes/photos/rain-on-window.jpg` (174 KB)
+- [x] **Fireplace** — `public/scenes/photos/fireplace.jpg` (143 KB)
 
-**Photos needed (one per shipped scene):**
+`TonightScreen.tsx` now layers a top→bottom dark gradient over each photo
+(see `PHOTO_OVERLAY`); scenes without a photo entry fall back to the
+original `SCENE_GRADIENTS`.
 
-- [ ] **Forest, midday** — soft canopy light filtering down, no people,
-  no sharp focal point. Greens/golds. Mood: stillness, deep. Avoid:
-  hiking-trail vibe, anything with a horizon line that reads as "go
-  somewhere."
-- [ ] **Rain on the window** — close-up wet glass with bokeh behind. Cool
-  blue / blue-grey. Avoid: stormy drama, lightning, anything that says
-  "tense weather event."
-- [ ] **Fireplace** — close, low-key, warm. Embers + soft flame, not a
-  roaring blaze. Warm orange/amber. Avoid: holiday/Christmas decor,
-  stockings, anything seasonal.
+### Photos for future scenes
+Raw originals already sit in untracked `ACR-photos/` for:
+**Forest at night, waterfall, beach (×2), plane cabin, rain on roof,
+spaceship, calm, rain-2 (TIF — won't render, needs conversion)**.
 
-### Format
-- Portrait-oriented works best for the card layout (cards are tall on mobile)
-- 1080×1620 (2:3) or 1200×1600 at minimum
-- JPEG quality 80–85, save as `public/scenes/photos/<scene-id>.jpg`
-- A second `<scene-id>@2x.jpg` for retina would be ideal but not required
-- Goal file size: <250 kB each so initial paint isn't penalised
+When the matching scene JSON lands, run the same ffmpeg pipeline:
 
-### Source options
-- **Your own Lightroom catalog** is the best option — you mentioned you
-  shoot photography. Anything moody and quiet from your archive likely fits.
-- **Unsplash / Pexels** (CC0) — fine for dev; if you intend to share the
-  build with anyone, your own photos remove all licensing ambiguity.
+```
+ffmpeg -y -i ACR-photos/<source> -vf "scale=1200:-1:flags=lanczos" \
+       -q:v 4 public/scenes/photos/<scene-id>.jpg
+```
+
+Then add the entry to `SCENE_PHOTOS` in `TonightScreen.tsx`.
+
+### Source convention
+- 1200px wide, JPEG q80 (≈4 in ffmpeg `-q:v` scale), <250 kB target
+- Raw originals stay in `ACR-photos/` (gitignored)
+- Processed outputs go to `public/scenes/photos/<scene-id>.jpg` and DO get committed
 
 ---
 
@@ -118,7 +108,7 @@ home screens. Two limitations worth knowing:
 
 ---
 
-## ElevenLabs Voice Design — custom voices
+## ElevenLabs Voice Design — custom voices  ← **tomorrow's focus (2026-05-15)**
 
 The app ships with ElevenLabs premade voice IDs as stand-ins. To replace
 with custom voices designed in the ElevenLabs Voice Design portal:
@@ -129,27 +119,30 @@ with custom voices designed in the ElevenLabs Voice Design portal:
   Update `MEDITATION_VOICE_IDS` in `src/services/storyGenerator.ts:30-33`
   AND `VOICE_IDS` in `tools/gen-meditation.ts`.
 
+Once new IDs are in place, **regenerate the 3 shipped meditations** with
+the same `tools/gen-meditation.ts` invocations as before — they'll
+overwrite by `--id` and the index.json entry will refresh in place.
+
 Cost note: Voice Design is included in ElevenLabs paid tiers. Each design
 session burns a few credits but the resulting voice is reusable forever.
 
 ---
 
-## Generate meditations (one-time, ~$5–15 total)
+## Generate meditations — ✅ done (commit 7e46293, 2026-05-14)
 
-Once your ElevenLabs key is set, generate a starter set so the Library →
-Meditations tab isn't empty on launch.
+- [x] **Body scan** — `body-scan-01.mp3`, Tide voice, 8:13
+- [x] **Breath focus** — `breath-01.mp3`, Stone voice, 8:02
+- [x] **Visualization (forest path)** — `forest-01.mp3`, Tide voice, 8:50
 
-- [ ] **Body scan, ~10 min**
-  ```
-  ANTHROPIC_API_KEY=… ELEVEN_LABS_API_KEY=… \
-    npx tsx tools/gen-meditation.ts \
-    --title "Slow body scan" --style body-scan --voice tide --id body-scan-01
-  ```
-- [ ] **Breath focus, ~8 min** — `--style breath-focus --voice stone --id breath-01`
-- [ ] **Visualization (forest path), ~12 min** — `--style visualization --voice tide --id forest-01`
+When custom Voice Design voices land, rerun the same CLI invocations
+to regenerate with the new voices (the CLI overwrites by `--id`):
 
-Each one outputs an MP3 + an entry in `public/meditations/index.json`.
-Commit the JSON + the MP3s.
+```
+$env:ELEVEN_LABS_API_KEY = (Get-Content elevenlabs.txt -Raw).Trim()
+npx tsx tools/gen-meditation.ts --title "Slow body scan" --style body-scan --voice tide --id body-scan-01
+npx tsx tools/gen-meditation.ts --title "Breath focus"   --style breath-focus --voice stone --id breath-01
+npx tsx tools/gen-meditation.ts --title "Forest path"    --style visualization --voice tide --id forest-01
+```
 
 ---
 
@@ -164,17 +157,21 @@ content to ship.)
 
 ---
 
-## iOS device overnight test (Phase 5)
+## iOS device overnight test (Phase 5)  ← **in flight tonight 2026-05-14, result expected AM 2026-05-15**
 
-- [ ] Install the app as a PWA on your iPhone (once Phase 5 PWA manifest
-  ships).
+Wife is running the test on her iPhone overnight 2026-05-14 → 2026-05-15.
+Result expected in the morning. Process:
+
+- [ ] Install the app as a PWA on the iPhone — via HTTPS dev server now
+  available at `https://crane-desk:5173/` or LAN IP (basic-ssl plugin
+  serves a self-signed cert; tap through the warning once).
 - [ ] Pick a scene, set a no-timer playback, lock the phone, leave it
   overnight (8+ hours).
 - [ ] At wake: listen for any seam, fade-to-silence, or stutter. Note
   what scene + what time the issue happened (if any).
 
 This is the only way to verify the iOS Safari setTimeout-throttling fix
-in production conditions.
+(commit e70dc49) in production conditions.
 
 ---
 
