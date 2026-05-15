@@ -18,6 +18,11 @@ import {
   getSceneCoordinator,
 } from '../audio/SceneCoordinator';
 import type { Scene } from '../audio/Scene';
+import {
+  clearMediaSession,
+  setMediaSessionForScene,
+} from '../audio/mediaSession';
+import { recordEvent } from '../diagnostics/lifecycleLog';
 import { getSetting, setSetting } from '../storage';
 import { exitFullscreenSafe, requestFullscreenSafe } from '../utils/fullscreen';
 
@@ -163,6 +168,18 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     return () => exitFullscreenSafe();
   }, []);
 
+  // Subscribe to AudioContext state changes for the lifecycle log. The
+  // engine emits 'state' events for running/suspended/closed transitions —
+  // critical signal when diagnosing an overnight stall (did the context
+  // get suspended? did it close?).
+  useEffect(() => {
+    const off = engine.addListener((e) => {
+      if (e.kind === 'state') recordEvent('audio-state', e.state);
+    });
+    recordEvent('audio-state', engine.state);
+    return off;
+  }, [engine]);
+
   // Sleep timer — auto-start from the user's default if one is set.
   const [timer, setTimer] = useState<TimerMode>(() => {
     const def = getSetting('defaultTimerMinutes');
@@ -236,6 +253,31 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     if (timer.status === 'fading') engine.bus.cancelFade(masterVolume, 1);
     setTimer({ status: 'off' });
   }, [timer, engine, masterVolume]);
+
+  // MediaSession + scene-event logging. Tracking the last-seen scene id
+  // in a ref lets us distinguish start/switch/stop transitions cleanly
+  // from the polled `scene` state.
+  const lastSceneIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = lastSceneIdRef.current;
+    const currentId = scene?.definition.id ?? null;
+    if (prev === currentId) return;
+    if (currentId && scene) {
+      recordEvent(prev ? 'scene-switch' : 'scene-start', currentId);
+      setMediaSessionForScene(scene.definition.label, { onStop: handleStop });
+    } else {
+      recordEvent('scene-stop', prev ?? '?');
+      clearMediaSession();
+    }
+    lastSceneIdRef.current = currentId;
+  }, [scene, handleStop]);
+
+  // Belt-and-suspenders: clear the MediaSession when the Player unmounts
+  // for any reason. The effect above already clears on stop, but a hard
+  // unmount path (route change, error boundary recovery) skips that.
+  useEffect(() => {
+    return () => clearMediaSession();
+  }, []);
 
   if (!scene) {
     return (

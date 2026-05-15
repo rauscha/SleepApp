@@ -7,8 +7,14 @@
 // Keys are stored in localStorage only and never leave the device.
 // Fields use type=password with a show/hide toggle.
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { getAudioEngine } from '../audio/AudioEngine';
+import {
+  clearLog,
+  formatAsText,
+  getAllEntries,
+  type LogEntry,
+} from '../diagnostics/lifecycleLog';
 import { getAllSettings, setSetting } from '../storage';
 
 const TIMER_OPTIONS: Array<{ label: string; value: number | null }> = [
@@ -134,12 +140,160 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
 
       <div className="h-px bg-ink-700 mb-8" />
 
+      {/* ── Diagnostics ──────────────────────────────────────────────── */}
+      <section className="mb-8 px-1">
+        <h2 className="font-serif text-stone-300 text-lg mb-2">Diagnostics</h2>
+        <p className="text-xs text-stone-500 mb-5">
+          Local-only log of page lifecycle events (visibility, freeze/resume,
+          audio state). Useful when an overnight session ends earlier than
+          expected. Nothing leaves the device unless you share it.
+        </p>
+        <DiagnosticsPanel />
+      </section>
+
+      <div className="h-px bg-ink-700 mb-8" />
+
       {/* ── About ─────────────────────────────────────────────────────── */}
       <footer className="px-1 text-xs text-stone-500 space-y-1">
         <p>Sleep App · v0.1.0</p>
         <p>No accounts. No telemetry. No notifications. Ever.</p>
       </footer>
     </div>
+  );
+}
+
+function DiagnosticsPanel() {
+  const [entries, setEntries] = useState<LogEntry[]>(() => getAllEntries());
+  const [status, setStatus] = useState<string | null>(null);
+
+  const refresh = () => setEntries(getAllEntries());
+
+  const lastTen = entries.slice(-10).reverse();
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(formatAsText());
+      setStatus('Copied to clipboard.');
+    } catch {
+      setStatus('Copy failed — try Share instead.');
+    }
+  };
+
+  const handleShare = async () => {
+    const text = formatAsText();
+    // Web Share API on Android Chrome offers Gmail / Drive / Messages.
+    // iOS Safari also supports it. Fall back to clipboard otherwise.
+    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+      try {
+        await navigator.share({
+          title: 'Sleep app lifecycle log',
+          text,
+        });
+        setStatus('Shared.');
+        return;
+      } catch (err) {
+        // User cancelled — not an error to surface loudly.
+        if ((err as Error)?.name !== 'AbortError') {
+          setStatus('Share failed — try Copy instead.');
+        }
+        return;
+      }
+    }
+    handleCopy();
+  };
+
+  const handleDownload = () => {
+    const blob = new Blob([formatAsText()], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = `sleep-lifecycle-${stamp}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus('Downloaded.');
+  };
+
+  const handleClear = () => {
+    clearLog();
+    refresh();
+    setStatus('Log cleared.');
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-stone-400">
+        {entries.length} {entries.length === 1 ? 'entry' : 'entries'} captured
+        {entries.length > 0 && (
+          <>
+            {' '}· last:{' '}
+            <span className="text-stone-300">
+              {new Date(entries[entries.length - 1]!.ts).toLocaleString()}
+            </span>
+          </>
+        )}
+      </p>
+
+      <div className="flex flex-wrap gap-2">
+        <DiagButton onClick={handleShare}>Share…</DiagButton>
+        <DiagButton onClick={handleCopy}>Copy</DiagButton>
+        <DiagButton onClick={handleDownload}>Download</DiagButton>
+        <DiagButton onClick={handleClear} variant="quiet">Clear</DiagButton>
+        <DiagButton onClick={refresh} variant="quiet">Refresh</DiagButton>
+      </div>
+
+      {status && (
+        <p className="text-xs text-moon-300" role="status">
+          {status}
+        </p>
+      )}
+
+      {lastTen.length > 0 && (
+        <div className="mt-3 bg-ink-800 rounded-soft p-3 max-h-56 overflow-y-auto">
+          <p className="text-xs text-stone-500 mb-2">
+            Most recent {lastTen.length} (newest first):
+          </p>
+          <ul className="space-y-1 text-xs font-mono text-stone-300">
+            {lastTen.map((e, i) => (
+              <li key={`${e.ts}-${i}`} className="leading-snug break-words">
+                <span className="text-stone-500">
+                  {new Date(e.ts).toLocaleTimeString()}
+                </span>{' '}
+                <span className="text-stone-200">{e.kind}</span>
+                {e.detail && (
+                  <span className="text-stone-500"> · {e.detail}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DiagButton({
+  children,
+  onClick,
+  variant = 'normal',
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  variant?: 'normal' | 'quiet';
+}) {
+  const cls =
+    variant === 'quiet'
+      ? 'bg-ink-700 text-stone-400 hover:bg-ink-600 hover:text-stone-200'
+      : 'bg-moon-600 text-stone-50 hover:bg-moon-500';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${cls} px-3 py-1.5 rounded-soft text-xs transition-colors duration-slow`}
+      style={{ minHeight: 32 }}
+    >
+      {children}
+    </button>
   );
 }
 

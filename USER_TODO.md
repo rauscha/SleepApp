@@ -157,21 +157,31 @@ content to ship.)
 
 ---
 
-## iOS device overnight test (Phase 5)  ← **in flight tonight 2026-05-14, result expected AM 2026-05-15**
+## Overnight device tests (Phase 5)  ← **iOS + Android in parallel tonight 2026-05-15**
 
-Wife is running the test on her iPhone overnight 2026-05-14 → 2026-05-15.
-Result expected in the morning. Process:
+Last night: Android crashed at ~10 min. iOS test result still pending
+from wife's iPhone. Tonight: run both phones in parallel against the
+same dev server. MediaSession metadata + lifecycle log are now in place
+(this morning's commit), so if Android crashes again the log will tell
+us why.
 
-- [ ] Install the app as a PWA on the iPhone — via HTTPS dev server now
-  available at `https://crane-desk:5173/` or LAN IP (basic-ssl plugin
-  serves a self-signed cert; tap through the warning once).
-- [ ] Pick a scene, set a no-timer playback, lock the phone, leave it
-  overnight (8+ hours).
-- [ ] At wake: listen for any seam, fade-to-silence, or stutter. Note
-  what scene + what time the issue happened (if any).
+Setup (per phone, once):
+- [ ] Visit `https://crane-desk:5173/` (or LAN IP), tap through the
+  self-signed cert warning, install as PWA if you want home-screen.
+- [ ] Pick a scene, no timer, lock the phone, leave 8+ hours.
 
-This is the only way to verify the iOS Safari setTimeout-throttling fix
-(commit e70dc49) in production conditions.
+In the morning:
+- [ ] Listen for seams / fade-to-silence / stutter / "audio just stopped".
+- [ ] In each phone's app: Settings → Diagnostics → **Share** (or Copy /
+  Download). Capture the log even if the night went fine — a clean
+  log is also useful baseline.
+- [ ] If Android crashed again, look at the log for `freeze` events
+  near the crash time. If `freeze` fires before the tab dies, the next
+  fix is Wake Lock (see NEXT_STEPS P5-9).
+
+Coverage suggestion: run different scenes on each phone to exercise
+both the FileLayer pipeline (ambient scenes) and Howler/ContentPlayer
+(a meditation) in one night.
 
 ---
 

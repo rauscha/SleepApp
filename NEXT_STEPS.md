@@ -1,8 +1,13 @@
 # Next steps — current project state
 
-Last updated: end of session 2026-05-14. Phase 5 content shipped (3 meditations + 3 scene photos), HTTPS dev server wired, iOS overnight test running on wife's iPhone.
+Last updated: 2026-05-15 AM. Android overnight test crashed at ~10 min last night; iOS test result still pending from wife's iPhone. This session: shipped MediaSession metadata + a persistent lifecycle log so tonight's runs (iOS + Android in parallel) survive longer and produce diagnostic data on failure.
 
-**Next session (2026-05-15 AM): voice design** — design 5 custom ElevenLabs voices (Hush, Ember, Glen, Tide, Stone), wire IDs, regenerate the 3 meditations. See `USER_TODO.md` § "ElevenLabs Voice Design". Also: collect iOS overnight test result + sleep-stories smoke test.
+**Next session priorities (still 2026-05-15):**
+1. Voice design — design 5 custom ElevenLabs voices (Hush, Ember, Glen, Tide, Stone), wire IDs, regenerate the 3 meditations. See `USER_TODO.md` § "ElevenLabs Voice Design".
+2. Collect iOS overnight result.
+3. Sleep-stories smoke test (still open).
+
+**Tonight's run:** iOS + Android in parallel against the same dev server. After wake, Settings → Diagnostics → Share to dump each phone's lifecycle log. If Android still crashes, the log will show whether the tab was frozen/discarded vs. some other failure — Wake Lock is the next lever to pull if so.
 
 ---
 
@@ -78,6 +83,27 @@ Forest, Rain, Fireplace photos shipped (commit 7e46293). Layered
 under a top→bottom dark gradient (`PHOTO_OVERLAY`) in `TonightScreen.tsx`
 so text stays legible on bright frames. Raw originals + 9 future-scene
 photos sit in untracked `ACR-photos/`.
+
+### P5-8 MediaSession + lifecycle log — ✅ (this session)
+`navigator.mediaSession.metadata` is now set whenever a scene starts
+(`src/audio/mediaSession.ts`, wired in `PlayerScreen.tsx`). The OS-level
+"this tab is a media session" signal raises the tab's priority against
+Chrome's background-discard heuristic on Android and surfaces the scene
+name on the lock screen.
+
+`src/diagnostics/lifecycleLog.ts` captures visibilitychange / freeze /
+resume / pagehide / pageshow / error / unhandled-rejection events plus
+audio-state transitions and scene start/stop. Persisted to localStorage
+(cap 500 entries, FIFO). Settings → Diagnostics surfaces the log with
+Share / Copy / Download / Clear buttons. Web Share API used on devices
+that support it, clipboard fallback otherwise.
+
+### P5-9 Wake Lock — held until tonight's data lands 🔲
+If tonight's lifecycle log shows the Android tab still being frozen at
+~10 min despite MediaSession, the next lever is `screen.wakeLock`. Held
+back for now because it has real battery cost and a faint conflict with
+the "no demands on the user" design (phone has to be plugged in to be
+useful with a wake lock).
 
 ---
 
