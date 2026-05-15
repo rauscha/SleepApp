@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 
 // Injects a precache manifest into public/sw.js after build. The service
 // worker needs the exact hashed JS/CSS filenames to addAll() them on
@@ -46,7 +47,12 @@ function swPrecachePlugin(): Plugin {
 // the URL directly to AudioContext.audioWorklet.addModule(). Vite will serve
 // /public/* at the site root.
 export default defineConfig({
-  plugins: [react(), swPrecachePlugin()],
+  // basicSsl() ships a self-signed cert so the dev + preview servers are
+  // reachable over HTTPS from phones on the LAN. AudioWorklet (and any
+  // other secure-context-only API) won't load over plain http://<host>
+  // — only http://localhost gets the secure-context exemption. Tap
+  // through the cert warning once per device.
+  plugins: [react(), basicSsl(), swPrecachePlugin()],
   server: {
     port: 5173,
     host: true,
@@ -54,7 +60,7 @@ export default defineConfig({
     // via `tailscale serve`. Leading-dot is Vite's wildcard for subdomains —
     // covers every device in this tailnet without disabling host protection
     // entirely. localhost / LAN-IP access is unaffected.
-    allowedHosts: ['.saiga-wage.ts.net'],
+    allowedHosts: ['.saiga-wage.ts.net', 'crane-desk', '.local'],
     // Don't trigger a Vite page reload when test files change — Vitest
     // runs them separately, and a full reload in the running app kills
     // any in-progress audio session.
@@ -70,7 +76,7 @@ export default defineConfig({
   preview: {
     port: 4173,
     host: true,
-    allowedHosts: ['.saiga-wage.ts.net'],
+    allowedHosts: ['.saiga-wage.ts.net', 'crane-desk', '.local'],
   },
   build: {
     target: 'es2022',
