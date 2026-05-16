@@ -1,6 +1,6 @@
 # Next steps — current project state
 
-Last updated: 2026-05-15 PM. Android overnight test crashed at ~10 min last night; iOS test result still pending from wife's iPhone. Earlier today: MediaSession metadata + persistent lifecycle log shipped. This session: hardened the story generator pre-smoke-test — pulled title/duration/id derivation out as pure functions, replaced the fragile script-regex title heuristic with a theme-based title, added 21 unit tests.
+Last updated: 2026-05-16 AM. Android overnight test crashed at ~10 min night before last; iOS test result still pending from wife's iPhone. Recent: MediaSession metadata + persistent lifecycle log shipped 2026-05-15. This session: hardened the story generator pre-smoke-test — pulled title/duration/id derivation out as pure functions (replacing the fragile script-regex title heuristic), added 21 unit tests, made long generations cancellable via AbortController + a Cancel button.
 
 **Next session priorities (still 2026-05-15):**
 1. Voice design — design 5 custom ElevenLabs voices (Hush, Ember, Glen, Tide, Stone), wire IDs, regenerate the 3 meditations. See `USER_TODO.md` § "ElevenLabs Voice Design". (In-flight in branch `claude/hungry-tesla-a1926e`.)

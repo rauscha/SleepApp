@@ -4,7 +4,7 @@
 // Shows live step progress ("Writing script…", "Synthesizing…", "Saving…").
 // Generation takes 1–5 minutes; the screen stays open while it runs.
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSetting } from '../storage';
 import { generateStory } from '../services/storyGenerator';
 import type { GenerationStep } from '../services/storyGenerator';
@@ -32,9 +32,21 @@ export function StoryGeneratorScreen({
   const [busy, setBusy] = useState(false);
   const [steps, setSteps] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Keep the controller in a ref so the Cancel button can reach it without
+  // forcing a re-render every time it changes. Aborted on unmount as well
+  // so leaving the screen mid-generation tears the fetch down.
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   const addStep = useCallback((msg: string) => {
     setSteps((prev) => [...prev, msg]);
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    abortRef.current?.abort();
   }, []);
 
   const handleGenerate = useCallback(async () => {
@@ -58,20 +70,31 @@ export function StoryGeneratorScreen({
     setError(null);
     setSteps([]);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const meta = await generateStory({
         theme: theme.trim(),
         voiceName: voice,
         anthropicApiKey: anthropicKey,
         elevenLabsApiKey: elevenLabsKey,
+        signal: controller.signal,
         onProgress: (step: GenerationStep) => {
           if (step.stage !== 'done') addStep(step.message);
         },
       });
       onDone(meta.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      // AbortError is the user pressing Cancel — not really an error.
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setError('Cancelled.');
+      } else {
+        setError(err instanceof Error ? err.message : String(err));
+      }
       setBusy(false);
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
     }
   }, [theme, voice, addStep, onDone]);
 
@@ -148,16 +171,27 @@ export function StoryGeneratorScreen({
           story. Stories are saved permanently — no regeneration needed.
         </p>
 
-        {/* Generate button */}
-        <button
-          onClick={handleGenerate}
-          disabled={busy || !theme.trim()}
-          className="w-full py-3 rounded-soft bg-moon-600 text-stone-50
-                     text-sm font-medium transition-all duration-slow ease-exhale
-                     active:bg-moon-500 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {busy ? 'Generating…' : 'Generate story'}
-        </button>
+        {/* Generate / Cancel button */}
+        {busy ? (
+          <button
+            onClick={handleCancel}
+            className="w-full py-3 rounded-soft bg-ink-700 text-stone-200
+                       text-sm font-medium transition-all duration-slow ease-exhale
+                       active:bg-ink-600"
+          >
+            Cancel
+          </button>
+        ) : (
+          <button
+            onClick={handleGenerate}
+            disabled={!theme.trim()}
+            className="w-full py-3 rounded-soft bg-moon-600 text-stone-50
+                       text-sm font-medium transition-all duration-slow ease-exhale
+                       active:bg-moon-500 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Generate story
+          </button>
+        )}
 
         {/* Progress steps */}
         {steps.length > 0 && (

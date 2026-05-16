@@ -58,6 +58,10 @@ export interface GenerateStoryOptions {
   anthropicApiKey: string;
   elevenLabsApiKey: string;
   onProgress?: (step: GenerationStep) => void;
+  /** Pass an AbortSignal to allow the user (or unmount) to cancel
+   *  mid-flight. fetch() rejects with an AbortError when aborted; the
+   *  caller can recognize it via error.name === 'AbortError'. */
+  signal?: AbortSignal;
 }
 
 export type GenerationStep =
@@ -137,12 +141,12 @@ export function buildStoryMetadata(args: {
 export async function generateStory(
   opts: GenerateStoryOptions
 ): Promise<StoryMetadata> {
-  const { theme, voiceName, anthropicApiKey, elevenLabsApiKey, onProgress } =
+  const { theme, voiceName, anthropicApiKey, elevenLabsApiKey, onProgress, signal } =
     opts;
 
   // --- Step 1: Write the script with Claude ---
   onProgress?.({ stage: 'writing', message: 'Writing script with Claude…' });
-  const script = await callClaude(anthropicApiKey, theme);
+  const script = await callClaude(anthropicApiKey, theme, signal);
 
   // --- Step 2: Synthesize audio with ElevenLabs ---
   onProgress?.({
@@ -150,7 +154,7 @@ export async function generateStory(
     message: 'Synthesizing audio with ElevenLabs…',
   });
   const voiceId = STORY_VOICE_IDS[voiceName] ?? STORY_VOICE_IDS['hush']!;
-  const audioBuffer = await callElevenLabs(elevenLabsApiKey, voiceId, script);
+  const audioBuffer = await callElevenLabs(elevenLabsApiKey, voiceId, script, signal);
 
   // --- Step 3: Save ---
   onProgress?.({ stage: 'saving', message: 'Saving…' });
@@ -176,9 +180,14 @@ export async function generateStory(
 // ---------------------------------------------------------------------------
 // API helpers
 
-async function callClaude(apiKey: string, theme: string): Promise<string> {
+async function callClaude(
+  apiKey: string,
+  theme: string,
+  signal?: AbortSignal
+): Promise<string> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal,
     headers: {
       'content-type': 'application/json',
       'x-api-key': apiKey,
@@ -215,12 +224,14 @@ async function callClaude(apiKey: string, theme: string): Promise<string> {
 async function callElevenLabs(
   apiKey: string,
   voiceId: string,
-  text: string
+  text: string,
+  signal?: AbortSignal
 ): Promise<ArrayBuffer> {
   const res = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
     {
       method: 'POST',
+      signal,
       headers: {
         'content-type': 'application/json',
         'xi-api-key': apiKey,
