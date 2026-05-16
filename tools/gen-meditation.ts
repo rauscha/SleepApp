@@ -15,13 +15,13 @@
  *   npx tsx tools/gen-meditation.ts \
  *     --title "Evening body scan" \
  *     --style body-scan \
- *     --voice tide \
+ *     --voice hush \
  *     --id   evening-body-scan
  *
  * Arguments (all optional — defaults shown):
  *   --title   Human-readable title displayed in the Library
  *   --style   body-scan | breath-focus | visualization  (default: body-scan)
- *   --voice   tide | stone  (default: tide)
+ *   --voice   hush | ember | glen  (default: hush)
  *   --id      Filename stem, e.g. "morning-scan" → morning-scan.mp3
  *             (defaults to a kebab-case version of --title)
  */
@@ -36,12 +36,14 @@ const MEDITATIONS_DIR = join(REPO_ROOT, 'public', 'meditations');
 const INDEX_PATH = join(MEDITATIONS_DIR, 'index.json');
 
 // ---------------------------------------------------------------------------
-// Voice map (premade ElevenLabs voices — replace with custom voice IDs after
-// Voice Design workflow)
+// Voice map — custom voices from the ElevenLabs Voice Design portal.
+// These are the meditation voices; story voices (tide, design) live in
+// src/services/storyGenerator.ts.
 
 const VOICE_IDS: Record<string, string> = {
-  tide:  'MF3mGyEYCl7XYWbV9V6O', // Elli   — soft female
-  stone: 'pNInz6obpgDQGcFmaJgB', // Adam   — calm neutral male
+  hush:  'mZTVERjx1WQkdAWt1Lcm', // Grace  — soft female
+  ember: '1mrmwdWVC5cggRCdxBXt', // Monika — warm female
+  glen:  'iRItcIx4sdrKJ1k6Ovv7', // Jerry  — male
 };
 
 // ---------------------------------------------------------------------------
@@ -102,7 +104,7 @@ function parseArgs() {
   return {
     title: get('--title', 'Evening body scan'),
     style: get('--style', 'body-scan') as 'body-scan' | 'breath-focus' | 'visualization',
-    voice: get('--voice', 'tide') as 'tide' | 'stone',
+    voice: get('--voice', 'hush') as 'hush' | 'ember' | 'glen',
     id:    get('--id', ''),
   };
 }
@@ -197,7 +199,7 @@ async function main() {
   const audioPath = `${id}.mp3`;
   const voiceId = VOICE_IDS[voice];
   if (!voiceId) {
-    console.error(`ERROR: unknown voice "${voice}". Valid: tide, stone`);
+    console.error(`ERROR: unknown voice "${voice}". Valid: hush, ember, glen`);
     process.exit(1);
   }
 

@@ -1,11 +1,12 @@
 # Next steps — current project state
 
-Last updated: 2026-05-16 AM. Android overnight test crashed at ~10 min night before last; iOS test result still pending from wife's iPhone. Recent: MediaSession metadata + persistent lifecycle log shipped 2026-05-15. This session: hardened the story generator pre-smoke-test — pulled title/duration/id derivation out as pure functions (replacing the fragile script-regex title heuristic), added 21 unit tests, made long generations cancellable via AbortController + Cancel button, and made ElevenLabs failure recoverable by logging the script to console so the Claude work isn't wasted.
+Last updated: 2026-05-16 AM. Android overnight test crashed at ~15 min last night (regression vs. the prior ~10 min crash — MediaSession alone wasn't enough). iOS test result still pending. This session: wired in the user-designed custom ElevenLabs voices, swapped the story/meditation voice categories (Tide + Design are now the story narrators; Hush, Ember, Glen are the meditation voices), moved the ElevenLabs key from a publicly-served file into `.env.local`.
 
-**Next session priorities (still 2026-05-15):**
-1. Voice design — design 5 custom ElevenLabs voices (Hush, Ember, Glen, Tide, Stone), wire IDs, regenerate the 3 meditations. See `USER_TODO.md` § "ElevenLabs Voice Design". (In-flight in branch `claude/hungry-tesla-a1926e`.)
-2. Collect iOS overnight result.
-3. Sleep-stories smoke test (still open).
+**Next session priorities (2026-05-16):**
+1. Regenerate the 3 meditations with the new Hush/Ember/Glen voices (CLI: `npx tsx tools/gen-meditation.ts --voice hush ...`).
+2. Sleep-stories smoke test with Tide / Design voices.
+3. Investigate the 15-min Android crash via the lifecycle log — Wake Lock (P5-9) likely the next lever.
+4. Collect iOS overnight result.
 
 **Tonight's run:** iOS + Android in parallel against the same dev server. After wake, Settings → Diagnostics → Share to dump each phone's lifecycle log. If Android still crashes, the log will show whether the tab was frozen/discarded vs. some other failure — Wake Lock is the next lever to pull if so.
 

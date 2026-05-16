@@ -130,7 +130,7 @@ describe('buildStoryMetadata', () => {
     const meta = buildStoryMetadata({
       id: 'story-test-123',
       theme: 'a winter cabin',
-      voiceName: 'hush',
+      voiceName: 'tide',
       script,
       createdAt: '2026-05-15T00:00:00.000Z',
     });
@@ -138,7 +138,7 @@ describe('buildStoryMetadata', () => {
       id: 'story-test-123',
       title: 'A winter cabin',
       theme: 'a winter cabin',
-      voiceId: 'hush',
+      voiceId: 'tide',
       createdAt: '2026-05-15T00:00:00.000Z',
       durationSeconds: 120,
       script,
@@ -151,7 +151,7 @@ describe('buildStoryMetadata', () => {
     const meta = buildStoryMetadata({
       id: 'x',
       theme: 't',
-      voiceName: 'hush',
+      voiceName: 'tide',
       script: 'hello world',
     });
     const after = Date.now();
@@ -164,7 +164,7 @@ describe('buildStoryMetadata', () => {
     const meta = buildStoryMetadata({
       id: 'x',
       theme: 't',
-      voiceName: 'hush',
+      voiceName: 'tide',
       script: 'hello',
     });
     expect(meta.sceneId).toBeNull();

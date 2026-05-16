@@ -27,8 +27,8 @@ export interface UserSettings {
 
   /** Default voices for stories and meditations. Voice IDs from §6 of brief. */
   voices: {
-    storyVoiceId: 'hush' | 'ember' | 'glen';
-    meditationVoiceId: 'tide' | 'stone';
+    storyVoiceId: 'tide' | 'design';
+    meditationVoiceId: 'hush' | 'ember' | 'glen';
   };
 
   /** ElevenLabs API key. Stored locally only. NEVER phone-home. */

@@ -10,8 +10,9 @@
 // `anthropic-dangerous-direct-browser-access: true` header (Anthropic's
 // own mechanism for acknowledging browser key exposure in personal apps).
 //
-// Voice IDs: the map below uses ElevenLabs premade voices as stand-ins.
-// Replace with custom voice IDs once the Voice Design workflow is run.
+// Voice IDs: custom voices designed in the ElevenLabs Voice Design
+// portal. Stories use Tide (female) and Design (male); meditations use
+// Hush, Ember, and Glen.
 
 import { saveStory, saveStoryAudio } from '../storage';
 import type { StoryMetadata } from '../storage/types';
@@ -19,17 +20,15 @@ import type { StoryMetadata } from '../storage/types';
 // ---------------------------------------------------------------------------
 // Voice map
 
-/** Premade ElevenLabs voice IDs for each named voice. Update when custom
- *  voices are created in the ElevenLabs Voice Design portal. */
 export const STORY_VOICE_IDS: Record<string, string> = {
-  hush:  'EXAVITQu4vr4xnSDxMaL', // Bella   — soft female
-  ember: '21m00Tcm4TlvDq8ikWAM', // Rachel  — warm storytelling female
-  glen:  'TxGEqnHWrfWFTfGW9XjX', // Josh    — deep resonant male
+  tide:   'iaVB01xXKi5tTnyhmOJ7', // Jenna  — soft female narrator
+  design: 'wgHvco1wiREKN0BdyVx5', // Drew   — male narrator
 };
 
 export const MEDITATION_VOICE_IDS: Record<string, string> = {
-  tide:  'MF3mGyEYCl7XYWbV9V6O', // Elli    — soft female
-  stone: 'pNInz6obpgDQGcFmaJgB', // Adam    — calm neutral male
+  hush:  'mZTVERjx1WQkdAWt1Lcm', // Grace   — soft female
+  ember: '1mrmwdWVC5cggRCdxBXt', // Monika  — warm female
+  glen:  'iRItcIx4sdrKJ1k6Ovv7', // Jerry   — male
 };
 
 // ---------------------------------------------------------------------------
@@ -54,7 +53,7 @@ Output ONLY the story text. No title, no preamble, no quotation marks.`;
 
 export interface GenerateStoryOptions {
   theme: string;
-  voiceName: 'hush' | 'ember' | 'glen';
+  voiceName: 'tide' | 'design';
   anthropicApiKey: string;
   elevenLabsApiKey: string;
   onProgress?: (step: GenerationStep) => void;
@@ -153,7 +152,7 @@ export async function generateStory(
     stage: 'synthesizing',
     message: 'Synthesizing audio with ElevenLabs…',
   });
-  const voiceId = STORY_VOICE_IDS[voiceName] ?? STORY_VOICE_IDS['hush']!;
+  const voiceId = STORY_VOICE_IDS[voiceName] ?? STORY_VOICE_IDS['tide']!;
   const audioBuffer = await callElevenLabs(elevenLabsApiKey, voiceId, script, signal);
 
   // --- Step 3: Save ---

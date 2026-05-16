@@ -23,8 +23,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
     hasCalibrated: false,
   },
   voices: {
-    storyVoiceId: 'hush',
-    meditationVoiceId: 'tide',
+    storyVoiceId: 'tide',
+    meditationVoiceId: 'hush',
   },
   elevenLabsApiKey: null,
   anthropicApiKey: null,
