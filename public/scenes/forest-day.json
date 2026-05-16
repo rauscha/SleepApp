@@ -23,6 +23,11 @@
           "id": "creek-1",
           "url": "/audio/forest-day/creek-trickle/creek-1.mp3",
           "attribution": "Pixabay — see /audio/forest-day/creek-trickle/creek-1.json for license + replace-when notes."
+        },
+        {
+          "id": "creek-2",
+          "url": "/audio/forest-day/creek-trickle/creek-2.mp3",
+          "attribution": "User-provided — see /audio/forest-day/creek-trickle/creek-2.json for license."
         }
       ]
     },
@@ -38,6 +43,11 @@
           "id": "wind-1",
           "url": "/audio/forest-day/wind-in-leaves/wind-1.mp3",
           "attribution": "Pixabay — see /audio/forest-day/wind-in-leaves/wind-1.json for license."
+        },
+        {
+          "id": "wind-2",
+          "url": "/audio/forest-day/wind-in-leaves/wind-2.mp3",
+          "attribution": "User-provided — see /audio/forest-day/wind-in-leaves/wind-2.json for license."
         }
       ]
     },

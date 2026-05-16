@@ -1,27 +1,14 @@
 # Next steps — current project state
 
-Last updated: 2026-05-16 AM. Android overnight test crashed at ~15 min last night (regression vs. the prior ~10 min crash — MediaSession alone wasn't enough). iOS test result still pending. This session: wired in the user-designed custom ElevenLabs voices, swapped the story/meditation voice categories (Tide + Design are now the story narrators; Hush, Ember, Glen are the meditation voices), moved the ElevenLabs key from a publicly-served file into `.env.local`.
+Last updated: 2026-05-16 PM. Android overnight test crashed at ~15 min last night (regression vs. the prior ~10 min crash — MediaSession alone wasn't enough). iOS test result still pending. This session: wired in the user-designed custom ElevenLabs voices, swapped the story/meditation voice categories (Tide + Design are now the story narrators; Hush, Ember, Glen are the meditation voices), moved the ElevenLabs key from a publicly-served file into `.env.local`, then deployed 7 new user-provided scene variants (creek-2, wind-2, pavement-2, close-2/3, distant-2/3) and removed the 3 ambiguous `fireplace-{1,2,3}` raw dupes.
 
 **Next session priorities (2026-05-16):**
-1. Process + wire in the new raw-sounds variants the user dropped in
-   `raw-sounds/`. Mapping below; `fireplace-{1,2,3}.{wav,aiff}` deferred
-   pending user re-labelling as close vs. distant.
-   - `creek-2.mp3`               → forest-day/creek-trickle/creek-2
-   - `Wind-in-trees-2.wav`       → forest-day/wind-in-leaves/wind-2
-   - `rain-pavement-2.mp3`       → rain-on-window/rain-pavement/pavement-2
-   - `fireplace-close-2.wav`     → fireplace/fire-close/close-2
-   - `fireplace-close-3.mp3`     → fireplace/fire-close/close-3
-   - `fireplace-far-2.wav`       → fireplace/fire-distant/distant-2
-   - `fireplace-far-3.aiff`      → fireplace/fire-distant/distant-3
-   Steps: ffprobe each for duration, extend `tools/process-raw-sounds.sh`
-   with new `process …` lines, run, update the scene JSONs in
-   `public/scenes/` to add each new variant to its element's rotation.
-2. Regenerate the 3 meditations with the new Hush/Ember/Glen voices
+1. Regenerate the 3 meditations with the new Hush/Ember/Glen voices
    (CLI: `npx tsx tools/gen-meditation.ts --voice hush ...`).
-3. Sleep-stories smoke test with Tide / Design voices.
-4. Investigate the 15-min Android crash via the lifecycle log — Wake
+2. Sleep-stories smoke test with Tide / Design voices.
+3. Investigate the 15-min Android crash via the lifecycle log — Wake
    Lock (P5-9) likely the next lever.
-5. Collect iOS overnight result.
+4. Collect iOS overnight result.
 
 **Tonight's run:** iOS + Android in parallel against the same dev server. After wake, Settings → Diagnostics → Share to dump each phone's lifecycle log. If Android still crashes, the log will show whether the tab was frozen/discarded vs. some other failure — Wake Lock is the next lever to pull if so.
 
@@ -141,10 +128,10 @@ useful with a wake lock).
    render under a dark overlay gradient in `TonightScreen.tsx`. Raw
    sources stay in untracked `ACR-photos/`. Photos for any future scenes
    (waterfall, beach, forest-night, etc.) still TODO.
-2. **Variant pool minimum** — five of eight scene elements ship with only
-   one variant. Crossfade still works (same-buffer rotation), but the
-   rotation pool isn't doing useful work yet. See `USER_TODO.md` for
-   the per-element gap list.
+2. **Variant pool minimum** — after the 2026-05-16 deploy, every scene
+   element has ≥2 variants (creek/wind/pavement now 2, fire-close +
+   fire-distant now 3). Rotation is doing useful work. Further variants
+   still welcome — see `USER_TODO.md` for the per-element gap list.
 3. **Tinnitus revival** — weak evidence base + UX issues shelved it. Skip
    entirely in v1 or find a simpler entry point?
 4. ~~**Howler for story playback**~~ — **resolved.** Phase 4 wired Howler
