@@ -67,6 +67,71 @@ export type GenerationStep =
   | { stage: 'done'; storyId: string };
 
 // ---------------------------------------------------------------------------
+// Pure helpers (exported for tests)
+
+/** Count words in a string. Returns 0 for empty/whitespace input. */
+export function countWords(text: string): number {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).length;
+}
+
+/** Estimate spoken duration in seconds at the given words-per-minute pace.
+ *  130 wpm matches a slow, deliberate sleep-story narration. */
+export function estimateDurationSeconds(script: string, wpm = 130): number {
+  const words = countWords(script);
+  if (words === 0) return 0;
+  return Math.round((words / wpm) * 60);
+}
+
+/** Derive a human-readable title from the user's theme. Falls back to a
+ *  generic label if the theme is empty or whitespace.
+ *
+ *  Why theme-based instead of script-derived: the previous heuristic
+ *  (regex over the first sentence) silently failed when the opening
+ *  sentence was longer than 80 chars or shorter than 20, producing
+ *  partial-theme titles. The theme is already a tight summary the user
+ *  wrote — capitalize it and use it directly. */
+export function deriveTitle(theme: string): string {
+  const trimmed = theme.trim();
+  if (!trimmed) return 'Sleep story';
+  const cased = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  // Soft truncate at 60 chars to keep titles single-line in the Library
+  // list. Break at the last word boundary before the limit when possible.
+  if (cased.length <= 60) return cased;
+  const cut = cased.slice(0, 60);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > 30 ? cut.slice(0, lastSpace) : cut).trim() + '…';
+}
+
+/** Build a unique story id. Pass `now` and `rand` for deterministic tests. */
+export function makeStoryId(now = Date.now(), rand = Math.random()): string {
+  const suffix = rand.toString(36).slice(2, 8).padEnd(6, '0');
+  return `story-${now}-${suffix}`;
+}
+
+/** Build the StoryMetadata object that will be persisted. Pulled out so
+ *  tests can verify shape without running the full generation pipeline. */
+export function buildStoryMetadata(args: {
+  id: string;
+  theme: string;
+  voiceName: string;
+  script: string;
+  createdAt?: string;
+}): StoryMetadata {
+  return {
+    id: args.id,
+    title: deriveTitle(args.theme),
+    theme: args.theme,
+    voiceId: args.voiceName,
+    createdAt: args.createdAt ?? new Date().toISOString(),
+    durationSeconds: estimateDurationSeconds(args.script),
+    script: args.script,
+    sceneId: null,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 
 export async function generateStory(
@@ -89,36 +154,22 @@ export async function generateStory(
 
   // --- Step 3: Save ---
   onProgress?.({ stage: 'saving', message: 'Saving…' });
-  const id = `story-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const wordCount = script.trim().split(/\s+/).length;
-  // ~130 wpm average narration pace for a slow, deliberate reader
-  const durationSeconds = Math.round((wordCount / 130) * 60);
-
-  const titleMatch = /^(.{20,80}?)[.!?]/.exec(script.replace(/\[.*?\]/g, ''));
-  const title = titleMatch
-    ? titleMatch[1].trim()
-    : theme.slice(0, 40).trim();
-
-  const meta: StoryMetadata = {
-    id,
-    title,
+  const meta = buildStoryMetadata({
+    id: makeStoryId(),
     theme,
-    voiceId: voiceName,
-    createdAt: new Date().toISOString(),
-    durationSeconds,
+    voiceName,
     script,
-    sceneId: null,
-  };
+  });
 
   await saveStory(meta);
   await saveStoryAudio({
-    id,
+    id: meta.id,
     mimeType: 'audio/mpeg',
     data: audioBuffer,
     savedAt: new Date().toISOString(),
   });
 
-  onProgress?.({ stage: 'done', storyId: id });
+  onProgress?.({ stage: 'done', storyId: meta.id });
   return meta;
 }
 
