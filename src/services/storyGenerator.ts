@@ -251,8 +251,16 @@ async function callElevenLabs(
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
+    // The user just spent 30s+ and a few cents of Claude credits to get
+    // this script — log it so they can copy it from devtools and retry
+    // synthesis manually instead of paying for regeneration. Also fold
+    // the script length into the error itself: 422 from this endpoint
+    // is almost always a per-request character-limit hit, and the limit
+    // depends on the user's ElevenLabs plan tier — seeing the actual
+    // length lets them know whether to upgrade or shorten the prompt.
+    console.error('ElevenLabs synth failed — preserving script:', text);
     throw new Error(
-      `ElevenLabs API error ${res.status}: ${body.slice(0, 200)}`
+      `ElevenLabs API error ${res.status} (script ${text.length} chars): ${body.slice(0, 200)}`
     );
   }
 
