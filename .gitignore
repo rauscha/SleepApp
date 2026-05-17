@@ -27,3 +27,6 @@ ACR-photos/
 elevenlabs.txt
 anthropic.txt
 *.secret.txt
+
+# mkcert-generated dev certs — per-machine, regenerate via tools/gen-dev-cert
+certs/
