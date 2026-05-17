@@ -87,24 +87,58 @@ Then add the entry to `SCENE_PHOTOS` in `TonightScreen.tsx`.
 
 ---
 
-## PWA icon — replace placeholder
+## Install on your iPhone (PWA) — ← **do this next**
 
-The app ships an SVG placeholder at `public/icons/icon.svg` (sage crescent
-on ink background). It satisfies the manifest and renders fine on Android
-home screens. Two limitations worth knowing:
+The build is install-ready: PNG icons (192/512/maskable/180), full manifest
+with `categories: ["health","lifestyle"]`, `display: "standalone"`, dark
+theme/background, service worker precaches the app shell + hashed JS/CSS so
+the app loads from the home screen with no network.
 
-- iOS Safari prefers raster apple-touch-icon. Older iOS versions may show
-  a generic glyph until you provide PNGs.
-- The current art has no typography or photography — it's a Phase 5
-  scaffold, not a real brand mark.
+### One-time setup on the desktop
+1. From the SleepApp directory:
+   ```
+   npm run build
+   npm run preview     # serves dist/ on https://<host>:4173
+   ```
+   (HTTPS comes from `@vitejs/plugin-basic-ssl` — self-signed cert, fine for
+   a single user on LAN. iOS Add-to-Home-Screen requires HTTPS; that's why
+   we're not just using `npm run dev` over plain http.)
+2. Find your machine's LAN IP or hostname. Examples:
+   - `https://crane-desk:4173/`
+   - `https://crane-desk.saiga-wage.ts.net/` if you have `tailscale serve
+     --bg --https=443 http://localhost:4173` running (recommended — real
+     cert, no warning, works off-LAN too).
+   - `https://192.168.x.x:4173/` LAN IP fallback.
 
-- [ ] **Final icon art.** When ready, output:
-  - `public/icons/icon-192.png` (192×192)
-  - `public/icons/icon-512.png` (512×512)
-  - `public/icons/icon-maskable-512.png` (512×512, art inside inner 80%)
-  - `public/icons/apple-touch-icon.png` (180×180, no transparency)
-  Then update `public/manifest.json` `icons[]` and `index.html`'s
-  `<link rel="apple-touch-icon">` to point at the PNGs.
+### On the iPhone
+1. Make sure the phone is on the same Wi-Fi as the desktop (or has Tailscale
+   active if you're using the tailnet URL).
+2. Open **Safari** (not Chrome — only Safari can install PWAs on iOS).
+3. Go to the URL from step 2.
+4. **Cert warning** (only if you used the basic-ssl URL, not Tailscale):
+   tap "Show Details" → "visit this website" → "Visit Website" → enter
+   passcode if asked. iOS remembers per-host after that.
+5. App loads. Take a moment to verify a scene starts — that primes the
+   audio cache.
+6. Tap the **Share button** (square + up arrow at the bottom).
+7. Scroll the action sheet → **Add to Home Screen** → tap **Add** (top right).
+8. The Sleep icon (sage crescent on ink) appears on the home screen. Tap
+   it — opens full-screen, no Safari chrome, status bar dark.
+
+### What to expect after install
+- Airplane mode → opening from the home screen still loads the app shell
+  (network-first nav, falls back to cached `/`).
+- Scenes you've previously played load instantly from cache; new ones need
+  network on first play.
+- Updates: the SW deliberately does **not** `skipWaiting()` — a new build
+  activates on the next cold launch, never mid-session. So nightly updates
+  won't interrupt a running scene.
+
+- [ ] **Final icon art.** Current PNGs are placeholders (sage crescent on
+  ink, no typography). When a real brand mark lands, regenerate via
+  `node tools/gen-icons.mjs` (edit the script's BG/FG/geometry) or replace
+  the four files in `public/icons/` directly — manifest paths and the
+  apple-touch link in `index.html` stay as they are.
 
 ---
 
