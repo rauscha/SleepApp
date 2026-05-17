@@ -143,12 +143,37 @@ async function callClaude(apiKey: string, style: string): Promise<string> {
   return text;
 }
 
+/**
+ * Strip Claude's stage-direction markers ([pause], [softly], [long pause]…)
+ * from the script before it goes to ElevenLabs. The markers were authored
+ * for human prosody guidance; the TTS engine reads them out loud verbatim
+ * ("bracket pause bracket"), which is jarring at 2am. We convert [pause]
+ * variants to a real comma+ellipsis (which the engine respects as a beat)
+ * and drop the speaker-tone markers entirely (the slowed voice settings
+ * already deliver a gentle delivery).
+ */
+export function stripMeditationMarkers(text: string): string {
+  return text
+    // [long pause] / [pause] / [pause for a moment] → comma + ellipsis
+    .replace(/\[(?:long\s+)?pause(?:[^\]]*)\]/gi, ', …')
+    // [softly] / [whisper] / [gently] etc. — drop the marker, keep flow
+    .replace(/\[(?:softly|whisper(?:ing)?|gently|quietly|slowly)\]/gi, '')
+    // Any other bracketed stage direction we didn't anticipate
+    .replace(/\[[^\]]{1,40}\]/g, '')
+    // Collapse the whitespace we just introduced
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ ,/g, ',')
+    .replace(/\n[ \t]+/g, '\n')
+    .trim();
+}
+
 async function callElevenLabs(
   apiKey: string,
   voiceId: string,
   text: string
 ): Promise<Buffer> {
   console.log('  ⟳  Synthesizing with ElevenLabs…');
+  const cleaned = stripMeditationMarkers(text);
   const res = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
     {
@@ -158,10 +183,13 @@ async function callElevenLabs(
         'xi-api-key':   apiKey,
       },
       body: JSON.stringify({
-        text,
+        text: cleaned,
         model_id: 'eleven_multilingual_v2',
+        // Higher stability + low style = a steadier, slower delivery
+        // suited to bedtime narration. style:0 keeps the voice from
+        // adding any conversational lift; speaker boost stays on.
         voice_settings: {
-          stability: 0.8,
+          stability: 0.9,
           similarity_boost: 0.75,
           style: 0.0,
           use_speaker_boost: true,
