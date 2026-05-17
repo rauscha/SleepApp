@@ -18,3 +18,9 @@ export {
   saveStoryAudio,
   getStoryAudio,
 } from './assets';
+export {
+  getAnthropicApiKey,
+  getElevenLabsApiKey,
+  hasAnthropicEnvKey,
+  hasElevenLabsEnvKey,
+} from './apiKeys';
