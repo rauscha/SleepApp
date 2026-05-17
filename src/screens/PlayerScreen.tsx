@@ -23,6 +23,8 @@ import {
   setMediaSessionForScene,
 } from '../audio/mediaSession';
 import { recordEvent } from '../diagnostics/lifecycleLog';
+import { useWakeLock } from '../hooks/useWakeLock';
+import { startSwKeepAlive, stopSwKeepAlive } from '../serviceWorker/keepAlive';
 import { getSetting, setSetting } from '../storage';
 import { exitFullscreenSafe, requestFullscreenSafe } from '../utils/fullscreen';
 
@@ -137,6 +139,24 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
   const [scene, setScene] = useState<Scene | null>(() =>
     coordinator.getCurrentScene()
   );
+
+  // Background keep-alive: silent loop through the AudioContext + screen
+  // wake lock. Both engage as soon as a scene is live and disengage when
+  // it ends. Wake Lock is no-op on browsers that don't support it; the
+  // silent loop is the load-bearing piece for Android's audio focus
+  // heuristic.
+  useWakeLock(scene !== null);
+  useEffect(() => {
+    if (!scene) return;
+    engine.startKeepAlive();
+    startSwKeepAlive();
+    recordEvent('keepalive-start');
+    return () => {
+      engine.stopKeepAlive();
+      stopSwKeepAlive();
+      recordEvent('keepalive-stop');
+    };
+  }, [scene, engine]);
   const [mixerOpen, setMixerOpen] = useState(false);
   const [masterVolume, setMasterVolume] = useState<number>(
     () => getSetting('masterVolume')
@@ -264,13 +284,26 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     if (prev === currentId) return;
     if (currentId && scene) {
       recordEvent(prev ? 'scene-switch' : 'scene-start', currentId);
-      setMediaSessionForScene(scene.definition.label, { onStop: handleStop });
+      setMediaSessionForScene(scene.definition.label, {
+        onStop: handleStop,
+        // Ambient scenes have no real pause/resume semantics — pause is
+        // the same intent as stop ("end this scene now"). We wire play so
+        // the lock-screen control surface always has both buttons visible
+        // (some Android launchers hide the controls entirely if only stop
+        // is registered). Play attempts to resume a suspended context;
+        // engine.context throws if uninitialized, which it can't be here.
+        onPause: handleStop,
+        onPlay: () => {
+          const ctx = engine.context;
+          if (ctx.state === 'suspended') void ctx.resume();
+        },
+      });
     } else {
       recordEvent('scene-stop', prev ?? '?');
       clearMediaSession();
     }
     lastSceneIdRef.current = currentId;
-  }, [scene, handleStop]);
+  }, [scene, handleStop, engine]);
 
   // Belt-and-suspenders: clear the MediaSession when the Player unmounts
   // for any reason. The effect above already clears on stop, but a hard

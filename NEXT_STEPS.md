@@ -1,28 +1,51 @@
 # Next steps — current project state
 
-Last updated: 2026-05-17 AM. Regenerated the 3 starter meditations with
-the new meditation voices (body-scan→hush, breath→glen, forest→ember)
-and renamed the second story voice `design`→`stone` in code so the
-in-code identifier matches the user's 5-voice naming scheme (the
-underlying ElevenLabs voice ID is unchanged). 53 tests pass. Previous
-session wired the ElevenLabs Projects API into the story generator so
-long-form scripts (~3K words ≈ 17–20K chars) no longer hit the 5K-char
-per-request wall of the standard TTS endpoint — routing is ≤4.5K chars
-→ standard TTS; >4.5K chars → Projects API (gated by
-`VITE_ELEVENLABS_USE_PROJECTS`, default true on Creator plan), with
-chunked TTS + MP3 byte-concat as a transparent fallback on Projects
-errors. Meditations stay on the standard path. Android overnight test
-crashed at ~15 min two nights ago; iOS overnight result still pending.
+Last updated: 2026-05-17 PM. Shipped a five-commit batch covering most
+of today's surfaced work:
 
-**Next session priorities (2026-05-17):**
-1. Sleep-stories smoke test with Tide / Stone voices through the new
+1. **API-key env fallback** — `src/storage/apiKeys.ts` resolves
+   Anthropic + ElevenLabs keys from `VITE_*` build env first, falls
+   back to user-entered localStorage values. Settings surfaces a
+   "loaded from build env" badge when present.
+2. **Meditation marker-stripping** — `tools/gen-meditation.ts` strips
+   Claude's `[pause]`/`[softly]`/`[long pause]` stage directions
+   before ElevenLabs synthesis (they were being read out verbatim),
+   bumped stability to 0.9, regenerated the 3 starter MP3s.
+3. **Tailscale-default dev path** — `start-dev.bat` runs `tailscale
+   serve` to proxy `https://crane-desk.saiga-wage.ts.net` → Vite on
+   `localhost:5175`. Publicly-trusted Let's Encrypt cert, zero
+   per-device CA install on the phone. mkcert remains the off-tailnet
+   fallback via `VITE_USE_HTTPS=1`. See `notes/dev-cert-android.md`.
+4. **UX bug-batch** — removed the "Begin" gate (AudioContext unlocks
+   on first scene tap), fixed-viewport AppShell with always-visible
+   bottom nav (Tonight / Library / Settings), unified back-button
+   top-left across deep screens, synthetic history entries so OS back
+   gesture lands on Tonight instead of leaving the PWA, pull-to-refresh
+   disabled.
+5. **Background keep-alive stack (P5-9)** — Screen Wake Lock + extended
+   MediaSession (play/pause/stop handlers + dynamic playbackState) +
+   silent AudioContext loop through the master bus + 20-second SW
+   postMessage ping. All four engage when a scene/meditation/story
+   plays, disengage on stop. Lifecycle log records `keepalive-start` /
+   `keepalive-stop` so the next overnight test can confirm engagement.
+
+81/81 tests pass. Main bundle 198.05 kB (gzip 61.77 kB).
+
+**Next session priorities (2026-05-18):**
+1. Android overnight retest — keep-alive stack should push the discard
+   point well past 15 min. Lifecycle log will record `keepalive-start`
+   / `keepalive-stop` so we can confirm engagement.
+2. Sleep-stories smoke test with Tide / Stone voices through the
    Projects API path — verify a real 3K-word script renders end-to-end
-   and the audio plays cleanly in the Library.
-2. Investigate the 15-min Android crash via the lifecycle log — Wake
-   Lock (P5-9) likely the next lever.
+   and plays cleanly in the Library.
 3. Collect iOS overnight result.
 
-**Tonight's run:** iOS + Android in parallel against the same dev server. After wake, Settings → Diagnostics → Share to dump each phone's lifecycle log. If Android still crashes, the log will show whether the tab was frozen/discarded vs. some other failure — Wake Lock is the next lever to pull if so.
+**Tonight's run:** iOS + Android in parallel against the same dev
+server. The keep-alive stack is now in place — if Android still
+crashes, the lifecycle log will show whether `keepalive-start` fired
+and whether the freeze/discard sequence still landed, which narrows
+the next move (PWA install vs. periodic background sync vs.
+Howler-for-scenes).
 
 ---
 
@@ -34,7 +57,7 @@ crashed at ~15 min two nights ago; iOS overnight result still pending.
 | 2 | ✅ Done | Multi-layer scenes, coprime offsets, Surprise Me, Pixabay sources |
 | 3 | ✅ Done | Tonight + Player + Nightstand + Settings; CI; A1 iOS fix shipped |
 | 4 | ✅ Done | AI meditations (CLI pipeline) + AI sleep stories (on-demand in-app). Starter set of 3 meditations shipped — body-scan/breath-focus/visualization. |
-| 5 | 🔄 In progress | Polish — lazy-loading ✅, reduced-motion ✅, manifest ✅, service worker ✅, scene photos ✅, HTTPS dev server ✅, iOS overnight test 🔄 running tonight |
+| 5 | 🔄 In progress | Polish — lazy-loading ✅, reduced-motion ✅, manifest ✅, service worker ✅, scene photos ✅, HTTPS dev server ✅, keep-alive stack ✅, iOS overnight test 🔄 |
 
 ---
 
@@ -87,19 +110,24 @@ Safety choices to avoid the silent-gap failure mode:
 - Register only in `import.meta.env.PROD` — dev's `/src/*` paths would
   pollute the cache and HMR doesn't compose with SW interception.
 
-### P5-5 iOS device test (overnight) — 🔄 running 2026-05-14 → 2026-05-15
-Wife is running the test on her iPhone tonight. Result + any seam/
-fade-to-silence reports expected in the AM. With the SW in place this
-also exercises offline behaviour (airplane-mode mid-night should keep
-audio running from cache). See `USER_TODO.md`.
+A keep-alive postMessage handler (`type: 'ping'`) was added in P5-9 so
+the page can prevent the worker from being parked while a session is
+live — see that section.
 
-### P5-6 ✅ HTTPS dev server (basic-ssl)
-`@vitejs/plugin-basic-ssl` ships a self-signed cert so the dev + preview
-servers are reachable over HTTPS from phones on the LAN — required
-because AudioWorklet (and other secure-context-only Web APIs) refuse
-plain HTTP unless served from `localhost`. Phone hits
-`https://crane-desk:5173/` or LAN-IP equivalent, taps through the cert
-warning once, AudioWorklet loads. Commit 133108e.
+### P5-5 iOS device test (overnight) — 🔄 still pending result
+Wife's iPhone overnight test. With the SW in place this also exercises
+offline behaviour (airplane-mode mid-night should keep audio running
+from cache). See `USER_TODO.md`.
+
+### P5-6 ✅ HTTPS dev server — tailscale-default, mkcert fallback
+Reworked from the original basic-ssl approach. Default path is
+`start-dev.bat` → `tailscale serve --bg --https=443 http://localhost:5175`
+proxying a publicly-trusted Let's Encrypt cert at
+`https://crane-desk.saiga-wage.ts.net/`. Any device on the tailnet
+(phone included) hits the dev server with a green lock and zero
+per-device CA install. `VITE_USE_HTTPS=1` flips Vite into terminating
+TLS itself with mkcert certs under `certs/` (or basic-ssl fallback)
+for the off-tailnet case. Documented in `notes/dev-cert-android.md`.
 
 ### P5-7 Scene photos for shipped scenes — ✅
 Forest, Rain, Fireplace photos shipped (commit 7e46293). Layered
@@ -107,12 +135,13 @@ under a top→bottom dark gradient (`PHOTO_OVERLAY`) in `TonightScreen.tsx`
 so text stays legible on bright frames. Raw originals + 9 future-scene
 photos sit in untracked `ACR-photos/`.
 
-### P5-8 MediaSession + lifecycle log — ✅ (this session)
+### P5-8 MediaSession + lifecycle log — ✅
 `navigator.mediaSession.metadata` is now set whenever a scene starts
 (`src/audio/mediaSession.ts`, wired in `PlayerScreen.tsx`). The OS-level
 "this tab is a media session" signal raises the tab's priority against
 Chrome's background-discard heuristic on Android and surfaces the scene
-name on the lock screen.
+name on the lock screen. P5-9 extended this with action handlers and
+dynamic `playbackState`.
 
 `src/diagnostics/lifecycleLog.ts` captures visibilitychange / freeze /
 resume / pagehide / pageshow / error / unhandled-rejection events plus
@@ -121,12 +150,35 @@ audio-state transitions and scene start/stop. Persisted to localStorage
 Share / Copy / Download / Clear buttons. Web Share API used on devices
 that support it, clipboard fallback otherwise.
 
-### P5-9 Wake Lock — held until tonight's data lands 🔲
-If tonight's lifecycle log shows the Android tab still being frozen at
-~10 min despite MediaSession, the next lever is `screen.wakeLock`. Held
-back for now because it has real battery cost and a faint conflict with
-the "no demands on the user" design (phone has to be plugged in to be
-useful with a wake lock).
+### P5-9 ✅ Background keep-alive stack — Wake Lock + silent loop + SW ping
+Shipped after the 2026-05-16 Android crash at ~15 min. Four layers
+engage automatically while a scene/meditation/story plays and disengage
+on stop:
+
+- **Screen Wake Lock** (`src/hooks/useWakeLock.ts`) —
+  `navigator.wakeLock.request('screen')` with auto re-acquire on
+  visibilitychange (Android releases on hidden). Silently no-op on
+  Safari < 16.4 / unsupported browsers.
+- **MediaSession action handlers** (`src/audio/mediaSession.ts`) — now
+  registers play / pause / stop on top of the existing metadata, and
+  exposes `setMediaSessionPlaybackState` so ContentPlayerScreen can
+  reflect Howler's playing/paused state on the lock-screen widget.
+- **Silent AudioContext loop** (`src/audio/silentKeepAlive.ts`) — a 1s
+  zero-filled buffer routed through the master bus input via a zeroed
+  gain node, looped while a scene is live. Defeats Android's
+  audio-focus idle-suspend without any audible artefact.
+- **Service-worker ping** (`src/serviceWorker/keepAlive.ts` ↔ message
+  handler in `public/sw.js`) — 20-second `{type:'ping'}` postMessage
+  keeps the SW from being parked, so a discarded tab restarts from
+  cache instead of network.
+
+Lifecycle log records `keepalive-start` / `keepalive-stop` so the next
+overnight test can confirm engagement at the exact times we expect.
+
+Battery cost note: Wake Lock and the silent loop are both real-but-
+modest power draws. The "no demands on the user" rule is honoured —
+nothing prompts, nothing surfaces UI — but the phone should still be on
+the charger overnight as the brief assumed.
 
 ---
 

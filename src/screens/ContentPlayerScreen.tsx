@@ -7,6 +7,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Howl } from 'howler';
+import {
+  clearMediaSession,
+  setMediaSessionForScene,
+  setMediaSessionPlaybackState,
+} from '../audio/mediaSession';
+import { useWakeLock } from '../hooks/useWakeLock';
+import { startSwKeepAlive, stopSwKeepAlive } from '../serviceWorker/keepAlive';
 
 export interface ContentPlayerScreenProps {
   title: string;
@@ -87,6 +94,35 @@ export function ContentPlayerScreen({
       howlRef.current = null;
     };
   }, [audioUrl, startTick, stopTick]);
+
+  // Keep the device from suspending the page while a meditation or story
+  // is playing. Howler with html5: true uses an HTMLAudioElement which
+  // gets OS-level background audio treatment, but the wake lock and
+  // MediaSession metadata are what keep the *tab* itself alive long
+  // enough on Android for the OS to honour that treatment overnight.
+  useWakeLock(state === 'playing');
+
+  useEffect(() => {
+    if (state !== 'playing') return;
+    startSwKeepAlive();
+    return () => stopSwKeepAlive();
+  }, [state]);
+
+  useEffect(() => {
+    if (state === 'loading' || state === 'error') return;
+    setMediaSessionForScene(title, {
+      onPlay: () => howlRef.current?.play(),
+      onPause: () => howlRef.current?.pause(),
+      onStop: () => howlRef.current?.stop(),
+    });
+    return () => clearMediaSession();
+  }, [title, state]);
+
+  useEffect(() => {
+    if (state === 'playing') setMediaSessionPlaybackState('playing');
+    else if (state === 'paused') setMediaSessionPlaybackState('paused');
+    else if (state === 'ended') setMediaSessionPlaybackState('none');
+  }, [state]);
 
   const handlePlayPause = useCallback(() => {
     const h = howlRef.current;

@@ -13,6 +13,18 @@
 export interface SceneMediaHandlers {
   /** Called when the OS / lock-screen / headset triggers a stop action. */
   onStop?: () => void;
+  /**
+   * Called when the OS / lock-screen / headset triggers a play action.
+   * For ambient scenes there's no real "pause/resume" semantics — we
+   * map play to "resume the AudioContext if it got suspended". Wiring
+   * this handler is what gets the lock-screen play button to appear.
+   */
+  onPlay?: () => void;
+  /**
+   * Called when the OS / lock-screen / headset triggers a pause action.
+   * Map to whatever the app considers a soft-stop (e.g. fade-and-stop).
+   */
+  onPause?: () => void;
 }
 
 function hasMediaSession(): boolean {
@@ -27,7 +39,7 @@ function hasMediaSession(): boolean {
  * Tell the OS we're playing `sceneLabel`. Safe to call repeatedly — each
  * call replaces the previous metadata. Action handlers are registered
  * idempotently; pass `onStop: undefined` to leave the existing handler
- * in place.
+ * in place. Sets `playbackState = 'playing'`.
  */
 export function setMediaSessionForScene(
   sceneLabel: string,
@@ -46,6 +58,28 @@ export function setMediaSessionForScene(
   if (handlers.onStop !== undefined) {
     safeSetActionHandler('stop', handlers.onStop);
   }
+  if (handlers.onPlay !== undefined) {
+    safeSetActionHandler('play', handlers.onPlay);
+  }
+  if (handlers.onPause !== undefined) {
+    safeSetActionHandler('pause', handlers.onPause);
+  }
+}
+
+/**
+ * Flip the OS-visible playback state without changing metadata or
+ * handlers. Use when the user pauses/resumes a meditation or story so
+ * the lock-screen widget shows the right play/pause icon.
+ */
+export function setMediaSessionPlaybackState(
+  state: 'playing' | 'paused' | 'none'
+): void {
+  if (!hasMediaSession()) return;
+  try {
+    navigator.mediaSession.playbackState = state;
+  } catch {
+    /* noop */
+  }
 }
 
 /**
@@ -62,6 +96,8 @@ export function clearMediaSession(): void {
     /* noop */
   }
   safeSetActionHandler('stop', null);
+  safeSetActionHandler('play', null);
+  safeSetActionHandler('pause', null);
 }
 
 function safeSetActionHandler(

@@ -6,6 +6,7 @@
 // visibilitychange/focus, and an iOS priming buffer.
 
 import { MasterBus } from './MasterBus';
+import { SilentKeepAlive } from './silentKeepAlive';
 import type { Layer } from './types';
 
 export type EngineEvent =
@@ -23,6 +24,7 @@ export class AudioEngine {
   private layers = new Map<string, Layer>();
   private listeners = new Set<EngineListener>();
   private visibilityHandlerInstalled = false;
+  private keepAlive: SilentKeepAlive | null = null;
 
   static readonly LAYER_SOFT_CAP = 6;
 
@@ -200,6 +202,31 @@ export class AudioEngine {
 
   get activeLayerCount(): number {
     return this.layers.size;
+  }
+
+  /**
+   * Start a silent looping buffer through the master bus. Call this when a
+   * playback session begins (scene started) — it keeps Android Chrome from
+   * declaring the AudioContext idle and suspending it. Idempotent.
+   *
+   * See `silentKeepAlive.ts` for the rationale. Pair with stopKeepAlive()
+   * when playback fully ends.
+   */
+  startKeepAlive(): void {
+    if (!this.ctx || !this.masterBus) return;
+    if (!this.keepAlive) {
+      this.keepAlive = new SilentKeepAlive(this.ctx, this.masterBus.input);
+    }
+    this.keepAlive.start();
+  }
+
+  /** Stop the silent keep-alive loop. Safe to call when not started. */
+  stopKeepAlive(): void {
+    this.keepAlive?.stop();
+  }
+
+  get isKeepAliveRunning(): boolean {
+    return this.keepAlive?.isRunning ?? false;
   }
 
   addListener(fn: EngineListener): () => void {

@@ -79,6 +79,24 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Page-driven keep-alive ping. The page postMessages { type: 'ping' } on
+// an interval while audio is playing; receiving the message wakes the
+// worker if it had been parked by the browser. This is the only reliable
+// way to keep a SW warm — periodicSync requires installed-PWA + user
+// permission and isn't available everywhere we care about.
+self.addEventListener('message', (event) => {
+  const data = event.data;
+  if (data && data.type === 'ping') {
+    // No real work needed — just answering wakes the worker. If the
+    // sender included a port, send a pong so they can confirm the SW
+    // is alive (useful for diagnostics).
+    const port = event.ports && event.ports[0];
+    if (port) {
+      port.postMessage({ type: 'pong', ts: Date.now() });
+    }
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
