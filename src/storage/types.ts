@@ -27,7 +27,7 @@ export interface UserSettings {
 
   /** Default voices for stories and meditations. Voice IDs from §6 of brief. */
   voices: {
-    storyVoiceId: 'tide' | 'design';
+    storyVoiceId: 'tide' | 'stone';
     meditationVoiceId: 'hush' | 'ember' | 'glen';
   };
 

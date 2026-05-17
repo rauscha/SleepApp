@@ -9,11 +9,11 @@ import { getSetting } from '../storage';
 import { generateStory } from '../services/storyGenerator';
 import type { GenerationStep } from '../services/storyGenerator';
 
-type VoiceName = 'tide' | 'design';
+type VoiceName = 'tide' | 'stone';
 
 const VOICE_DESCRIPTIONS: Record<VoiceName, string> = {
-  tide:   'Soft, intimate (female)',
-  design: 'Warm, resonant (male)',
+  tide:  'Soft, intimate (female)',
+  stone: 'Warm, resonant (male)',
 };
 
 export interface StoryGeneratorScreenProps {
@@ -142,7 +142,7 @@ export function StoryGeneratorScreen({
         <div>
           <p className="text-sm text-stone-300 mb-3">Voice</p>
           <div className="space-y-2">
-            {(['tide', 'design'] as const).map((v) => (
+            {(['tide', 'stone'] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setVoice(v)}

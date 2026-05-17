@@ -11,7 +11,7 @@
 // own mechanism for acknowledging browser key exposure in personal apps).
 //
 // Voice IDs: custom voices designed in the ElevenLabs Voice Design
-// portal. Stories use Tide (female) and Design (male); meditations use
+// portal. Stories use Tide (female) and Stone (male); meditations use
 // Hush, Ember, and Glen.
 //
 // Long-form path: sleep stories run 2800–3200 words (~17–20K chars),
@@ -39,8 +39,8 @@ import type { StoryMetadata } from '../storage/types';
 // Voice map
 
 export const STORY_VOICE_IDS: Record<string, string> = {
-  tide:   'iaVB01xXKi5tTnyhmOJ7', // Jenna  — soft female narrator
-  design: 'wgHvco1wiREKN0BdyVx5', // Drew   — male narrator
+  tide:  'iaVB01xXKi5tTnyhmOJ7', // Jenna — soft female narrator
+  stone: 'wgHvco1wiREKN0BdyVx5', // Drew  — male narrator
 };
 
 export const MEDITATION_VOICE_IDS: Record<string, string> = {
@@ -87,7 +87,7 @@ Output ONLY the story text. No title, no preamble, no quotation marks.`;
 
 export interface GenerateStoryOptions {
   theme: string;
-  voiceName: 'tide' | 'design';
+  voiceName: 'tide' | 'stone';
   anthropicApiKey: string;
   elevenLabsApiKey: string;
   onProgress?: (step: GenerationStep) => void;

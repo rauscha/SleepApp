@@ -5,9 +5,9 @@
       "title": "Slow body scan",
       "description": "A body scan meditation.",
       "style": "body-scan",
-      "durationSeconds": 493,
-      "voiceId": "tide",
-      "createdAt": "2026-05-15T02:40:02.987Z",
+      "durationSeconds": 497,
+      "voiceId": "hush",
+      "createdAt": "2026-05-17T00:49:29.616Z",
       "audioPath": "body-scan-01.mp3"
     },
     {
@@ -15,9 +15,9 @@
       "title": "Breath focus",
       "description": "A breath focus meditation.",
       "style": "breath-focus",
-      "durationSeconds": 482,
-      "voiceId": "stone",
-      "createdAt": "2026-05-15T02:41:49.601Z",
+      "durationSeconds": 470,
+      "voiceId": "glen",
+      "createdAt": "2026-05-17T00:54:25.290Z",
       "audioPath": "breath-01.mp3"
     },
     {
@@ -25,9 +25,9 @@
       "title": "Forest path",
       "description": "A visualization meditation.",
       "style": "visualization",
-      "durationSeconds": 530,
-      "voiceId": "tide",
-      "createdAt": "2026-05-15T02:43:32.581Z",
+      "durationSeconds": 503,
+      "voiceId": "ember",
+      "createdAt": "2026-05-17T01:00:29.603Z",
       "audioPath": "forest-01.mp3"
     }
   ]

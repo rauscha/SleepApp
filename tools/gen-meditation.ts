@@ -37,7 +37,7 @@ const INDEX_PATH = join(MEDITATIONS_DIR, 'index.json');
 
 // ---------------------------------------------------------------------------
 // Voice map — custom voices from the ElevenLabs Voice Design portal.
-// These are the meditation voices; story voices (tide, design) live in
+// These are the meditation voices; story voices (tide, stone) live in
 // src/services/storyGenerator.ts.
 
 const VOICE_IDS: Record<string, string> = {

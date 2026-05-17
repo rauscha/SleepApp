@@ -1,26 +1,26 @@
 # Next steps — current project state
 
-Last updated: 2026-05-16 PM. Wired the ElevenLabs Projects API into the
-story generator so long-form scripts (~3K words ≈ 17–20K chars) no longer
-hit the 5K-char per-request wall of the standard TTS endpoint. Routing
-is now: ≤4.5K chars → standard TTS; >4.5K chars → Projects API
-(gated by `VITE_ELEVENLABS_USE_PROJECTS`, default true on Creator plan),
-with chunked TTS + MP3 byte-concat as a transparent fallback on Projects
-errors. Meditations stay on the standard path. 81 tests pass (28 new for
-the long-form paths). Previous session: wired in user-designed custom
-voices, swapped story/meditation categories, deployed 7 new scene
-variants. Android overnight test crashed at ~15 min last night; iOS
-result still pending.
+Last updated: 2026-05-17 AM. Regenerated the 3 starter meditations with
+the new meditation voices (body-scan→hush, breath→glen, forest→ember)
+and renamed the second story voice `design`→`stone` in code so the
+in-code identifier matches the user's 5-voice naming scheme (the
+underlying ElevenLabs voice ID is unchanged). 53 tests pass. Previous
+session wired the ElevenLabs Projects API into the story generator so
+long-form scripts (~3K words ≈ 17–20K chars) no longer hit the 5K-char
+per-request wall of the standard TTS endpoint — routing is ≤4.5K chars
+→ standard TTS; >4.5K chars → Projects API (gated by
+`VITE_ELEVENLABS_USE_PROJECTS`, default true on Creator plan), with
+chunked TTS + MP3 byte-concat as a transparent fallback on Projects
+errors. Meditations stay on the standard path. Android overnight test
+crashed at ~15 min two nights ago; iOS overnight result still pending.
 
-**Next session priorities (2026-05-16):**
-1. Sleep-stories smoke test with Tide / Design voices through the new
+**Next session priorities (2026-05-17):**
+1. Sleep-stories smoke test with Tide / Stone voices through the new
    Projects API path — verify a real 3K-word script renders end-to-end
    and the audio plays cleanly in the Library.
-2. Regenerate the 3 meditations with the new Hush/Ember/Glen voices
-   (CLI: `npx tsx tools/gen-meditation.ts --voice hush ...`).
-3. Investigate the 15-min Android crash via the lifecycle log — Wake
+2. Investigate the 15-min Android crash via the lifecycle log — Wake
    Lock (P5-9) likely the next lever.
-4. Collect iOS overnight result.
+3. Collect iOS overnight result.
 
 **Tonight's run:** iOS + Android in parallel against the same dev server. After wake, Settings → Diagnostics → Share to dump each phone's lifecycle log. If Android still crashes, the log will show whether the tab was frozen/discarded vs. some other failure — Wake Lock is the next lever to pull if so.
 
