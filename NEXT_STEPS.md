@@ -1,11 +1,23 @@
 # Next steps — current project state
 
-Last updated: 2026-05-16 PM. Android overnight test crashed at ~15 min last night (regression vs. the prior ~10 min crash — MediaSession alone wasn't enough). iOS test result still pending. This session: wired in the user-designed custom ElevenLabs voices, swapped the story/meditation voice categories (Tide + Design are now the story narrators; Hush, Ember, Glen are the meditation voices), moved the ElevenLabs key from a publicly-served file into `.env.local`, then deployed 7 new user-provided scene variants (creek-2, wind-2, pavement-2, close-2/3, distant-2/3) and removed the 3 ambiguous `fireplace-{1,2,3}` raw dupes.
+Last updated: 2026-05-16 PM. Wired the ElevenLabs Projects API into the
+story generator so long-form scripts (~3K words ≈ 17–20K chars) no longer
+hit the 5K-char per-request wall of the standard TTS endpoint. Routing
+is now: ≤4.5K chars → standard TTS; >4.5K chars → Projects API
+(gated by `VITE_ELEVENLABS_USE_PROJECTS`, default true on Creator plan),
+with chunked TTS + MP3 byte-concat as a transparent fallback on Projects
+errors. Meditations stay on the standard path. 81 tests pass (28 new for
+the long-form paths). Previous session: wired in user-designed custom
+voices, swapped story/meditation categories, deployed 7 new scene
+variants. Android overnight test crashed at ~15 min last night; iOS
+result still pending.
 
 **Next session priorities (2026-05-16):**
-1. Regenerate the 3 meditations with the new Hush/Ember/Glen voices
+1. Sleep-stories smoke test with Tide / Design voices through the new
+   Projects API path — verify a real 3K-word script renders end-to-end
+   and the audio plays cleanly in the Library.
+2. Regenerate the 3 meditations with the new Hush/Ember/Glen voices
    (CLI: `npx tsx tools/gen-meditation.ts --voice hush ...`).
-2. Sleep-stories smoke test with Tide / Design voices.
 3. Investigate the 15-min Android crash via the lifecycle log — Wake
    Lock (P5-9) likely the next lever.
 4. Collect iOS overnight result.

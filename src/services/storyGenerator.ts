@@ -13,6 +13,24 @@
 // Voice IDs: custom voices designed in the ElevenLabs Voice Design
 // portal. Stories use Tide (female) and Design (male); meditations use
 // Hush, Ember, and Glen.
+//
+// Long-form path: sleep stories run 2800–3200 words (~17–20K chars),
+// which is well past the standard TTS endpoint's 5K-char per-request
+// limit. Two strategies handle the overflow:
+//
+//   - Projects API (preferred on Creator plan and up): one project
+//     holds the whole script, ElevenLabs chunks internally, returns a
+//     single audio file. Gated by VITE_ELEVENLABS_USE_PROJECTS.
+//   - Chunked TTS fallback: paragraph-boundary split → per-chunk
+//     standard TTS → MP3 byte-concat in the browser. Used when the
+//     Projects flag is off OR when the Projects call fails for any
+//     reason (e.g. plan downgrade, API outage).
+//
+// Why MP3 byte-concat works in the browser: MP3 frames are self-
+// contained, the decoder resyncs on frame headers, and Howler (our
+// playback path) tolerates concatenated streams. Fancy concat (ffmpeg)
+// would need ffmpeg.wasm — heavy, slow, and unnecessary for the seam
+// quality we need on a sleep story where the listener is drifting off.
 
 import { saveStory, saveStoryAudio } from '../storage';
 import type { StoryMetadata } from '../storage/types';
@@ -30,6 +48,22 @@ export const MEDITATION_VOICE_IDS: Record<string, string> = {
   ember: '1mrmwdWVC5cggRCdxBXt', // Monika  — warm female
   glen:  'iRItcIx4sdrKJ1k6Ovv7', // Jerry   — male
 };
+
+// ---------------------------------------------------------------------------
+// Constants
+
+/** Per-request character limit for ElevenLabs standard TTS. The public
+ *  limit is 5000; we hold a 500-char buffer for the trailing prosody
+ *  context tokens ElevenLabs prepends server-side. */
+export const TTS_CHUNK_LIMIT = 4500;
+
+/** Poll cadence and ceiling for Projects conversion. A 3K-word story
+ *  typically converts in 60–180 s; we cap at 20 min so a stuck job
+ *  surfaces as a clear error instead of hanging the UI forever. */
+export const PROJECT_POLL_INTERVAL_MS = 5_000;
+export const PROJECT_POLL_MAX_MS = 20 * 60 * 1000;
+
+const ELEVENLABS_BASE = 'https://api.elevenlabs.io';
 
 // ---------------------------------------------------------------------------
 // Prompts
@@ -61,6 +95,9 @@ export interface GenerateStoryOptions {
    *  mid-flight. fetch() rejects with an AbortError when aborted; the
    *  caller can recognize it via error.name === 'AbortError'. */
   signal?: AbortSignal;
+  /** Override the Projects flag at call time (tests). Falls back to
+   *  the build-time `VITE_ELEVENLABS_USE_PROJECTS` env var. */
+  useProjects?: boolean;
 }
 
 export type GenerationStep =
@@ -134,14 +171,110 @@ export function buildStoryMetadata(args: {
   };
 }
 
+/** Split a script into chunks that each fit under `maxChars`.
+ *
+ *  Strategy: prefer paragraph boundaries (`\n\n`). If a single paragraph
+ *  is too long, fall back to sentence boundaries within it. If a single
+ *  sentence is still too long (rare for sleep stories), hard-split at
+ *  `maxChars`. The split never falls mid-word unless the input itself
+ *  has a single word longer than the limit.
+ *
+ *  Empty/short inputs return a single-element array so callers can treat
+ *  the chunked path uniformly. */
+export function chunkScript(text: string, maxChars = TTS_CHUNK_LIMIT): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+  if (trimmed.length <= maxChars) return [trimmed];
+
+  const paragraphs = trimmed.split(/\n\s*\n/);
+  const chunks: string[] = [];
+  let current = '';
+
+  const flush = () => {
+    if (current.trim()) chunks.push(current.trim());
+    current = '';
+  };
+
+  for (const para of paragraphs) {
+    if (para.length > maxChars) {
+      // This paragraph alone exceeds the limit — flush whatever we have,
+      // then split it at sentence boundaries.
+      flush();
+      for (const sent of splitSentences(para, maxChars)) {
+        if (current.length + sent.length + 1 > maxChars) flush();
+        current = current ? current + ' ' + sent : sent;
+      }
+      continue;
+    }
+    if (current.length + para.length + 2 > maxChars) flush();
+    current = current ? current + '\n\n' + para : para;
+  }
+  flush();
+  return chunks;
+}
+
+/** Split a paragraph at sentence terminators. Anything still over the
+ *  limit gets hard-split at `maxChars`. */
+function splitSentences(para: string, maxChars: number): string[] {
+  const out: string[] = [];
+  // Split on sentence enders but keep the terminator attached.
+  const sentences = para.match(/[^.!?]+[.!?]+\s*|[^.!?]+$/g) ?? [para];
+  for (const s of sentences) {
+    if (s.length <= maxChars) {
+      out.push(s.trim());
+    } else {
+      for (let i = 0; i < s.length; i += maxChars) {
+        out.push(s.slice(i, i + maxChars).trim());
+      }
+    }
+  }
+  return out.filter(Boolean);
+}
+
+/** Concatenate ArrayBuffers into one. Used to stitch chunked MP3
+ *  responses; MP3 frames resync at frame headers, so byte-concat
+ *  produces a stream that browser audio decoders play through
+ *  cleanly. */
+export function concatArrayBuffers(buffers: ArrayBuffer[]): ArrayBuffer {
+  const total = buffers.reduce((n, b) => n + b.byteLength, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const b of buffers) {
+    out.set(new Uint8Array(b), offset);
+    offset += b.byteLength;
+  }
+  return out.buffer;
+}
+
+/** Decide whether a script needs the long-form path. Used by the
+ *  dispatcher and surfaced for tests. */
+export function isLongForm(text: string, threshold = TTS_CHUNK_LIMIT): boolean {
+  return text.length > threshold;
+}
+
+/** Read the Projects feature flag, defaulting to true (Creator plan
+ *  baseline). The env var is a string ('true'/'false') because Vite
+ *  inlines `import.meta.env.*` values as strings at build time. */
+export function isProjectsEnabled(): boolean {
+  const raw = (import.meta.env.VITE_ELEVENLABS_USE_PROJECTS ?? 'true').toString();
+  return raw.toLowerCase() !== 'false';
+}
+
 // ---------------------------------------------------------------------------
 // Entry point
 
 export async function generateStory(
   opts: GenerateStoryOptions
 ): Promise<StoryMetadata> {
-  const { theme, voiceName, anthropicApiKey, elevenLabsApiKey, onProgress, signal } =
-    opts;
+  const {
+    theme,
+    voiceName,
+    anthropicApiKey,
+    elevenLabsApiKey,
+    onProgress,
+    signal,
+    useProjects,
+  } = opts;
 
   // --- Step 1: Write the script with Claude ---
   onProgress?.({ stage: 'writing', message: 'Writing script with Claude…' });
@@ -153,7 +286,15 @@ export async function generateStory(
     message: 'Synthesizing audio with ElevenLabs…',
   });
   const voiceId = STORY_VOICE_IDS[voiceName] ?? STORY_VOICE_IDS['tide']!;
-  const audioBuffer = await callElevenLabs(elevenLabsApiKey, voiceId, script, signal);
+  const projectsFlag = useProjects ?? isProjectsEnabled();
+  const audioBuffer = await synthesizeStoryAudio({
+    apiKey: elevenLabsApiKey,
+    voiceId,
+    text: script,
+    signal,
+    useProjects: projectsFlag,
+    onProgress,
+  });
 
   // --- Step 3: Save ---
   onProgress?.({ stage: 'saving', message: 'Saving…' });
@@ -174,6 +315,72 @@ export async function generateStory(
 
   onProgress?.({ stage: 'done', storyId: meta.id });
   return meta;
+}
+
+// ---------------------------------------------------------------------------
+// Audio synthesis dispatcher
+
+interface SynthesizeArgs {
+  apiKey: string;
+  voiceId: string;
+  text: string;
+  signal?: AbortSignal;
+  useProjects: boolean;
+  onProgress?: (step: GenerationStep) => void;
+  /** Override Projects poll interval (ms). Tests use a small value. */
+  projectsPollIntervalMs?: number;
+  projectsPollMaxMs?: number;
+}
+
+/** Pick the right ElevenLabs path based on script length and the
+ *  Projects flag. Short scripts always use the standard TTS endpoint
+ *  (fastest, cheapest). Long scripts try Projects first when enabled,
+ *  then fall back to chunked TTS if Projects errors. */
+export async function synthesizeStoryAudio(
+  args: SynthesizeArgs
+): Promise<ArrayBuffer> {
+  const {
+    apiKey,
+    voiceId,
+    text,
+    signal,
+    useProjects,
+    onProgress,
+    projectsPollIntervalMs,
+    projectsPollMaxMs,
+  } = args;
+
+  if (!isLongForm(text)) {
+    return callElevenLabs(apiKey, voiceId, text, signal);
+  }
+
+  if (useProjects) {
+    try {
+      onProgress?.({
+        stage: 'synthesizing',
+        message: 'Long script — using ElevenLabs Projects…',
+      });
+      return await callElevenLabsProjects(
+        apiKey,
+        voiceId,
+        text,
+        signal,
+        onProgress,
+        projectsPollIntervalMs,
+        projectsPollMaxMs
+      );
+    } catch (err) {
+      // Abort propagates as-is — the user pressed Cancel.
+      if (err instanceof DOMException && err.name === 'AbortError') throw err;
+      console.warn('Projects API failed, falling back to chunked TTS:', err);
+      onProgress?.({
+        stage: 'synthesizing',
+        message: 'Projects API unavailable — falling back to chunked TTS…',
+      });
+    }
+  }
+
+  return callElevenLabsChunked(apiKey, voiceId, text, signal, onProgress);
 }
 
 // ---------------------------------------------------------------------------
@@ -227,7 +434,7 @@ async function callElevenLabs(
   signal?: AbortSignal
 ): Promise<ArrayBuffer> {
   const res = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+    `${ELEVENLABS_BASE}/v1/text-to-speech/${voiceId}`,
     {
       method: 'POST',
       signal,
@@ -264,4 +471,217 @@ async function callElevenLabs(
   }
 
   return res.arrayBuffer();
+}
+
+/** Chunked-TTS path. Splits the script at paragraph boundaries, runs
+ *  each piece through the standard TTS endpoint sequentially, and byte-
+ *  concatenates the MP3 chunks. Sequential rather than parallel because
+ *  ElevenLabs throttles concurrent requests on the Creator plan, and the
+ *  user pays per character either way. */
+export async function callElevenLabsChunked(
+  apiKey: string,
+  voiceId: string,
+  text: string,
+  signal?: AbortSignal,
+  onProgress?: (step: GenerationStep) => void
+): Promise<ArrayBuffer> {
+  const chunks = chunkScript(text);
+  if (chunks.length === 0) throw new Error('Empty script — nothing to synthesize.');
+
+  const buffers: ArrayBuffer[] = [];
+  for (let i = 0; i < chunks.length; i++) {
+    onProgress?.({
+      stage: 'synthesizing',
+      message: `Synthesizing chunk ${i + 1} of ${chunks.length}…`,
+    });
+    const buf = await callElevenLabs(apiKey, voiceId, chunks[i]!, signal);
+    buffers.push(buf);
+  }
+  return concatArrayBuffers(buffers);
+}
+
+/** Projects API flow:
+ *    1. POST /v1/projects                — create the project
+ *    2. POST /v1/projects/{id}/content   — attach the script
+ *    3. POST /v1/projects/{id}/convert   — trigger TTS conversion
+ *    4. GET  /v1/projects/{id}           — poll until status === "converted"
+ *    5. GET  /v1/projects/{id}/chapters/{chapter_id}/audio  — download
+ *
+ *  Step 2 may be folded into step 1 by ElevenLabs depending on the
+ *  current API shape (the create response sometimes includes a default
+ *  chapter already containing the content). We attempt the explicit
+ *  content call and ignore a 4xx that indicates the content is already
+ *  present, so the flow tolerates both shapes. */
+export async function callElevenLabsProjects(
+  apiKey: string,
+  voiceId: string,
+  text: string,
+  signal?: AbortSignal,
+  onProgress?: (step: GenerationStep) => void,
+  pollIntervalMs: number = PROJECT_POLL_INTERVAL_MS,
+  pollMaxMs: number = PROJECT_POLL_MAX_MS
+): Promise<ArrayBuffer> {
+  const headers = {
+    'content-type': 'application/json',
+    'xi-api-key': apiKey,
+  };
+
+  // --- 1. Create project ---
+  onProgress?.({ stage: 'synthesizing', message: 'Creating Projects job…' });
+  const createRes = await fetch(`${ELEVENLABS_BASE}/v1/projects`, {
+    method: 'POST',
+    signal,
+    headers,
+    body: JSON.stringify({
+      name: `sleep-story-${Date.now()}`,
+      default_title_voice_id: voiceId,
+      default_paragraph_voice_id: voiceId,
+      default_model_id: 'eleven_multilingual_v2',
+      content: text,
+    }),
+  });
+  if (!createRes.ok) {
+    const body = await createRes.text().catch(() => '');
+    throw new Error(
+      `ElevenLabs Projects create failed ${createRes.status}: ${body.slice(0, 200)}`
+    );
+  }
+  const created = (await createRes.json()) as {
+    project_id?: string;
+    project?: { project_id: string };
+    chapter_id?: string;
+    chapters?: Array<{ chapter_id: string }>;
+  };
+  const projectId = created.project_id ?? created.project?.project_id;
+  if (!projectId) throw new Error('ElevenLabs Projects: no project_id in create response.');
+
+  // --- 2. Add content (idempotent: skip if create already attached it) ---
+  if (!created.chapter_id && !created.chapters?.length) {
+    const contentRes = await fetch(
+      `${ELEVENLABS_BASE}/v1/projects/${projectId}/content`,
+      {
+        method: 'POST',
+        signal,
+        headers,
+        body: JSON.stringify({ content: text }),
+      }
+    );
+    // A 4xx here usually means the content was already attached at
+    // create-time; treat it as non-fatal.
+    if (!contentRes.ok && contentRes.status >= 500) {
+      const body = await contentRes.text().catch(() => '');
+      throw new Error(
+        `ElevenLabs Projects content failed ${contentRes.status}: ${body.slice(0, 200)}`
+      );
+    }
+  }
+
+  // --- 3. Trigger conversion ---
+  onProgress?.({ stage: 'synthesizing', message: 'Converting (1–3 min)…' });
+  const convertRes = await fetch(
+    `${ELEVENLABS_BASE}/v1/projects/${projectId}/convert`,
+    { method: 'POST', signal, headers }
+  );
+  if (!convertRes.ok) {
+    const body = await convertRes.text().catch(() => '');
+    throw new Error(
+      `ElevenLabs Projects convert failed ${convertRes.status}: ${body.slice(0, 200)}`
+    );
+  }
+
+  // --- 4. Poll until converted ---
+  const chapterId = await pollProjectUntilConverted(
+    apiKey,
+    projectId,
+    signal,
+    pollIntervalMs,
+    pollMaxMs
+  );
+
+  // --- 5. Download audio ---
+  onProgress?.({ stage: 'synthesizing', message: 'Downloading audio…' });
+  const audioRes = await fetch(
+    `${ELEVENLABS_BASE}/v1/projects/${projectId}/chapters/${chapterId}/audio`,
+    {
+      method: 'GET',
+      signal,
+      headers: { 'xi-api-key': apiKey },
+    }
+  );
+  if (!audioRes.ok) {
+    const body = await audioRes.text().catch(() => '');
+    throw new Error(
+      `ElevenLabs Projects audio download failed ${audioRes.status}: ${body.slice(0, 200)}`
+    );
+  }
+  return audioRes.arrayBuffer();
+}
+
+async function pollProjectUntilConverted(
+  apiKey: string,
+  projectId: string,
+  signal?: AbortSignal,
+  intervalMs: number = PROJECT_POLL_INTERVAL_MS,
+  maxMs: number = PROJECT_POLL_MAX_MS
+): Promise<string> {
+  const started = Date.now();
+  while (true) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    if (Date.now() - started > maxMs) {
+      throw new Error(
+        `ElevenLabs Projects: conversion still pending after ${maxMs / 1000}s.`
+      );
+    }
+
+    const res = await fetch(`${ELEVENLABS_BASE}/v1/projects/${projectId}`, {
+      method: 'GET',
+      signal,
+      headers: { 'xi-api-key': apiKey },
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(
+        `ElevenLabs Projects status check failed ${res.status}: ${body.slice(0, 200)}`
+      );
+    }
+    const data = (await res.json()) as {
+      status?: string;
+      project?: { status?: string };
+      chapters?: Array<{ chapter_id: string; state?: string }>;
+      chapter_id?: string;
+    };
+    const status = data.status ?? data.project?.status ?? '';
+    if (status === 'converted' || status === 'done') {
+      const chapterId =
+        data.chapter_id ??
+        data.chapters?.[0]?.chapter_id;
+      if (!chapterId) {
+        throw new Error('ElevenLabs Projects: converted but no chapter_id in response.');
+      }
+      return chapterId;
+    }
+    if (status === 'failed' || status === 'error') {
+      throw new Error(`ElevenLabs Projects: conversion reported status "${status}".`);
+    }
+
+    await sleep(intervalMs, signal);
+  }
+}
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'));
+      return;
+    }
+    const t = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(t);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
 }
