@@ -15,7 +15,12 @@ import {
   getAllEntries,
   type LogEntry,
 } from '../diagnostics/lifecycleLog';
-import { getAllSettings, setSetting } from '../storage';
+import {
+  getAllSettings,
+  hasAnthropicEnvKey,
+  hasElevenLabsEnvKey,
+  setSetting,
+} from '../storage';
 
 const TIMER_OPTIONS: Array<{ label: string; value: number | null }> = [
   { label: 'Off',    value: null },
@@ -26,10 +31,11 @@ const TIMER_OPTIONS: Array<{ label: string; value: number | null }> = [
 ];
 
 export interface SettingsScreenProps {
-  onBack: () => void;
+  /** Reserved — bottom nav handles primary back. */
+  onBack?: () => void;
 }
 
-export function SettingsScreen({ onBack }: SettingsScreenProps) {
+export function SettingsScreen(_props: SettingsScreenProps) {
   const engine = useMemo(() => getAudioEngine(), []);
   const [settings, setSettings] = useState(() => getAllSettings());
 
@@ -42,16 +48,8 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
   }
 
   return (
-    <div className="min-h-screen bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-5 py-10">
-      <header className="mb-10 px-1">
-        <button
-          onClick={onBack}
-          className="text-xs text-stone-400 hover:text-stone-200
-                     transition-colors duration-slow mb-6 block"
-          aria-label="Back to Tonight"
-        >
-          ← Tonight
-        </button>
+    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-5 py-8 min-h-full">
+      <header className="mb-8 px-1">
         <h1 className="font-serif text-stone-50 text-4xl leading-tight">
           Settings
         </h1>
@@ -127,6 +125,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           placeholder="elevenlabs_…"
           hint="Used for voice synthesis · ~$1–3 per story"
           value={settings.elevenLabsApiKey ?? ''}
+          envOverride={hasElevenLabsEnvKey()}
           onChange={(v) => update('elevenLabsApiKey', v || null)}
         />
         <ApiKeyField
@@ -134,6 +133,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           placeholder="sk-ant-…"
           hint="Used to write story scripts · ~$0.10 per story"
           value={settings.anthropicApiKey ?? ''}
+          envOverride={hasAnthropicEnvKey()}
           onChange={(v) => update('anthropicApiKey', v || null)}
         />
       </section>
@@ -302,12 +302,14 @@ function ApiKeyField({
   placeholder,
   hint,
   value,
+  envOverride = false,
   onChange,
 }: {
   label: string;
   placeholder: string;
   hint: string;
   value: string;
+  envOverride?: boolean;
   onChange: (v: string) => void;
 }) {
   const [visible, setVisible] = useState(false);
@@ -316,33 +318,39 @@ function ApiKeyField({
       <label className="block">
         <span className="block text-sm text-stone-400 mb-1">{label}</span>
         <span className="block text-xs text-stone-600 mb-2">{hint}</span>
-        <div className="relative">
-          <input
-            type={visible ? 'text' : 'password'}
-            value={value}
-            placeholder={placeholder}
-            onChange={(e) => onChange(e.target.value)}
-            autoComplete="off"
-            spellCheck={false}
-            className="w-full bg-ink-800 text-stone-200 text-xs rounded-soft
-                       px-3 py-2.5 pr-12 border border-ink-600
-                       placeholder-ink-500 focus:outline-none
-                       focus:border-moon-600 transition-colors"
-            aria-label={label}
-          />
-          {value && (
-            <button
-              type="button"
-              onClick={() => setVisible((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2
-                         text-xs text-stone-500 hover:text-stone-300
-                         transition-colors"
-              aria-label={visible ? 'Hide key' : 'Show key'}
-            >
-              {visible ? 'hide' : 'show'}
-            </button>
-          )}
-        </div>
+        {envOverride ? (
+          <p className="text-xs text-moon-300 bg-ink-800 rounded-soft px-3 py-2.5">
+            Loaded from build env — no entry needed.
+          </p>
+        ) : (
+          <div className="relative">
+            <input
+              type={visible ? 'text' : 'password'}
+              value={value}
+              placeholder={placeholder}
+              onChange={(e) => onChange(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              className="w-full bg-ink-800 text-stone-200 text-xs rounded-soft
+                         px-3 py-2.5 pr-12 border border-ink-600
+                         placeholder-ink-500 focus:outline-none
+                         focus:border-moon-600 transition-colors"
+              aria-label={label}
+            />
+            {value && (
+              <button
+                type="button"
+                onClick={() => setVisible((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2
+                           text-xs text-stone-500 hover:text-stone-300
+                           transition-colors"
+                aria-label={visible ? 'Hide key' : 'Show key'}
+              >
+                {visible ? 'hide' : 'show'}
+              </button>
+            )}
+          </div>
+        )}
       </label>
     </div>
   );

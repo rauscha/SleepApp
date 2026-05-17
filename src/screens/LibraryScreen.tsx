@@ -34,7 +34,12 @@ export interface ContentItem {
 }
 
 export interface LibraryScreenProps {
-  onBack: () => void;
+  /**
+   * Reserved for callers that want a back affordance — the bottom nav now
+   * provides the primary way back to Tonight, so most consumers can omit
+   * this. Kept for backward compatibility with the App's routing shape.
+   */
+  onBack?: () => void;
   onPlay: (item: ContentItem) => void;
   onGenerateStory: () => void;
 }
@@ -42,7 +47,6 @@ export interface LibraryScreenProps {
 type Tab = 'meditations' | 'stories';
 
 export function LibraryScreen({
-  onBack,
   onPlay,
   onGenerateStory,
 }: LibraryScreenProps) {
@@ -124,15 +128,8 @@ export function LibraryScreen({
   }
 
   return (
-    <div className="min-h-screen bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-5 py-10">
-      <header className="mb-8 px-1">
-        <button
-          onClick={onBack}
-          className="text-xs text-stone-400 hover:text-stone-200
-                     transition-colors duration-slow mb-6 block"
-        >
-          ← Tonight
-        </button>
+    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-5 py-8 min-h-full">
+      <header className="mb-6 px-1">
         <h1 className="font-serif text-stone-50 text-4xl leading-tight mb-6">
           Library
         </h1>

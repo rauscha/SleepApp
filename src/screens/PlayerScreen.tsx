@@ -279,22 +279,16 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     return () => clearMediaSession();
   }, []);
 
+  // No scene loaded — skip the interstitial "nothing playing" screen
+  // entirely and send the user straight back to Tonight where they
+  // can pick something. The brief asks for the lowest possible friction
+  // on the start path; an extra confirmation card breaks that. The
+  // bounce happens in an effect so we don't call setState during render.
+  useEffect(() => {
+    if (!scene) onExit();
+  }, [scene, onExit]);
   if (!scene) {
-    return (
-      <div className="min-h-screen bg-ink-950 text-stone-100 flex items-center justify-center px-8">
-        <div className="text-center">
-          <h1 className="font-serif text-stone-50 text-2xl mb-4">
-            Nothing playing yet.
-          </h1>
-          <button
-            onClick={onExit}
-            className="px-5 py-2 rounded-soft bg-moon-500 text-ink-950 text-sm"
-          >
-            Pick a scene
-          </button>
-        </div>
-      </div>
-    );
+    return <div className="h-full bg-ink-950" aria-hidden="true" />;
   }
 
   if (displayMode === 'nightstand') {
@@ -321,7 +315,7 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
   const layers = scene.getLayers();
 
   return (
-    <div className="min-h-screen bg-ink-950 text-stone-100 flex flex-col px-6 py-8 max-w-md mx-auto">
+    <div className="bg-ink-950 text-stone-100 flex flex-col px-6 py-8 max-w-md mx-auto min-h-full">
       <header className="mb-10">
         <div className="flex items-center justify-between mb-7">
           <button

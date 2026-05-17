@@ -25,9 +25,9 @@ import { requestFullscreenSafe } from '../utils/fullscreen';
 
 export interface TonightScreenProps {
   onPlaybackStarted: () => void;
-  onLibraryRequested: () => void;
-  onSettingsRequested: () => void;
   onDevToolsRequested: () => void;
+  /** Unlocks the AudioContext lazily on the first audio gesture. */
+  ensureUnlocked: () => Promise<void>;
 }
 
 // Per-scene photo paths (served from /public). Scenes not listed here
@@ -60,9 +60,8 @@ function sceneBackground(id: string): string {
 
 export function TonightScreen({
   onPlaybackStarted,
-  onLibraryRequested,
-  onSettingsRequested,
   onDevToolsRequested,
+  ensureUnlocked,
 }: TonightScreenProps) {
   const engine = useMemo(() => getAudioEngine(), []);
   const coordinator = useMemo(() => getSceneCoordinator(engine), [engine]);
@@ -83,8 +82,10 @@ export function TonightScreen({
 
   // If a scene is already playing (mid-session nav or HMR), send to player.
   useEffect(() => {
-    if (coordinator.getCurrentScene()) onPlaybackStarted();
-  }, [coordinator, onPlaybackStarted]);
+    if (engine.isInitialized && coordinator.getCurrentScene()) {
+      onPlaybackStarted();
+    }
+  }, [engine, coordinator, onPlaybackStarted]);
 
   const handlePick = useCallback(
     async (entry: SceneIndexEntry) => {
@@ -97,6 +98,9 @@ export function TonightScreen({
       setBusySceneId(entry.id);
       setStartError(null);
       try {
+        // Lazy AudioContext unlock — the tap itself is the user gesture
+        // Web Audio requires. We no longer have a separate "Begin" screen.
+        await ensureUnlocked();
         const def = await fetchSceneDefinition(entry);
         await coordinator.startScene(def, {
           fallbackToSynthetic: true,
@@ -112,7 +116,7 @@ export function TonightScreen({
         setBusySceneId(null);
       }
     },
-    [coordinator, onPlaybackStarted]
+    [coordinator, ensureUnlocked, onPlaybackStarted]
   );
 
   const handleSurpriseMe = useCallback(() => {
@@ -135,8 +139,8 @@ export function TonightScreen({
   const isLoading = index === null && indexError === null;
 
   return (
-    <div className="min-h-screen bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-5 py-10">
-      <header className="mb-9 px-1">
+    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-5 py-8 min-h-full">
+      <header className="mb-7 px-1">
         <h1 className="font-serif text-stone-50 text-4xl leading-tight">
           Tonight
         </h1>
@@ -190,29 +194,13 @@ export function TonightScreen({
         </p>
       )}
 
-      <footer className="mt-10 pt-5 border-t border-ink-700 flex justify-between items-center px-1">
-        <div className="flex gap-4">
-          <button
-            onClick={onLibraryRequested}
-            className="text-xs text-stone-500 hover:text-stone-300 active:text-moon-300
-                       transition-colors duration-slow"
-          >
-            Library
-          </button>
-          <button
-            onClick={onSettingsRequested}
-            className="text-xs text-stone-500 hover:text-stone-300 active:text-moon-300
-                       transition-colors duration-slow"
-          >
-            Settings
-          </button>
-        </div>
+      <footer className="mt-8 pt-4 px-1 flex justify-end">
         <button
           onClick={onDevToolsRequested}
-          className="text-xs text-stone-500 hover:text-stone-300 active:text-moon-300
-                     transition-colors duration-slow"
+          className="text-[10px] text-stone-600 hover:text-stone-400
+                     active:text-moon-300 transition-colors duration-slow"
         >
-          Dev tools →
+          Dev tools
         </button>
       </footer>
     </div>

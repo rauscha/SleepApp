@@ -39,14 +39,14 @@ import type { StoryMetadata } from '../storage/types';
 // Voice map
 
 export const STORY_VOICE_IDS: Record<string, string> = {
-  tide:  'iaVB01xXKi5tTnyhmOJ7', // Jenna — soft female narrator
-  stone: 'wgHvco1wiREKN0BdyVx5', // Drew  — male narrator
+  tide:  import.meta.env.VITE_VOICE_TIDE,  // soft female narrator
+  stone: import.meta.env.VITE_VOICE_STONE, // male narrator
 };
 
 export const MEDITATION_VOICE_IDS: Record<string, string> = {
-  hush:  'mZTVERjx1WQkdAWt1Lcm', // Grace   — soft female
-  ember: '1mrmwdWVC5cggRCdxBXt', // Monika  — warm female
-  glen:  'iRItcIx4sdrKJ1k6Ovv7', // Jerry   — male
+  hush:  import.meta.env.VITE_VOICE_HUSH,  // soft female
+  ember: import.meta.env.VITE_VOICE_EMBER, // warm female
+  glen:  import.meta.env.VITE_VOICE_GLEN,  // male
 };
 
 // ---------------------------------------------------------------------------

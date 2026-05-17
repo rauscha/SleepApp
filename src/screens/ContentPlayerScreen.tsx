@@ -109,12 +109,13 @@ export function ContentPlayerScreen({
   const progress = duration > 0 ? position / duration : 0;
 
   return (
-    <div className="min-h-screen bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-6 py-10">
-      <header className="mb-10">
+    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-6 py-8 min-h-full">
+      <header className="mb-8">
         <button
           onClick={onBack}
           className="text-xs text-stone-400 hover:text-stone-200
-                     transition-colors duration-slow mb-7 block"
+                     transition-colors duration-slow mb-6 block"
+          aria-label="Back to Library"
         >
           ← Library
         </button>

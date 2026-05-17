@@ -30,7 +30,7 @@ import type { ContentItem } from './screens/LibraryScreen';
 // the Library + StoryGenerator UI trees, and the storyGenerator service —
 // none of which is needed for the primary flow (Tonight → Player). The
 // initial bundle now contains only the audio engine + Tonight/Player.
-// A user who only ever taps Begin → scene card never downloads any of this.
+// A user who only ever taps a scene card never downloads any of this.
 const SettingsScreen = lazy(() =>
   import('./screens/SettingsScreen').then((m) => ({ default: m.SettingsScreen }))
 );
@@ -48,18 +48,9 @@ const StoryGeneratorScreen = lazy(() =>
   }))
 );
 
-// Fallback for lazy chunk loads. Matches the body bg so the swap is silent —
-// no white flash, no spinner. The chunks are tiny on a warm cache; on a cold
-// cache the user sees a brief dark hold which is preferable to a wake-up
-// flash at 2am.
 function ScreenFallback() {
-  return <div className="min-h-screen bg-ink-950" aria-hidden="true" />;
+  return <div className="h-full bg-ink-950" aria-hidden="true" />;
 }
-
-// App is a thin three-way router between the Phase 3 screens and the
-// Phase 1 dev harness. The harness stays reachable from Tonight via a
-// discrete "Dev tools" link — useful for spectrum inspection, the
-// crossfade demo, and the noise generators that aren't in the Player.
 
 type Screen =
   | 'tonight'
@@ -70,7 +61,12 @@ type Screen =
   | 'settings'
   | 'harness';
 
-const PERSISTENT_SCREENS = new Set(['tonight', 'player', 'settings', 'harness']);
+// Screens where the persistent bottom nav stays hidden — the immersive
+// player surfaces shouldn't have UI chrome under them while the user is
+// drifting off, and ContentPlayer is similarly task-focused.
+const IMMERSIVE_SCREENS = new Set<Screen>(['player', 'content-player']);
+
+const PERSISTENT_SCREENS = new Set<Screen>(['tonight', 'library', 'settings', 'harness']);
 const SCREEN_KEY = 'sleep-app:current-screen:v1';
 
 function loadInitialScreen(): Screen {
@@ -83,20 +79,64 @@ function loadInitialScreen(): Screen {
   return 'tonight';
 }
 
-// Tinnitus matcher + mask harness UI is shelved (see comment in Harness'
-// JSX). Flip to true to bring it back; the engine classes never went away.
 const SHOW_TINNITUS_HARNESS = false;
 
 export function App() {
   const engine = useMemo(() => getAudioEngine(), []);
-  const [unlocked, setUnlocked] = useState(
-    () => engine.isInitialized && engine.isWorkletReady
-  );
-  const [screen, setScreen] = useState<Screen>(loadInitialScreen);
-  // Active content item for ContentPlayerScreen. Blob URLs must be revoked
-  // when leaving the content-player screen.
+  // Track AudioContext unlock state without forcing re-renders — unlock
+  // happens on the first scene/play tap, which IS the user gesture the
+  // Web Audio API requires. No more separate "Begin" screen.
+  const unlockedRef = useRef(false);
+  const ensureUnlocked = useCallback(async () => {
+    if (unlockedRef.current) return;
+    await engine.unlock();
+    unlockedRef.current = true;
+  }, [engine]);
+
+  // Initial screen: if a scene is already playing (HMR or reopened PWA
+  // with persisted audio state) jump to the player; otherwise land
+  // straight on Tonight. No Begin interstitial.
+  const [screen, setScreen] = useState<Screen>(() => {
+    if (engine.isInitialized) {
+      const coord = getSceneCoordinator(engine);
+      if (coord.getCurrentScene()) return 'player';
+    }
+    return loadInitialScreen();
+  });
+
   const [activeContent, setActiveContent] = useState<ContentItem | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+
+  // ── History-based back-button handling ──────────────────────────────
+  //
+  // Without this, the browser/PWA back button leaves the app entirely
+  // (or closes the PWA window), killing playback. We push one synthetic
+  // history entry on every screen change so the next back press lands
+  // there. On popstate we always navigate to Tonight and re-push, so
+  // the user can never accidentally exit the app by pressing back. The
+  // single exception is the user's own back navigation between screens,
+  // which goes through setScreen and is independent of history.
+  useEffect(() => {
+    // Seed one history entry so the first back press has somewhere to land.
+    try {
+      window.history.replaceState({ screen: 'tonight', sentinel: true }, '');
+      window.history.pushState({ screen, sentinel: true }, '');
+    } catch {
+      /* history disabled (rare; sandboxed iframe) */
+    }
+    const onPopState = () => {
+      // User pressed back — return to Tonight rather than leaving the app.
+      setScreen('tonight');
+      try {
+        window.history.pushState({ screen: 'tonight', sentinel: true }, '');
+      } catch {
+        /* noop */
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (PERSISTENT_SCREENS.has(screen)) {
@@ -108,12 +148,15 @@ export function App() {
     }
   }, [screen]);
 
-  const playContent = useCallback((item: ContentItem) => {
-    // Track blob URLs so we can revoke them on back.
-    if (item.audioUrl.startsWith('blob:')) blobUrlRef.current = item.audioUrl;
-    setActiveContent(item);
-    setScreen('content-player');
-  }, []);
+  const playContent = useCallback(
+    async (item: ContentItem) => {
+      await ensureUnlocked();
+      if (item.audioUrl.startsWith('blob:')) blobUrlRef.current = item.audioUrl;
+      setActiveContent(item);
+      setScreen('content-player');
+    },
+    [ensureUnlocked]
+  );
 
   const leaveContentPlayer = useCallback(() => {
     if (blobUrlRef.current) {
@@ -124,82 +167,144 @@ export function App() {
     setScreen('library');
   }, []);
 
-  if (!unlocked) {
-    return (
-      <UnlockGate
-        onUnlock={async () => {
-          await engine.unlock();
-          await engine.loadNoiseWorklet();
-          setUnlocked(true);
-        }}
-      />
-    );
-  }
+  const showNav = !IMMERSIVE_SCREENS.has(screen);
 
-  if (screen === 'tonight') {
-    return (
-      <TonightScreen
-        onPlaybackStarted={() => setScreen('player')}
-        onLibraryRequested={() => setScreen('library')}
-        onSettingsRequested={() => setScreen('settings')}
-        onDevToolsRequested={() => setScreen('harness')}
-      />
-    );
-  }
-  if (screen === 'player') {
-    return <PlayerScreen onExit={() => setScreen('tonight')} />;
-  }
-  if (screen === 'library') {
-    return (
-      <Suspense fallback={<ScreenFallback />}>
-        <LibraryScreen
-          onBack={() => setScreen('tonight')}
-          onPlay={playContent}
-          onGenerateStory={() => setScreen('story-generator')}
-        />
-      </Suspense>
-    );
-  }
-  if (screen === 'content-player' && activeContent) {
-    return (
-      <Suspense fallback={<ScreenFallback />}>
-        <ContentPlayerScreen
-          title={activeContent.title}
-          description={activeContent.description}
-          audioUrl={activeContent.audioUrl}
-          onBack={leaveContentPlayer}
-        />
-      </Suspense>
-    );
-  }
-  if (screen === 'story-generator') {
-    return (
-      <Suspense fallback={<ScreenFallback />}>
-        <StoryGeneratorScreen
-          onBack={() => setScreen('library')}
-          onDone={() => setScreen('library')}
-        />
-      </Suspense>
-    );
-  }
-  if (screen === 'settings') {
-    return (
-      <Suspense fallback={<ScreenFallback />}>
-        <SettingsScreen onBack={() => setScreen('tonight')} />
-      </Suspense>
-    );
-  }
-  return <Harness onBackToTonight={() => setScreen('tonight')} />;
+  return (
+    <div className="h-[100dvh] w-full bg-ink-950 text-stone-100 flex flex-col overflow-hidden">
+      <main
+        className={
+          'flex-1 min-h-0 overflow-y-auto overscroll-contain' +
+          (showNav ? ' pb-2' : '')
+        }
+      >
+        {screen === 'tonight' && (
+          <TonightScreen
+            onPlaybackStarted={() => setScreen('player')}
+            onDevToolsRequested={() => setScreen('harness')}
+            ensureUnlocked={ensureUnlocked}
+          />
+        )}
+        {screen === 'player' && (
+          <PlayerScreen onExit={() => setScreen('tonight')} />
+        )}
+        {screen === 'library' && (
+          <Suspense fallback={<ScreenFallback />}>
+            <LibraryScreen
+              onBack={() => setScreen('tonight')}
+              onPlay={playContent}
+              onGenerateStory={() => setScreen('story-generator')}
+            />
+          </Suspense>
+        )}
+        {screen === 'content-player' && activeContent && (
+          <Suspense fallback={<ScreenFallback />}>
+            <ContentPlayerScreen
+              title={activeContent.title}
+              description={activeContent.description}
+              audioUrl={activeContent.audioUrl}
+              onBack={leaveContentPlayer}
+            />
+          </Suspense>
+        )}
+        {screen === 'story-generator' && (
+          <Suspense fallback={<ScreenFallback />}>
+            <StoryGeneratorScreen
+              onBack={() => setScreen('library')}
+              onDone={() => setScreen('library')}
+            />
+          </Suspense>
+        )}
+        {screen === 'settings' && (
+          <Suspense fallback={<ScreenFallback />}>
+            <SettingsScreen onBack={() => setScreen('tonight')} />
+          </Suspense>
+        )}
+        {screen === 'harness' && (
+          <Harness onBackToTonight={() => setScreen('tonight')} />
+        )}
+      </main>
+      {showNav && <BottomNav current={screen} onNavigate={setScreen} />}
+    </div>
+  );
 }
 
-// Harness — the original Phase-1 dev surface, now reached via the Dev
-// tools link from Tonight. Exposes every engine feature individually so
-// regressions surface visually.
+// ── BottomNav ──────────────────────────────────────────────────────────
+//
+// Always-visible bottom tab bar with three primary destinations: Tonight
+// (scenes), Library (meditations + stories), Settings. Hidden on
+// immersive Player + ContentPlayer screens.
+
+function BottomNav({
+  current,
+  onNavigate,
+}: {
+  current: Screen;
+  onNavigate: (s: Screen) => void;
+}) {
+  return (
+    <nav
+      aria-label="Primary"
+      className="shrink-0 border-t border-ink-700 bg-ink-950
+                 flex items-stretch justify-around
+                 pb-[env(safe-area-inset-bottom)]"
+    >
+      <NavButton
+        active={current === 'tonight'}
+        label="Tonight"
+        icon="🌙"
+        onClick={() => onNavigate('tonight')}
+      />
+      <NavButton
+        active={current === 'library'}
+        label="Library"
+        icon="📖"
+        onClick={() => onNavigate('library')}
+      />
+      <NavButton
+        active={current === 'settings'}
+        label="Settings"
+        icon="⚙"
+        onClick={() => onNavigate('settings')}
+      />
+    </nav>
+  );
+}
+
+function NavButton({
+  active,
+  label,
+  icon,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  icon: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      aria-label={label}
+      className={[
+        'flex-1 flex flex-col items-center justify-center gap-1',
+        'py-2 transition-colors duration-slow',
+        active ? 'text-moon-300' : 'text-stone-500 hover:text-stone-300',
+      ].join(' ')}
+      style={{ minHeight: 56 }}
+    >
+      <span className="text-base leading-none" aria-hidden="true">
+        {icon}
+      </span>
+      <span className="text-[11px] tracking-wide">{label}</span>
+    </button>
+  );
+}
+
+// ── Harness (unchanged dev surface) ────────────────────────────────────
+
 function Harness({ onBackToTonight }: { onBackToTonight: () => void }) {
   const engine = useMemo(() => getAudioEngine(), []);
-  // Settings is read-only here; the only mutating consumer (tinnitus
-  // matcher save) is currently shelved. MasterSection mutates settings
-  // through setSetting directly, not via this state.
   const [settings] = useState(() => getAllSettings());
   const [contextState, setContextState] = useState(engine.state);
 
@@ -211,20 +316,21 @@ function Harness({ onBackToTonight }: { onBackToTonight: () => void }) {
   }, [engine]);
 
   return (
-    <div className="min-h-screen bg-ink-950 text-stone-100 px-6 py-8 max-w-md mx-auto">
+    <div className="bg-ink-950 text-stone-100 px-6 py-8 max-w-md mx-auto">
       <header className="mb-8 flex justify-between items-start gap-4">
-        <div>
+        <button
+          onClick={onBackToTonight}
+          className="text-xs text-stone-400 hover:text-stone-200 transition-colors duration-slow shrink-0 mt-2"
+          aria-label="Back to Tonight"
+        >
+          ← Tonight
+        </button>
+        <div className="text-right">
           <h1 className="text-stone-50 font-serif text-3xl">Engine harness</h1>
           <p className="text-stone-300 text-sm mt-1">
             Dev surface. AudioContext: {contextState}
           </p>
         </div>
-        <button
-          onClick={onBackToTonight}
-          className="text-xs text-stone-400 hover:text-stone-200 transition-colors duration-slow shrink-0 mt-2"
-        >
-          ← Tonight
-        </button>
       </header>
 
       <Spectrum />
@@ -236,19 +342,6 @@ function Harness({ onBackToTonight }: { onBackToTonight: () => void }) {
       <Divider />
       <NoiseSection />
       <Divider />
-      {/*
-        Tinnitus matcher + mask shelved — evidence for tinnitus masking as a
-        sleep aid is weak, and the in-app experience needs work (broader
-        surround noise, lower default volume, and a high-tone artefact heard
-        even when the layer is "off" that needs root-cause analysis). The
-        engine classes (ToneMatcher, TinnitusMaskLayer) and the stored user
-        settings remain in place. To revive the harness UI: flip
-        SHOW_TINNITUS_HARNESS to true.
-
-        Scene definitions all have `tinnitus.enabledByDefault: false`, so
-        scenes will not spin up a TinnitusMaskLayer unless the user opts in
-        explicitly through a future settings flow.
-      */}
       {SHOW_TINNITUS_HARNESS && (
         <>
           <Divider />
@@ -276,45 +369,6 @@ function Harness({ onBackToTonight }: { onBackToTonight: () => void }) {
   );
 }
 
-function UnlockGate({ onUnlock }: { onUnlock: () => Promise<void> }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <div className="min-h-screen flex items-center justify-center px-8 bg-ink-950">
-      <div className="text-center max-w-md">
-        <h1 className="font-serif text-stone-50 text-4xl mb-3">Ready to wind down?</h1>
-        <p className="text-stone-300 text-base mb-8 max-w-xs mx-auto">
-          Tap to begin. The audio engine wakes up here.
-        </p>
-        <button
-          className="px-7 py-3 rounded-soft bg-moon-500 text-ink-950 font-medium transition-all duration-slow ease-exhale active:bg-moon-400 disabled:opacity-50"
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            setError(null);
-            try {
-              await onUnlock();
-            } catch (err) {
-              const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-              console.error('[UnlockGate] unlock failed:', err);
-              setError(message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          {busy ? 'Waking up...' : 'Begin'}
-        </button>
-        {error && (
-          <p className="mt-6 text-xs text-ember-400 break-words text-left bg-ink-800 p-3 rounded-soft">
-            <strong>Unlock failed:</strong> {error}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function Divider() {
   return <div className="h-px bg-ink-700 my-8" />;
 }
@@ -324,6 +378,7 @@ function Spectrum() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
+    if (!engine.isInitialized) return;
     const analyser = engine.bus.analyser;
     const buf = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
     let raf = 0;
@@ -423,17 +478,15 @@ function NoiseSection() {
       <div className="mt-3">
         <PlayPause
           playing={playing}
-          onPlay={() => {
+          onPlay={async () => {
+            await engine.unlock();
+            await engine.loadNoiseWorklet();
             const layer = ensureLayer();
             layer.start();
             setPlaying(true);
           }}
           onStop={() => {
             if (layerRef.current) {
-              // Fire-and-forget: removeLayer unregisters synchronously and
-              // fades + disposes in the background. UI flips to Stopped
-              // immediately; audio tail completes in 0.2–5s depending on
-              // the layer.
               void engine.removeLayer(layerRef.current.id);
               layerRef.current = null;
             }
@@ -489,6 +542,7 @@ function ToneMatcherSection({
               await matcherRef.current?.stop();
               setPlaying(false);
             } else {
+              await engine.unlock();
               if (!matcherRef.current) {
                 matcherRef.current = new ToneMatcher(engine.context, engine.bus.input);
                 matcherRef.current.setFrequency(hz);
@@ -547,7 +601,9 @@ function TinnitusMaskSection({
       <div className="mt-3">
         <PlayPause
           playing={playing}
-          onPlay={() => {
+          onPlay={async () => {
+            await engine.unlock();
+            await engine.loadNoiseWorklet();
             if (!layerRef.current) {
               const layer = new TinnitusMaskLayer(engine, {
                 centerHz,
@@ -562,10 +618,6 @@ function TinnitusMaskSection({
           }}
           onStop={() => {
             if (layerRef.current) {
-              // Fire-and-forget: removeLayer unregisters synchronously and
-              // fades + disposes in the background. UI flips to Stopped
-              // immediately; audio tail completes in 0.2–5s depending on
-              // the layer.
               void engine.removeLayer(layerRef.current.id);
               layerRef.current = null;
             }
@@ -606,6 +658,7 @@ function CrossfadeSection() {
           onPlay={async () => {
             setBuilding(true);
             try {
+              await engine.unlock();
               if (!layerRef.current) {
                 const ctx = engine.context;
                 const variants = [
@@ -639,10 +692,6 @@ function CrossfadeSection() {
           }}
           onStop={() => {
             if (layerRef.current) {
-              // Fire-and-forget: removeLayer unregisters synchronously and
-              // fades + disposes in the background. UI flips to Stopped
-              // immediately; audio tail completes in 0.2–5s depending on
-              // the layer.
               void engine.removeLayer(layerRef.current.id);
               layerRef.current = null;
             }
@@ -670,11 +719,8 @@ function ScenesSection({
   const [loadingSceneId, setLoadingSceneId] = useState<string | null>(null);
   const [variantOutcomes, setVariantOutcomes] = useState<VariantLoadOutcome[]>([]);
   const [layerSummary, setLayerSummary] = useState<LayerSummary[]>([]);
-  // Refresh tick to re-render layer summary as the user moves sliders.
   const [, setTick] = useState(0);
 
-  // Refresh layer summary every 250ms while a scene is live so per-layer
-  // volume sliders stay in sync if any other code path moves them.
   useEffect(() => {
     if (!activeSceneId) return;
     const interval = setInterval(() => {
@@ -703,6 +749,7 @@ function ScenesSection({
       setLoadingSceneId(entry.id);
       setVariantOutcomes([]);
       try {
+        await engine.unlock();
         const def = await fetchSceneDefinition(entry);
         const collected: VariantLoadOutcome[] = [];
         const scene = await coordinator.startScene(def, {
@@ -733,7 +780,7 @@ function ScenesSection({
         setLoadingSceneId(null);
       }
     },
-    [coordinator, tinnitusCenterHz, tinnitusBandwidthHz]
+    [engine, coordinator, tinnitusCenterHz, tinnitusBandwidthHz]
   );
 
   const handleStop = useCallback(() => {
@@ -742,11 +789,6 @@ function ScenesSection({
     setLayerSummary([]);
   }, [coordinator]);
 
-  // Surprise Me — pick a random scene that isn't currently playing, then
-  // route through handleStart (which cross-fades when a scene is live and
-  // first-fades when not). If there's only one scene available, just play
-  // it; if it's already the active scene, no-op (no point cross-fading to
-  // self).
   const handleSurpriseMe = useCallback(() => {
     if (!index || index.scenes.length === 0) return;
     const choices = index.scenes.filter((s) => s.id !== activeSceneId);
@@ -878,7 +920,7 @@ function MasterSection({
   const [volume, setVolume] = useState(initialVolume);
 
   useEffect(() => {
-    engine.bus.setMasterVolume(initialVolume);
+    if (engine.isInitialized) engine.bus.setMasterVolume(initialVolume);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -889,20 +931,20 @@ function MasterSection({
         value={volume}
         onChange={(v) => {
           setVolume(v);
-          engine.bus.setMasterVolume(v);
+          if (engine.isInitialized) engine.bus.setMasterVolume(v);
           onChange(v);
         }}
       />
       <div className="mt-3 flex gap-2 flex-wrap">
         <button
-          onClick={() => engine.bus.fadeToSilence(10)}
+          onClick={() => engine.isInitialized && engine.bus.fadeToSilence(10)}
           className="px-3 py-1 rounded-soft text-sm bg-ink-800 text-stone-200"
           title="Demo of the timer fade -- exponential to silence over 10s"
         >
           Fade out (10s)
         </button>
         <button
-          onClick={() => engine.bus.cancelFade(volume, 1)}
+          onClick={() => engine.isInitialized && engine.bus.cancelFade(volume, 1)}
           className="px-3 py-1 rounded-soft text-sm bg-ink-800 text-stone-200"
         >
           Cancel fade

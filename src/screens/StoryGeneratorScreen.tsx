@@ -5,7 +5,10 @@
 // Generation takes 1–5 minutes; the screen stays open while it runs.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getSetting } from '../storage';
+import {
+  getAnthropicApiKey,
+  getElevenLabsApiKey,
+} from '../storage';
 import { generateStory } from '../services/storyGenerator';
 import type { GenerationStep } from '../services/storyGenerator';
 
@@ -49,8 +52,8 @@ export function StoryGeneratorScreen({
   }, []);
 
   const handleGenerate = useCallback(async () => {
-    const anthropicKey = getSetting('anthropicApiKey');
-    const elevenLabsKey = getSetting('elevenLabsApiKey');
+    const anthropicKey = getAnthropicApiKey();
+    const elevenLabsKey = getElevenLabsApiKey();
 
     if (!anthropicKey) {
       setError('Add your Anthropic API key in Settings first.');
@@ -98,14 +101,15 @@ export function StoryGeneratorScreen({
   }, [theme, voice, addStep, onDone]);
 
   return (
-    <div className="min-h-screen bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-6 py-10">
-      <header className="mb-10">
+    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-6 py-8 min-h-full">
+      <header className="mb-8">
         <button
           onClick={onBack}
           disabled={busy}
           className="text-xs text-stone-400 hover:text-stone-200
-                     transition-colors duration-slow mb-7 block
+                     transition-colors duration-slow mb-6 block
                      disabled:opacity-40"
+          aria-label="Back to Library"
         >
           ← Library
         </button>
