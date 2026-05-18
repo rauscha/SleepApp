@@ -9,11 +9,14 @@
 // activate only on the next cold start.
 //
 // Cache buckets:
-//   - sleep-audio-vN    : /audio/**, /worklets/**, /meditations/** — cache-first.
-//                         Once a buffer is fetched it's pinned for the
-//                         lifetime of this cache version. The browser may
-//                         still evict under storage pressure; that's a
-//                         re-fetch on miss, not a logic error.
+//   - sleep-audio-vN    : /audio/**, /worklets/**, /meditations/**,
+//                         /stories/**.mp3 — cache-first. Once a buffer is
+//                         fetched it's pinned for the lifetime of this cache
+//                         version. The browser may still evict under storage
+//                         pressure; that's a re-fetch on miss, not a logic
+//                         error. Story MP3s are bundled at ~17 MB each —
+//                         worth caching greedily so a mid-night replay never
+//                         goes to network.
 //   - sleep-scenes-vN   : /scenes/**.json — stale-while-revalidate. Scene
 //                         catalogue can be edited; serve cached for speed,
 //                         refresh in background.
@@ -109,9 +112,17 @@ self.addEventListener('fetch', (event) => {
   if (
     path.startsWith('/audio/') ||
     path.startsWith('/worklets/') ||
-    path.startsWith('/meditations/')
+    path.startsWith('/meditations/') ||
+    (path.startsWith('/stories/') && path.endsWith('.mp3'))
   ) {
     event.respondWith(cacheFirst(req, AUDIO_CACHE));
+    return;
+  }
+
+  // /stories/index.json — stale-while-revalidate (small catalogue file,
+  // similar pattern to scenes/index.json).
+  if (path.startsWith('/stories/')) {
+    event.respondWith(staleWhileRevalidate(req, SCENE_CACHE));
     return;
   }
 

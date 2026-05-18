@@ -1,0 +1,22 @@
+{
+  "stories": [
+    {
+      "id": "seaside-village",
+      "title": "Seaside village",
+      "theme": "An empty seaside village after dark, fog off the water.",
+      "voiceId": "tide",
+      "createdAt": "2026-05-18T00:59:09.530Z",
+      "durationSeconds": 1259,
+      "audioPath": "seaside-village.mp3"
+    },
+    {
+      "id": "night-train",
+      "title": "Night train",
+      "theme": "A long train ride through a quiet snowed-in valley.",
+      "voiceId": "stone",
+      "createdAt": "2026-05-18T01:04:02.890Z",
+      "durationSeconds": 1257,
+      "audioPath": "night-train.mp3"
+    }
+  ]
+}
