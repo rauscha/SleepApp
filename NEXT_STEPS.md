@@ -1,51 +1,71 @@
 # Next steps — current project state
 
-Last updated: 2026-05-17 PM. Shipped a five-commit batch covering most
-of today's surfaced work:
+Last updated: 2026-05-18 AM. Five-commit batch shipped overnight:
 
-1. **API-key env fallback** — `src/storage/apiKeys.ts` resolves
-   Anthropic + ElevenLabs keys from `VITE_*` build env first, falls
-   back to user-entered localStorage values. Settings surfaces a
-   "loaded from build env" badge when present.
-2. **Meditation marker-stripping** — `tools/gen-meditation.ts` strips
-   Claude's `[pause]`/`[softly]`/`[long pause]` stage directions
-   before ElevenLabs synthesis (they were being read out verbatim),
-   bumped stability to 0.9, regenerated the 3 starter MP3s.
-3. **Tailscale-default dev path** — `start-dev.bat` runs `tailscale
-   serve` to proxy `https://crane-desk.saiga-wage.ts.net` → Vite on
-   `localhost:5175`. Publicly-trusted Let's Encrypt cert, zero
-   per-device CA install on the phone. mkcert remains the off-tailnet
-   fallback via `VITE_USE_HTTPS=1`. See `notes/dev-cert-android.md`.
-4. **UX bug-batch** — removed the "Begin" gate (AudioContext unlocks
-   on first scene tap), fixed-viewport AppShell with always-visible
-   bottom nav (Tonight / Library / Settings), unified back-button
-   top-left across deep screens, synthetic history entries so OS back
-   gesture lands on Tonight instead of leaving the PWA, pull-to-refresh
-   disabled.
-5. **Background keep-alive stack (P5-9)** — Screen Wake Lock + extended
-   MediaSession (play/pause/stop handlers + dynamic playbackState) +
-   silent AudioContext loop through the master bus + 20-second SW
-   postMessage ping. All four engage when a scene/meditation/story
-   plays, disengage on stop. Lifecycle log records `keepalive-start` /
-   `keepalive-stop` so the next overnight test can confirm engagement.
+1. **Scene-config fix + meditation script-editing flow** (d7da552) — the
+   FileLayer guard `buffer.duration ≥ loopOffsetSeconds + crossfadeSeconds`
+   was failing on two scenes: fireplace's `fire-distant/distant-3` (240s
+   vs 414s needed, 174s short) and rain-on-window's
+   `rain-pavement/pavement-2` (525s vs 526s needed, 1s short). distant-3
+   removed from variant rotation; rain-pavement loopOffset lowered
+   521 → 515. Also: `tools/gen-meditation.ts` now writes a sidecar
+   `<id>.txt` of the raw Claude script next to every MP3 and accepts
+   `--script <path>` to re-render from a hand-edited script (no Claude
+   call). Voice IDs now read from `VITE_VOICE_HUSH/EMBER/GLEN` env vars
+   to stay in sync with the browser bundle.
+2. **Regenerated 3 starter meditations on the new portal voices**
+   (1f577e8) — all 3 starters were on the previous voice IDs even after
+   the env vars updated. Regenerated with a remapped pairing: body-scan
+   on hush, breath-focus on ember, visualization on glen (previously
+   hush / glen / ember). Each meditation now ships with a sibling .txt
+   for the hand-edit-and-re-render flow.
+3. **Bundle infrastructure for shipped sleep stories** (a9d74cd) —
+   adds `BundledStoryMetadata` type, `fetchBundledStoryIndex()` in
+   LibraryScreen, and a new `tools/gen-story.ts` CLI mirroring
+   `gen-meditation.ts` (Claude → ElevenLabs Projects or chunked-TTS
+   fallback → MP3 + .txt sidecar in `public/stories/`). Bundled stories
+   render in the Stories tab above user-generated ones, no delete
+   button.
+4. **2 baked sleep stories** (92813cb) — "Seaside village" (Tide voice,
+   ~21 min, ~2700 words) and "Night train" (Stone voice, ~21 min, ~2700
+   words). Projects API returned 405 Method Not Allowed both times —
+   chunked-TTS fallback handled it. Service worker updated:
+   `/stories/*.mp3` is cache-first under the existing AUDIO_CACHE bucket
+   (no CACHE_VERSION bump — additive path), `/stories/index.json`
+   gets stale-while-revalidate.
+5. **forest-night scene** (c02c324) — second forest variant, reuses
+   forest-day's wind + creek elements (no birds, quieter), paired with
+   a new "Forest at night" photo from `ACR-photos/`. Same coprime
+   offsets (251 / 521) as forest-day.
 
-81/81 tests pass. Main bundle 198.05 kB (gzip 61.77 kB).
+81/81 tests pass. Bundle size grew by ~34 MB (the two bundled stories);
+public/audio is unchanged at 238 MB.
 
-**Next session priorities (2026-05-18):**
-1. Android overnight retest — keep-alive stack should push the discard
-   point well past 15 min. Lifecycle log will record `keepalive-start`
-   / `keepalive-stop` so we can confirm engagement.
-2. Sleep-stories smoke test with Tide / Stone voices through the
-   Projects API path — verify a real 3K-word script renders end-to-end
-   and plays cleanly in the Library.
-3. Collect iOS overnight result.
-
-**Tonight's run:** iOS + Android in parallel against the same dev
-server. The keep-alive stack is now in place — if Android still
-crashes, the lifecycle log will show whether `keepalive-start` fired
-and whether the freeze/discard sequence still landed, which narrows
-the next move (PWA install vs. periodic background sync vs.
-Howler-for-scenes).
+**Next session priorities:**
+1. **Live playback verification** — start the dev server, walk through
+   the Library and Tonight tabs:
+   - 3 meditations play with the new voices (hush/ember/glen).
+   - 2 bundled stories appear above any user-generated stories, play
+     end-to-end without seam clicks (chunked-TTS concat).
+   - forest-night scene starts cleanly, loops past the 521s mark
+     without artefacts (the FileLayer guard tests passed but real
+     playback is the only honest check).
+2. **Investigate the ElevenLabs Projects 405** — the in-app long-form
+   path also uses Projects with a chunked-TTS fallback (per
+   `src/services/storyGenerator.ts`). If the endpoint shape really
+   changed or the Creator-plan grant lapsed, the in-app fallback
+   handles it the same way, but it's worth knowing.
+3. **Optional script polish** — the 3 meditation `.txt` and 2 story
+   `.txt` files are now editable. If any read oddly, edit and re-run:
+   - Meditations: `npx tsx tools/gen-meditation.ts --id <id>
+     --voice <voice> --script public/meditations/<id>.txt`
+   - Stories: `npx tsx tools/gen-story.ts --id <id> --voice <voice>
+     --script public/stories/<id>.txt`
+   (Pass --title to keep the index.json display name unchanged.)
+4. **Android overnight retest** — still pending. Keep-alive stack
+   (P5-9) and the new bundled content set it up well. Lifecycle log
+   should record `keepalive-start` / `keepalive-stop` per session.
+5. **iOS overnight result** — still pending.
 
 ---
 
@@ -56,129 +76,38 @@ Howler-for-scenes).
 | 1 | ✅ Done | Audio engine — noise synth, FileLayer crossfade, tinnitus (shelved), storage |
 | 2 | ✅ Done | Multi-layer scenes, coprime offsets, Surprise Me, Pixabay sources |
 | 3 | ✅ Done | Tonight + Player + Nightstand + Settings; CI; A1 iOS fix shipped |
-| 4 | ✅ Done | AI meditations (CLI pipeline) + AI sleep stories (on-demand in-app). Starter set of 3 meditations shipped — body-scan/breath-focus/visualization. |
-| 5 | 🔄 In progress | Polish — lazy-loading ✅, reduced-motion ✅, manifest ✅, service worker ✅, scene photos ✅, HTTPS dev server ✅, keep-alive stack ✅, iOS overnight test 🔄 |
+| 4 | ✅ Done | AI meditations (CLI pipeline) + AI sleep stories (on-demand in-app + 2 bundled). Starter set now: 3 meditations (body-scan/breath-focus/visualization) + 2 stories (Seaside village / Night train). |
+| 5 | 🔄 In progress | Polish — lazy-loading ✅, reduced-motion ✅, manifest ✅, service worker ✅, scene photos ✅ (3 of 4 scenes), HTTPS dev server ✅, keep-alive stack ✅, iOS overnight test 🔄, Android overnight retest 🔄 |
 
 ---
 
-## Phase 5 — remaining work (priority order)
+## Future scenes — audio gap
 
-### P5-1 ✅ Bundle lazy-loading
-Post-Tonight screens (Settings, Library, ContentPlayer, StoryGenerator) are
-loaded via `React.lazy()` + `<Suspense>`. Howler (used only in
-ContentPlayer) is now in a 39 kB side chunk instead of the main bundle.
-Initial JS dropped from ~247 kB → 192 kB. Fallback is a silent dark screen
-(no spinner, no flash) so a cold-cache load at 2am stays dark.
+`ACR-photos/` has raw originals for 8 scenes that aren't shipped yet
+(waterfall, beach ×2, plane cabin, rain on roof, spaceship, calm,
+rain-2). None of them have source audio in `raw-sounds/`. Shipping the
+photos without audio is empty bundle weight, so they stay untracked
+until their audio lands.
 
-### P5-2 ✅ `prefers-reduced-motion` global CSS
-Implemented in `src/index.css` lines 70–78. Disables animations and
-transitions when the OS asks; audio scheduling is untouched.
+The one realistic next-scene candidate from current assets is
+`raw-sounds/freesound_community-trainride-inside-recording-53564.mp3`
+(717s, ~12 min). Deliberately not shipped as a single-element scene —
+the brief's ≥2-variants-per-element target gives a noticeably better
+listen than 1-variant loops, and the new Night train *story* already
+covers that theme in the Library tab.
 
-### P5-3 ✅ PWA manifest + icons — install-ready
-`public/manifest.json` shipped with name/short_name, description, dark
-theme/background, portrait-standalone display, `categories:
-["health","lifestyle"]`. Icons array now lists raster PNGs as primary:
-- `icon-192.png` (any) + `icon-512.png` (any)
-- `icon-maskable-512.png` (maskable, full-bleed bg, art in inner 60%)
-- `icon.svg` (any, kept as fallback for scalable contexts)
-`apple-touch-icon.png` (180×180, no transparency) replaces the SVG in
-`index.html` so iOS shows the proper raster on the home screen.
+To add any of the future scenes:
 
-PNGs are generated by `tools/gen-icons.mjs` — pure-Node (zlib only) PNG
-encoder, 4× supersampled crescent + rounded square. Re-run after editing
-the script's `BG`/`FG` constants or geometry.
-
-The art is still a placeholder (sage crescent on ink-950, no typography).
-A final brand mark would replace the four PNG files; manifest/index paths
-stay as-is. See `USER_TODO.md`.
-
-### P5-4 ✅ Service worker — audio asset caching
-`public/sw.js` shipped. Strategy:
-- `/audio/**`, `/worklets/**`, `/meditations/**` — **cache-first** (audio is
-  immutable per file; once cached, never re-fetch unless evicted)
-- `/scenes/**` — **stale-while-revalidate** (config JSON; serve cached, refresh
-  in background)
-- HTML navigations — **network-first** with cache fallback (so app updates
-  arrive, but offline still loads)
-- Hashed JS/CSS — **stale-while-revalidate**
-
-Safety choices to avoid the silent-gap failure mode:
-- `skipWaiting()` is deliberately **not** called. A new worker waits until
-  the next cold start — running audio sessions are never disturbed.
-- `cacheFirst` only stores status === 200 (rejects 206 partial-content so
-  range requests can't poison the cache with truncated buffers).
-- Register only in `import.meta.env.PROD` — dev's `/src/*` paths would
-  pollute the cache and HMR doesn't compose with SW interception.
-
-A keep-alive postMessage handler (`type: 'ping'`) was added in P5-9 so
-the page can prevent the worker from being parked while a session is
-live — see that section.
-
-### P5-5 iOS device test (overnight) — 🔄 still pending result
-Wife's iPhone overnight test. With the SW in place this also exercises
-offline behaviour (airplane-mode mid-night should keep audio running
-from cache). See `USER_TODO.md`.
-
-### P5-6 ✅ HTTPS dev server — tailscale-default, mkcert fallback
-Reworked from the original basic-ssl approach. Default path is
-`start-dev.bat` → `tailscale serve --bg --https=443 http://localhost:5175`
-proxying a publicly-trusted Let's Encrypt cert at
-`https://crane-desk.saiga-wage.ts.net/`. Any device on the tailnet
-(phone included) hits the dev server with a green lock and zero
-per-device CA install. `VITE_USE_HTTPS=1` flips Vite into terminating
-TLS itself with mkcert certs under `certs/` (or basic-ssl fallback)
-for the off-tailnet case. Documented in `notes/dev-cert-android.md`.
-
-### P5-7 Scene photos for shipped scenes — ✅
-Forest, Rain, Fireplace photos shipped (commit 7e46293). Layered
-under a top→bottom dark gradient (`PHOTO_OVERLAY`) in `TonightScreen.tsx`
-so text stays legible on bright frames. Raw originals + 9 future-scene
-photos sit in untracked `ACR-photos/`.
-
-### P5-8 MediaSession + lifecycle log — ✅
-`navigator.mediaSession.metadata` is now set whenever a scene starts
-(`src/audio/mediaSession.ts`, wired in `PlayerScreen.tsx`). The OS-level
-"this tab is a media session" signal raises the tab's priority against
-Chrome's background-discard heuristic on Android and surfaces the scene
-name on the lock screen. P5-9 extended this with action handlers and
-dynamic `playbackState`.
-
-`src/diagnostics/lifecycleLog.ts` captures visibilitychange / freeze /
-resume / pagehide / pageshow / error / unhandled-rejection events plus
-audio-state transitions and scene start/stop. Persisted to localStorage
-(cap 500 entries, FIFO). Settings → Diagnostics surfaces the log with
-Share / Copy / Download / Clear buttons. Web Share API used on devices
-that support it, clipboard fallback otherwise.
-
-### P5-9 ✅ Background keep-alive stack — Wake Lock + silent loop + SW ping
-Shipped after the 2026-05-16 Android crash at ~15 min. Four layers
-engage automatically while a scene/meditation/story plays and disengage
-on stop:
-
-- **Screen Wake Lock** (`src/hooks/useWakeLock.ts`) —
-  `navigator.wakeLock.request('screen')` with auto re-acquire on
-  visibilitychange (Android releases on hidden). Silently no-op on
-  Safari < 16.4 / unsupported browsers.
-- **MediaSession action handlers** (`src/audio/mediaSession.ts`) — now
-  registers play / pause / stop on top of the existing metadata, and
-  exposes `setMediaSessionPlaybackState` so ContentPlayerScreen can
-  reflect Howler's playing/paused state on the lock-screen widget.
-- **Silent AudioContext loop** (`src/audio/silentKeepAlive.ts`) — a 1s
-  zero-filled buffer routed through the master bus input via a zeroed
-  gain node, looped while a scene is live. Defeats Android's
-  audio-focus idle-suspend without any audible artefact.
-- **Service-worker ping** (`src/serviceWorker/keepAlive.ts` ↔ message
-  handler in `public/sw.js`) — 20-second `{type:'ping'}` postMessage
-  keeps the SW from being parked, so a discarded tab restarts from
-  cache instead of network.
-
-Lifecycle log records `keepalive-start` / `keepalive-stop` so the next
-overnight test can confirm engagement at the exact times we expect.
-
-Battery cost note: Wake Lock and the silent loop are both real-but-
-modest power draws. The "no demands on the user" rule is honoured —
-nothing prompts, nothing surfaces UI — but the phone should still be on
-the charger overnight as the brief assumed.
+1. Source 2+ loop-friendly variants per element from Freesound or
+   Pixabay. Drop into `raw-sounds/`.
+2. Extend `tools/process-raw-sounds.sh` with `process` calls for the
+   new scene (see existing entries — pick durations that exceed
+   intended loopOffset+crossfade).
+3. Re-run the script. Outputs land in `public/audio/<scene>/<element>/`.
+4. Create `public/scenes/<scene>.json` + add to `public/scenes/index.json`.
+5. ffmpeg the matching photo from `ACR-photos/` to
+   `public/scenes/photos/<scene>.jpg`. Add to `SCENE_PHOTOS` and a
+   gradient to `SCENE_GRADIENTS` in `TonightScreen.tsx`.
 
 ---
 
@@ -190,22 +119,22 @@ the charger overnight as the brief assumed.
 | A2 | 🔲 open (low) | `removeLayer` blocks on full crossfade when stopping — 30 min fix during scene transition work if it becomes noticeable |
 | A3 | ✅ fixed | Pink-noise divides by 16 + hard clamp (noise-processor.js:86–89) |
 | A4 | ✅ fixed | `dbPromise` drops cached promise on rejection (assets.ts:44–46) |
+| A5 | 🔲 open (low) | ElevenLabs Projects API returns 405 Method Not Allowed; chunked-TTS fallback handles it but worth investigating whether the endpoint shape changed or Creator-plan grant lapsed |
+| A6 | 🔲 open (info) | `tsconfig` writes UTF-16 / CRLF on Windows commits — git complains "LF will be replaced by CRLF" on every text-file add. Cosmetic only |
 
 ---
 
 ## Open questions
 
-1. ~~**Photo assets**~~ — **resolved for the 3 shipped scenes.** Forest,
-   Rain, Fireplace photos live at `public/scenes/photos/<id>.jpg` and
-   render under a dark overlay gradient in `TonightScreen.tsx`. Raw
-   sources stay in untracked `ACR-photos/`. Photos for any future scenes
-   (waterfall, beach, forest-night, etc.) still TODO.
-2. **Variant pool minimum** — after the 2026-05-16 deploy, every scene
-   element has ≥2 variants (creek/wind/pavement now 2, fire-close +
-   fire-distant now 3). Rotation is doing useful work. Further variants
-   still welcome — see `USER_TODO.md` for the per-element gap list.
-3. **Tinnitus revival** — weak evidence base + UX issues shelved it. Skip
-   entirely in v1 or find a simpler entry point?
-4. ~~**Howler for story playback**~~ — **resolved.** Phase 4 wired Howler
-   in for ContentPlayer (iOS background audio + streaming). Phase 5 just
-   moved it to a lazy chunk. No further decision needed.
+1. **Variant pool minimum** — fire-distant lost variant 3 in this
+   batch (240s buffer too short for 409s loopOffset). The remaining
+   2 variants are healthy. Other elements still at 2 variants —
+   adding 3rd variants to existing scenes is a Pixabay search away,
+   not blocking.
+2. **Tinnitus revival** — weak evidence base + UX issues shelved it.
+   Skip entirely in v1 or find a simpler entry point?
+3. **ElevenLabs Projects vs chunked-TTS for stories** — chunked handled
+   today's 2 stories cleanly (4 chunks each, byte-concat). The Projects
+   path remains the preferred long-form route per the in-app code.
+   Worth confirming whether the seam quality on chunked is acceptable
+   over a real overnight listen before tearing out the Projects path.
