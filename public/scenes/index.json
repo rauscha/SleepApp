@@ -7,6 +7,12 @@
       "url": "/scenes/forest-day.json"
     },
     {
+      "id": "forest-night",
+      "label": "Forest, night",
+      "description": "Wind through dark canopy, a slow creek behind it. No birds.",
+      "url": "/scenes/forest-night.json"
+    },
+    {
       "id": "rain-on-window",
       "label": "Rain on the window",
       "description": "Steady rain against glass, distant rain on pavement, a bass rumble miles off.",

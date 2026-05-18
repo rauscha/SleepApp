@@ -34,6 +34,7 @@ export interface TonightScreenProps {
 // fall back to the gradient-only treatment via SCENE_GRADIENTS.
 const SCENE_PHOTOS: Record<string, string> = {
   'forest-day':     '/scenes/photos/forest-day.jpg',
+  'forest-night':   '/scenes/photos/forest-night.jpg',
   'rain-on-window': '/scenes/photos/rain-on-window.jpg',
   'fireplace':      '/scenes/photos/fireplace.jpg',
 };
@@ -42,6 +43,7 @@ const SCENE_PHOTOS: Record<string, string> = {
 // been shipped yet — the brief reserves slots for more).
 const SCENE_GRADIENTS: Record<string, [string, string]> = {
   'forest-day':     ['#182A1E', '#0B0D10'],
+  'forest-night':   ['#0C1812', '#0B0D10'],
   'rain-on-window': ['#161D2A', '#0B0D10'],
   'fireplace':      ['#2A1810', '#0B0D10'],
 };
