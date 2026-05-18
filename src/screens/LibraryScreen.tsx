@@ -1,15 +1,22 @@
-// Library — lists bundled meditations and user-generated stories.
+// Library — lists bundled meditations, bundled stories, and user-generated
+// stories.
 //
 // Meditations: fetched from /meditations/index.json (static, bundled).
-// Stories: fetched from IndexedDB via listStories().
+// Bundled stories: fetched from /stories/index.json (static, bundled).
+// User stories: fetched from IndexedDB via listStories().
 //
-// Tapping a meditation navigates to ContentPlayerScreen with a direct URL.
-// Tapping a story loads its audio from IndexedDB, creates a blob URL, and
-// navigates to ContentPlayerScreen with that URL (revoked on back).
+// Tapping a meditation or a bundled story navigates to ContentPlayerScreen
+// with a direct URL. Tapping a user-generated story loads its audio from
+// IndexedDB, creates a blob URL, and navigates with that URL (revoked on
+// back). Bundled stories are read-only — no delete button.
 
 import { useCallback, useEffect, useState } from 'react';
 import { getStoryAudio, listStories, deleteStory } from '../storage';
-import type { MeditationMetadata, StoryMetadata } from '../storage/types';
+import type {
+  BundledStoryMetadata,
+  MeditationMetadata,
+  StoryMetadata,
+} from '../storage/types';
 
 function resolvePublicUrl(path: string): string {
   const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
@@ -22,6 +29,21 @@ async function fetchMeditationIndex(): Promise<MeditationMetadata[]> {
   if (!res.ok) throw new Error(`Meditation index failed: ${res.status}`);
   const data = (await res.json()) as { meditations: MeditationMetadata[] };
   return data.meditations;
+}
+
+async function fetchBundledStoryIndex(): Promise<BundledStoryMetadata[]> {
+  const url = resolvePublicUrl('/stories/index.json');
+  const res = await fetch(url);
+  // A missing index file (404) is fine — it just means no bundled
+  // stories ship with this build. Errors are swallowed silently so a
+  // bad fetch doesn't break the user-generated stories list below it.
+  if (!res.ok) return [];
+  try {
+    const data = (await res.json()) as { stories: BundledStoryMetadata[] };
+    return data.stories ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export interface ContentItem {
@@ -53,6 +75,7 @@ export function LibraryScreen({
   const [tab, setTab] = useState<Tab>('meditations');
   const [meditations, setMeditations] = useState<MeditationMetadata[]>([]);
   const [meditationError, setMeditationError] = useState<string | null>(null);
+  const [bundledStories, setBundledStories] = useState<BundledStoryMetadata[]>([]);
   const [stories, setStories] = useState<StoryMetadata[]>([]);
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
@@ -60,6 +83,8 @@ export function LibraryScreen({
     fetchMeditationIndex()
       .then(setMeditations)
       .catch((err) => setMeditationError(String(err)));
+    // Bundled stories swallow their own errors — see fetchBundledStoryIndex.
+    fetchBundledStoryIndex().then(setBundledStories);
   }, []);
 
   const refreshStories = useCallback(() => {
@@ -105,6 +130,20 @@ export function LibraryScreen({
       } finally {
         setLoadingId(null);
       }
+    },
+    [onPlay]
+  );
+
+  const handlePlayBundledStory = useCallback(
+    (story: BundledStoryMetadata) => {
+      const audioUrl = resolvePublicUrl(`/stories/${story.audioPath}`);
+      onPlay({
+        id: story.id,
+        type: 'story',
+        title: story.title,
+        description: story.theme,
+        audioUrl,
+      });
     },
     [onPlay]
   );
@@ -194,13 +233,22 @@ export function LibraryScreen({
               Generate new story →
             </button>
           </div>
-          {stories.length === 0 && (
+          {bundledStories.length === 0 && stories.length === 0 && (
             <EmptyState
               heading="No stories yet"
               body="Add your ElevenLabs and Anthropic API keys in Settings, then generate a story."
             />
           )}
           <div className="space-y-3">
+            {bundledStories.map((s) => (
+              <ContentCard
+                key={s.id}
+                title={s.title}
+                description={s.theme}
+                meta={fmtDuration(s.durationSeconds)}
+                onPlay={() => handlePlayBundledStory(s)}
+              />
+            ))}
             {stories.map((s) => (
               <ContentCard
                 key={s.id}

@@ -85,6 +85,29 @@ export interface StoryMetadata {
   sceneId: string | null;
 }
 
+/** Metadata for a single bundled sleep story (shipped with the app).
+ *  Lives in public/stories/index.json and is the read-only counterpart
+ *  to StoryMetadata — same shape conceptually but the audio is at a
+ *  URL instead of in IndexedDB, and the user can't delete it. */
+export interface BundledStoryMetadata {
+  id: string;
+  title: string;
+  /** Short blurb shown under the title in the Library card. */
+  theme: string;
+  /** Voice name (maps to a VITE_VOICE_TIDE/STONE id), e.g. 'tide' | 'stone'. */
+  voiceId: string;
+  /** ISO 8601 timestamp when this story was generated. */
+  createdAt: string;
+  /** Approximate spoken duration in seconds. */
+  durationSeconds: number;
+  /** Path to the MP3 relative to /stories/, e.g. "seaside-village.mp3". */
+  audioPath: string;
+}
+
+export interface BundledStoryIndex {
+  stories: BundledStoryMetadata[];
+}
+
 /** Shape of an audio asset stored in IndexedDB. */
 export interface StoredAudioAsset {
   /** Asset id — for stories this is the story id. */
