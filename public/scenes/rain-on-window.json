@@ -34,7 +34,7 @@
     {
       "id": "rain-pavement",
       "label": "Rain on pavement (distant)",
-      "loopOffsetSeconds": 521,
+      "loopOffsetSeconds": 515,
       "crossfadeSeconds": 5,
       "defaultVolume": 0.3,
       "variantRotation": "random",

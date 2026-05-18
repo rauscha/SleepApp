@@ -3,8 +3,12 @@
  * gen-meditation.ts — generate a bundled sleep meditation.
  *
  * Calls Claude to write the script, ElevenLabs to synthesize it, then
- * saves the MP3 and updates public/meditations/index.json. Run once per
- * meditation; the output ships with the app (zero per-user cost).
+ * saves the MP3 (and a sidecar .txt of the script) and updates
+ * public/meditations/index.json. Run once per meditation; the output ships
+ * with the app (zero per-user cost).
+ *
+ * The sidecar .txt is editable — pass `--script <path>` to skip Claude
+ * and synthesize directly from a hand-edited script.
  *
  * Prerequisites:
  *   npm install -g tsx        (or: npx tsx tools/gen-meditation.ts …)
@@ -12,11 +16,19 @@
  *   export ELEVEN_LABS_API_KEY=…
  *
  * Usage:
+ *   # Fresh generation: Claude writes, ElevenLabs synthesizes.
  *   npx tsx tools/gen-meditation.ts \
  *     --title "Evening body scan" \
  *     --style body-scan \
  *     --voice hush \
  *     --id   evening-body-scan
+ *
+ *   # Re-render from an edited script (Claude not called).
+ *   npx tsx tools/gen-meditation.ts \
+ *     --title "Evening body scan" \
+ *     --voice hush \
+ *     --id   evening-body-scan \
+ *     --script public/meditations/evening-body-scan.txt
  *
  * Arguments (all optional — defaults shown):
  *   --title   Human-readable title displayed in the Library
@@ -24,6 +36,9 @@
  *   --voice   hush | ember | glen  (default: hush)
  *   --id      Filename stem, e.g. "morning-scan" → morning-scan.mp3
  *             (defaults to a kebab-case version of --title)
+ *   --script  Path to a .txt file to use instead of generating with Claude.
+ *             Stage-direction markers like [pause] are still stripped
+ *             before TTS, so you may keep or remove them as you prefer.
  */
 
 import { writeFileSync, readFileSync, mkdirSync } from 'fs';
@@ -37,13 +52,16 @@ const INDEX_PATH = join(MEDITATIONS_DIR, 'index.json');
 
 // ---------------------------------------------------------------------------
 // Voice map — custom voices from the ElevenLabs Voice Design portal.
-// These are the meditation voices; story voices (tide, stone) live in
-// src/services/storyGenerator.ts.
+// Reads the same VITE_VOICE_* env vars the browser bundle uses so the CLI
+// and the app stay in sync. Hardcoded fallbacks reflect the current
+// design portal IDs as of 2026-05-17.
+//
+// Story voices (tide, stone) live in src/services/storyGenerator.ts.
 
 const VOICE_IDS: Record<string, string> = {
-  hush:  'mZTVERjx1WQkdAWt1Lcm', // Grace  — soft female
-  ember: '1mrmwdWVC5cggRCdxBXt', // Monika — warm female
-  glen:  'iRItcIx4sdrKJ1k6Ovv7', // Jerry  — male
+  hush:  process.env['VITE_VOICE_HUSH']  || 'bgU7lBMo69PNEOWHFqxM',
+  ember: process.env['VITE_VOICE_EMBER'] || 'gc5LArFpEOmYx9nYmK9l',
+  glen:  process.env['VITE_VOICE_GLEN']  || 'UmQN7jS1Ee8B1czsUtQh',
 };
 
 // ---------------------------------------------------------------------------
@@ -102,10 +120,11 @@ function parseArgs() {
     return i >= 0 && i + 1 < args.length ? args[i + 1] : def;
   };
   return {
-    title: get('--title', 'Evening body scan'),
-    style: get('--style', 'body-scan') as 'body-scan' | 'breath-focus' | 'visualization',
-    voice: get('--voice', 'hush') as 'hush' | 'ember' | 'glen',
-    id:    get('--id', ''),
+    title:  get('--title', 'Evening body scan'),
+    style:  get('--style', 'body-scan') as 'body-scan' | 'breath-focus' | 'visualization',
+    voice:  get('--voice', 'hush') as 'hush' | 'ember' | 'glen',
+    id:     get('--id', ''),
+    script: get('--script', ''),
   };
 }
 
@@ -210,19 +229,13 @@ async function callElevenLabs(
 // Main
 
 async function main() {
-  const anthropicKey  = process.env['ANTHROPIC_API_KEY'];
   const elevenLabsKey = process.env['ELEVEN_LABS_API_KEY'];
-
-  if (!anthropicKey) {
-    console.error('ERROR: ANTHROPIC_API_KEY environment variable is not set.');
-    process.exit(1);
-  }
   if (!elevenLabsKey) {
     console.error('ERROR: ELEVEN_LABS_API_KEY environment variable is not set.');
     process.exit(1);
   }
 
-  const { title, style, voice, id: rawId } = parseArgs();
+  const { title, style, voice, id: rawId, script: scriptPath } = parseArgs();
   const id = rawId || toKebab(title);
   const audioPath = `${id}.mp3`;
   const voiceId = VOICE_IDS[voice];
@@ -232,21 +245,42 @@ async function main() {
   }
 
   console.log(`\nGenerating meditation: "${title}"`);
-  console.log(`  style: ${style}  |  voice: ${voice}  |  id: ${id}\n`);
+  console.log(`  style: ${style}  |  voice: ${voice}  |  id: ${id}`);
+  console.log(scriptPath ? `  source: ${scriptPath}\n` : `  source: Claude\n`);
 
-  // 1. Generate script
-  const script = await callClaude(anthropicKey, style);
+  // 1. Acquire script — either from file or from Claude.
+  let script: string;
+  if (scriptPath) {
+    script = readFileSync(scriptPath, 'utf8');
+    console.log(`  ✓  Loaded script from ${scriptPath} (${script.trim().split(/\s+/).length} words)`);
+  } else {
+    const anthropicKey = process.env['ANTHROPIC_API_KEY'];
+    if (!anthropicKey) {
+      console.error('ERROR: ANTHROPIC_API_KEY environment variable is not set.');
+      process.exit(1);
+    }
+    script = await callClaude(anthropicKey, style);
+  }
 
-  // 2. Synthesize
+  // 2. Save the script as a sidecar .txt so it can be hand-edited and
+  // re-rendered later with --script. We save the raw script (markers
+  // intact) — stripMeditationMarkers runs in callElevenLabs anyway,
+  // and keeping [pause] tags lets the human editor see Claude's
+  // pacing intent.
+  mkdirSync(MEDITATIONS_DIR, { recursive: true });
+  const scriptFilePath = join(MEDITATIONS_DIR, `${id}.txt`);
+  writeFileSync(scriptFilePath, script);
+  console.log(`  ✓  Saved ${scriptFilePath}`);
+
+  // 3. Synthesize
   const audioData = await callElevenLabs(elevenLabsKey, voiceId, script);
 
-  // 3. Save MP3
-  mkdirSync(MEDITATIONS_DIR, { recursive: true });
+  // 4. Save MP3
   const audioFilePath = join(MEDITATIONS_DIR, audioPath);
   writeFileSync(audioFilePath, audioData);
   console.log(`  ✓  Saved ${audioFilePath}`);
 
-  // 4. Update index.json
+  // 5. Update index.json
   const wordCount = script.trim().split(/\s+/).length;
   const durationSeconds = Math.round((wordCount / 115) * 60); // ~115 wpm slow narration
 
