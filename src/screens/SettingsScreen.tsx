@@ -7,7 +7,7 @@
 // Keys are stored in localStorage only and never leave the device.
 // Fields use type=password with a show/hide toggle.
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { getAudioEngine } from '../audio/AudioEngine';
 import {
   clearLog,
@@ -15,6 +15,13 @@ import {
   getAllEntries,
   type LogEntry,
 } from '../diagnostics/lifecycleLog';
+import {
+  getOfflineStatus,
+  isServiceWorkerControlling,
+  precacheOfflineAssets,
+  type OfflineStatus,
+  type PrecacheProgress,
+} from '../services/offlinePrecache';
 import {
   getAllSettings,
   hasAnthropicEnvKey,
@@ -111,6 +118,19 @@ export function SettingsScreen(_props: SettingsScreenProps) {
 
       <div className="h-px bg-ink-700 mb-8" />
 
+      {/* ── Offline ──────────────────────────────────────────────────── */}
+      <section className="mb-8 px-1">
+        <h2 className="font-serif text-stone-300 text-lg mb-2">Offline</h2>
+        <p className="text-xs text-stone-500 mb-5">
+          Download every scene, meditation, and bundled story so the app
+          plays with no network. About 290 MB total. Already-downloaded
+          files are skipped, so tapping this again is safe.
+        </p>
+        <OfflineDownloadPanel />
+      </section>
+
+      <div className="h-px bg-ink-700 mb-8" />
+
       {/* ── AI features ──────────────────────────────────────────────── */}
       <section className="mb-8 px-1">
         <h2 className="font-serif text-stone-300 text-lg mb-2">AI features</h2>
@@ -158,6 +178,152 @@ export function SettingsScreen(_props: SettingsScreenProps) {
         <p>Sleep App · v0.1.0</p>
         <p>No accounts. No telemetry. No notifications. Ever.</p>
       </footer>
+    </div>
+  );
+}
+
+function OfflineDownloadPanel() {
+  // Status starts null while we discover the URL list. `swControlling` is
+  // captured on mount because dev (vite serve) doesn't activate the SW —
+  // we disable the button in that case rather than silently no-op.
+  const [status, setStatus] = useState<OfflineStatus | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<PrecacheProgress | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const swControlling = useMemo(() => isServiceWorkerControlling(), []);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const refresh = async () => {
+    setStatusError(null);
+    try {
+      const s = await getOfflineStatus();
+      setStatus(s);
+    } catch (err) {
+      setStatusError(
+        err instanceof Error ? err.message : 'Failed to read offline status'
+      );
+    }
+  };
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  const running = progress !== null;
+
+  const handleDownload = async () => {
+    setError(null);
+    const ac = new AbortController();
+    abortRef.current = ac;
+    setProgress({ done: 0, total: 0, currentUrl: null });
+    try {
+      await precacheOfflineAssets({
+        signal: ac.signal,
+        onProgress: (p) => setProgress(p),
+      });
+      await refresh();
+    } catch (err) {
+      if ((err as DOMException)?.name !== 'AbortError') {
+        setError(
+          err instanceof Error ? err.message : 'Offline download failed'
+        );
+      }
+    } finally {
+      abortRef.current = null;
+      setProgress(null);
+    }
+  };
+
+  const handleCancel = () => {
+    abortRef.current?.abort();
+  };
+
+  if (!swControlling) {
+    return (
+      <p className="text-xs text-stone-400 bg-ink-800 rounded-soft px-3 py-2.5">
+        The service worker isn't active in this environment, so a download
+        wouldn't persist. Install the app (Add to Home Screen) or run a
+        production build to enable offline.
+      </p>
+    );
+  }
+
+  const pct =
+    progress && progress.total > 0
+      ? Math.round((progress.done / progress.total) * 100)
+      : 0;
+
+  return (
+    <div className="space-y-3">
+      {status && !running && (
+        <p className="text-xs text-stone-400">
+          {status.complete ? (
+            <span className="text-moon-300">
+              Ready to play offline · {status.totalCount} files cached
+            </span>
+          ) : (
+            <>
+              {status.cachedCount} of {status.totalCount} files cached
+            </>
+          )}
+        </p>
+      )}
+
+      {statusError && (
+        <p className="text-xs text-red-400" role="status">
+          {statusError}
+        </p>
+      )}
+
+      {running && progress && (
+        <div className="space-y-2">
+          <p className="text-xs text-stone-300" role="status">
+            Downloading… {progress.done} / {progress.total} ({pct}%)
+          </p>
+          <div className="h-1.5 bg-ink-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-moon-600 transition-[width] duration-slow"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {!running && (
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={status?.complete === true}
+            className={[
+              'px-3 py-1.5 rounded-soft text-xs transition-colors duration-slow',
+              status?.complete
+                ? 'bg-ink-700 text-stone-500 cursor-not-allowed'
+                : 'bg-moon-600 text-stone-50 hover:bg-moon-500',
+            ].join(' ')}
+            style={{ minHeight: 32 }}
+          >
+            {status?.complete ? 'Already downloaded' : 'Download for offline'}
+          </button>
+        )}
+        {running && (
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="bg-ink-700 text-stone-300 hover:bg-ink-600 px-3 py-1.5
+                       rounded-soft text-xs transition-colors duration-slow"
+            style={{ minHeight: 32 }}
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+
+      {error && (
+        <p className="text-xs text-red-400" role="status">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

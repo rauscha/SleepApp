@@ -10,24 +10,32 @@ deferred — "me-first" app, revisit deploy once everything else works.
 Target deploy: GitHub Pages at `andrewrausch.com/SleepApp/`
 (andrewrausch.com is the user's GH Pages user site).
 
-1. **Self-host Inter font** (this commit) — Inter Variable
+1. **Self-host Inter font** (b311799, shipped) — Inter Variable
    (`public/fonts/InterVariable.woff2`, 352 KB) replaces the rsms.me
    stylesheet link. CSP `style-src` / `font-src` tightened to drop the
    rsms.me origin entirely. `<link rel="preload">` added so the font is
    in flight while CSS parses (no FOUT). Added to SW install-time
    precache list so first offline launch already has Inter.
+2. **"Download for offline" button** on Settings (this commit) — new
+   "Offline" section between Playback and AI features. Walks the asset
+   graph (scene index → scene defs → variant URLs, plus the meditation
+   + bundled-story indexes, plus the worklet and self-hosted font) and
+   pulls each URL through `fetch()`. The SW intercepts the fetches and
+   caches them via its existing cache-first / SWR routes — no cache
+   names duplicated in the page. Idempotent: per-URL `caches.match()`
+   skips files already cached, so re-tap is a no-op. Cancellable mid-
+   download. Disabled in dev (no SW controller). Size warning ("about
+   290 MB total") inline above the button.
 
 **Still to do this batch:**
-2. **"Download for offline" button** on Settings — pre-hydrates the
-   AUDIO_CACHE with all `/audio/**`, `/worklets/**`, `/meditations/**`,
-   `/stories/**.mp3` and SCENE_CACHE with `/scenes/**.json`. Size
-   warning before tap (~290 MB). Idempotent.
 3. **GH Pages deploy prep** — vite `base: '/SleepApp/'`, SW path
    matchers made base-aware, SW registration in `main.tsx` likewise,
    CSP `connect-src` widened for `api.elevenlabs.io` +
    `api.anthropic.com` (latent bug: in-app story generation is
    currently CSP-blocked in prod, only works via CLI which bypasses
-   CSP).
+   CSP). Note: `resolvePublicUrl` helper is now duplicated between
+   `src/audio/sceneRegistry.ts` and `src/services/offlinePrecache.ts`
+   — if the GH Pages work centralises it, lift the duplicate too.
 
 ---
 
