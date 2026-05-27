@@ -10,19 +10,23 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
     <!-- CSP: this is a static, single-page PWA. The only same-origin scripts
-         are the bundled app + the public worklet. Third-party connections:
-         the Inter font CSS (rsms.me). Phase 4 will need to relax connect-src
-         for ElevenLabs + Anthropic; that scope expansion happens then. -->
+         are the bundled app + the public worklet. Inter is self-hosted from
+         /fonts/ so no third-party font origin is needed. Phase 4 will need
+         to relax connect-src for ElevenLabs + Anthropic; that scope
+         expansion happens then. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://rsms.me; font-src 'self' https://rsms.me; img-src 'self' data: blob:; connect-src 'self'; media-src 'self' blob: data:; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none';"
+      content="default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; media-src 'self' blob: data:; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none';"
     />
     <title>Sleep</title>
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="preconnect" href="https://rsms.me/" />
-    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+    <!-- Preload the variable font so it's in flight while CSS parses. Without
+         this, @font-face discovery is late and the first paint flashes the
+         system fallback (FOUT). crossorigin is required even for same-origin
+         font preloads — fonts are always fetched in CORS mode. -->
+    <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <div id="root"></div>

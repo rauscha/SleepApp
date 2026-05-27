@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Inter, self-hosted. One variable woff2 covers weights 100–900 so we
+ * don't need separate files per weight. Served from /fonts/ so the app
+ * works fully offline once installed — no rsms.me round-trip on cold
+ * start and no network dependency for typography after the SW caches it. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/InterVariable.woff2') format('woff2');
+}
+
 /* Globals tuned for the Midnight Editorial Minimalism design language.
  * Phase 1 only uses these for the dev harness; the real UI will lean on
  * Tailwind utilities and these tokens together. */

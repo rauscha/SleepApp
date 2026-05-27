@@ -1,6 +1,39 @@
 # Next steps — current project state
 
-Last updated: 2026-05-18 AM. Five-commit batch shipped overnight:
+Last updated: 2026-05-26 PM. Offline-readiness pass under way.
+
+## 2026-05-26 batch (in progress)
+
+Goal: make the app fully usable on Android + desktop with no network
+after install (story generation excepted). iOS work is explicitly
+deferred — "me-first" app, revisit deploy once everything else works.
+Target deploy: GitHub Pages at `andrewrausch.com/SleepApp/`
+(andrewrausch.com is the user's GH Pages user site).
+
+1. **Self-host Inter font** (this commit) — Inter Variable
+   (`public/fonts/InterVariable.woff2`, 352 KB) replaces the rsms.me
+   stylesheet link. CSP `style-src` / `font-src` tightened to drop the
+   rsms.me origin entirely. `<link rel="preload">` added so the font is
+   in flight while CSS parses (no FOUT). Added to SW install-time
+   precache list so first offline launch already has Inter.
+
+**Still to do this batch:**
+2. **"Download for offline" button** on Settings — pre-hydrates the
+   AUDIO_CACHE with all `/audio/**`, `/worklets/**`, `/meditations/**`,
+   `/stories/**.mp3` and SCENE_CACHE with `/scenes/**.json`. Size
+   warning before tap (~290 MB). Idempotent.
+3. **GH Pages deploy prep** — vite `base: '/SleepApp/'`, SW path
+   matchers made base-aware, SW registration in `main.tsx` likewise,
+   CSP `connect-src` widened for `api.elevenlabs.io` +
+   `api.anthropic.com` (latent bug: in-app story generation is
+   currently CSP-blocked in prod, only works via CLI which bypasses
+   CSP).
+
+---
+
+## 2026-05-18 batch (shipped)
+
+Five-commit batch shipped overnight:
 
 1. **Scene-config fix + meditation script-editing flow** (d7da552) — the
    FileLayer guard `buffer.duration ≥ loopOffsetSeconds + crossfadeSeconds`

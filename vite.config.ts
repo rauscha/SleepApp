@@ -40,7 +40,16 @@ function swPrecachePlugin(): Plugin {
     writeBundle: {
       sequential: true,
       handler(_options, bundle) {
-        const precache: string[] = ['/', '/manifest.json', '/icons/icon.svg'];
+        // /fonts/InterVariable.woff2 is precached on install so the very
+        // first offline launch already has Inter — otherwise the font is
+        // discovered late (by @font-face) and a flaky first-load network
+        // would force the system fallback for the whole session.
+        const precache: string[] = [
+          '/',
+          '/manifest.json',
+          '/icons/icon.svg',
+          '/fonts/InterVariable.woff2',
+        ];
         for (const key of Object.keys(bundle)) {
           if (key.startsWith('assets/') &&
               (key.endsWith('.js') || key.endsWith('.css'))) {
