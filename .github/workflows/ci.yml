@@ -26,9 +26,14 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        # Use ci, not install — fails fast if package-lock.json is out of
-        # date and skips the audit step that's already gated elsewhere.
-        run: npm ci
+        # `npm install`, not `ci`. esbuild ships per-platform optional
+        # dependencies (@esbuild/linux-x64, @esbuild/darwin-arm64, …) that
+        # npm only writes to package-lock.json for the platform you ran
+        # `npm install` on. Since the lock is generated on Windows, the
+        # Linux runner's `npm ci` rejects it as missing entries. `install`
+        # resolves the current platform's deps without that strict check.
+        # --no-audit because the audit step is gated elsewhere.
+        run: npm install --no-audit
 
       - name: Typecheck
         run: npm run typecheck

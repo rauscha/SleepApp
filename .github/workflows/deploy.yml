@@ -36,7 +36,12 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        # `npm install` rather than `npm ci`: the package-lock is generated
+        # on Windows and is missing the Linux/macOS @esbuild/* optional
+        # deps that npm only writes for the platform you installed on. ci
+        # would reject this as missing entries; install resolves the
+        # current platform's deps without the strict integrity check.
+        run: npm install --no-audit
 
       # `npm run build` is `tsc --noEmit && vite build` — the typecheck
       # gate keeps a broken main from publishing even if CI was skipped
