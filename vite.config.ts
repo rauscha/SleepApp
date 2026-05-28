@@ -8,10 +8,11 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 //
 // Default (unset): Vite serves plain HTTP on localhost:5175. `tailscale
 // serve --bg --https=443 http://localhost:5175` then terminates TLS with
-// a publicly-trusted Let's Encrypt cert on the tailnet hostname (e.g.
-// https://crane-desk.saiga-wage.ts.net), reachable from any device on
-// the tailnet — phones included — with no per-device CA install. This is
-// the recommended dev path; see notes/dev-cert-android.md.
+// a publicly-trusted Let's Encrypt cert on the tailnet hostname (your
+// machine's <host>.<tailnet-id>.ts.net — run `tailscale status --self`
+// to find it), reachable from any device on the tailnet — phones included
+// — with no per-device CA install. This is the recommended dev path; see
+// notes/dev-cert-android.md.
 //
 // VITE_USE_HTTPS=1: Vite terminates TLS itself, binding to all interfaces.
 // Prefers a mkcert-generated cert under certs/ (Android Chrome needs the
@@ -114,11 +115,13 @@ export default defineConfig({
     // Vite terminates TLS itself, so it's gated on USE_HTTPS.
     host: USE_HTTPS ? true : 'localhost',
     https: httpsOptions,
-    // Allow tailnet hosts (e.g. crane-desk.saiga-wage.ts.net) when proxied
-    // via `tailscale serve`. Leading-dot is Vite's wildcard for subdomains —
-    // covers every device in this tailnet without disabling host protection
-    // entirely. localhost / LAN-IP access is unaffected.
-    allowedHosts: ['.saiga-wage.ts.net', 'crane-desk', '.local'],
+    // Allow tailnet hosts when proxied via `tailscale serve`. Leading-dot
+    // is Vite's wildcard for subdomains — '.ts.net' covers every tailscale-
+    // managed hostname (your tailnet's <host>.<tailnet-id>.ts.net resolves
+    // under that suffix) without disabling host protection entirely.
+    // '.local' covers mDNS hostnames. localhost / LAN-IP access is
+    // unaffected by either entry.
+    allowedHosts: ['.ts.net', '.local'],
     // Don't trigger a Vite page reload when test files change — Vitest
     // runs them separately, and a full reload in the running app kills
     // any in-progress audio session.
@@ -129,14 +132,14 @@ export default defineConfig({
   // Preview serves the production build. PWA install on Android needs
   // HTTPS, so the expected access pattern is `tailscale serve --bg
   // --https=443 http://localhost:4173` and then visit
-  // https://<device>.saiga-wage.ts.net from the phone. Mirror the dev
+  // https://<host>.<tailnet-id>.ts.net from the phone. Mirror the dev
   // server's tailnet allowance here so Vite's Host filter doesn't reject it.
   preview: {
     port: 4173,
     strictPort: true,
     host: USE_HTTPS ? true : 'localhost',
     https: httpsOptions,
-    allowedHosts: ['.saiga-wage.ts.net', 'crane-desk', '.local'],
+    allowedHosts: ['.ts.net', '.local'],
   },
   build: {
     target: 'es2022',

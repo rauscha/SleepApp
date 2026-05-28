@@ -2,10 +2,12 @@
 
 ## After completing any step
 
-Update `NEXT_STEPS.md` before committing. Mark the finished item done and,
-if the work surfaced new tasks or changed priorities, adjust the list
-accordingly. The rule is: `NEXT_STEPS.md` should always reflect the actual
-current state of the project, not a stale snapshot.
+If a local `NEXT_STEPS.md` exists at the repo root, update it before
+committing — mark the finished item done and adjust priorities if the
+work surfaced new tasks. The rule is: when present, `NEXT_STEPS.md`
+should reflect the actual current state of the project, not a stale
+snapshot. The file is gitignored (personal working notebook), so skip
+this step in a fresh clone that doesn't have one.
 
 ## Commit discipline
 
@@ -41,5 +43,6 @@ current state of the project, not a stale snapshot.
 - `src/audio/` — audio engine; pure-function tests in `*.test.ts` files.
 - `public/scenes/` — scene JSON files served statically; `index.json` is
   the scene catalogue.
-- `NEXT_STEPS.md` — canonical current-state TODO (update after each step).
+- `NEXT_STEPS.md` — personal current-state TODO; gitignored. Update if
+  present, skip if absent.
 - `DECISIONS.md` — historical architecture decisions; don't overwrite, append.

@@ -30,3 +30,7 @@ anthropic.txt
 
 # mkcert-generated dev certs — per-machine, regenerate via tools/gen-dev-cert
 certs/
+
+# Personal working notebooks — kept local, not part of the public repo.
+NEXT_STEPS.md
+USER_TODO.md

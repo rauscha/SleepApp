@@ -37,8 +37,9 @@ npm run dev
 the tailscaled daemon, surviving reboots), so you only really need to run
 it once. `start-dev.bat` re-runs it idempotently for safety.
 
-Open `https://crane-desk.saiga-wage.ts.net/` on the phone. Green lock,
-no warnings.
+Open `https://<host>.<tailnet-id>.ts.net/` on the phone (your machine's
+tailnet hostname — run `tailscale status --self` to get it; the launcher
+also echoes it on startup). Green lock, no warnings.
 
 ### Gotchas
 
@@ -49,9 +50,10 @@ no warnings.
 - **`502 Bad Gateway` from the tailnet URL** means tailscaled can reach
   this machine but vite isn't up on port 5175. Check `dev-server.log` and
   confirm `curl http://localhost:5175/` returns HTML locally.
-- **Tailnet hostname is per-device.** `crane-desk.saiga-wage.ts.net` is
-  this machine's name on this tailnet. If you switch dev machines, check
-  `tailscale status --self` for the new name and update `start-dev.bat`.
+- **Tailnet hostname is per-device.** Each machine on the tailnet has
+  its own `<host>.<tailnet-id>.ts.net` name. `start-dev.bat` looks it up
+  via `tailscale status --self` at launch — if it can't find a value
+  you'll see the placeholder in the echoed URL.
 - **One serve config at a time** for a given port. Running
   `tailscale serve --bg --https=443 http://localhost:4173` later
   (preview) replaces the dev mapping. Use `tailscale serve status` to
@@ -73,10 +75,10 @@ without an internet connection.
    ```pwsh
    mkdir certs
    mkcert -key-file certs/dev-key.pem -cert-file certs/dev-cert.pem `
-       localhost 127.0.0.1 192.168.50.3
+       localhost 127.0.0.1 <lan-ip>
    ```
 
-   (`192.168.50.3` is this machine's LAN IP. If it changes you have to
+   (`<lan-ip>` is this machine's LAN IP. If it changes you have to
    re-issue.) `certs/` is gitignored.
 
 ### One-time setup (per phone)
@@ -104,7 +106,7 @@ $env:VITE_USE_HTTPS = "1"
 npm run dev
 ```
 
-Open `https://192.168.50.3:5175/` on the phone. Green lock if the CA is
+Open `https://<lan-ip>:5175/` on the phone. Green lock if the CA is
 installed correctly; `NET::ERR_CERT_AUTHORITY_INVALID` if not.
 
 ### Gotchas
