@@ -100,12 +100,18 @@ function parseArgs() {
     const i = args.indexOf(flag);
     return i >= 0 && i + 1 < args.length ? args[i + 1] : def;
   };
+  const has = (flag: string) => args.includes(flag);
   return {
-    title:  get('--title', 'Sleep story'),
-    theme:  get('--theme', ''),
-    voice:  get('--voice', 'tide') as 'tide' | 'stone',
-    id:     get('--id', ''),
-    script: get('--script', ''),
+    title:      get('--title', 'Sleep story'),
+    theme:      get('--theme', ''),
+    voice:      get('--voice', 'tide') as 'tide' | 'stone',
+    id:         get('--id', ''),
+    script:     get('--script', ''),
+    // --no-projects forces the chunked-TTS path. The Projects API
+    // ignores per-request voice_settings (it uses the voice's portal
+    // defaults), so when you want the speed:0.85 / stability tweaks in
+    // voice_settings to actually apply, pass this flag.
+    noProjects: has('--no-projects'),
   };
 }
 
@@ -294,12 +300,35 @@ function chunkScript(text: string, maxChars = TTS_CHUNK_LIMIT): string[] {
   return chunks;
 }
 
+/**
+ * Strip Claude's stage-direction markers ([pause], [softly], …) before
+ * standard TTS. The Projects API quietly absorbs these tags, but the
+ * standard text-to-speech endpoint reads them aloud verbatim ("bracket
+ * pause bracket"), which is jarring at 2am. We convert [pause] → ", …"
+ * (the engine respects this as a beat) and drop tone markers entirely
+ * (the slowed voice settings already deliver a gentle read).
+ *
+ * Mirror of tools/gen-meditation.ts:stripMeditationMarkers — duplicated
+ * here rather than imported to keep each tool a self-contained script.
+ */
+function stripStoryMarkers(text: string): string {
+  return text
+    .replace(/\[(?:long\s+)?pause(?:[^\]]*)\]/gi, ', …')
+    .replace(/\[(?:softly|whisper(?:ing)?|gently|quietly|slowly)\]/gi, '')
+    .replace(/\[[^\]]{1,40}\]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ ,/g, ',')
+    .replace(/\n[ \t]+/g, '\n')
+    .trim();
+}
+
 async function callElevenLabsChunked(
   apiKey: string,
   voiceId: string,
   text: string
 ): Promise<Buffer> {
-  const chunks = chunkScript(text);
+  const cleaned = stripStoryMarkers(text);
+  const chunks = chunkScript(cleaned);
   if (chunks.length === 0) throw new Error('Empty script — nothing to synthesize.');
   console.log(`  ⟳  Chunked TTS fallback: ${chunks.length} chunks…`);
 
@@ -312,11 +341,18 @@ async function callElevenLabsChunked(
       body: JSON.stringify({
         text: chunks[i]!,
         model_id: 'eleven_multilingual_v2',
+        // speed:0.85 drops delivery to a sleepy cadence — the
+        // out-of-box 1.0 read too briskly for sleep stories. Range
+        // 0.7–1.2; 0.85 is roughly the lowest value that still sounds
+        // natural ("stretched" artifacts appear below it). Bumped
+        // stability from 0.75 → 0.85 alongside the speed drop so the
+        // delivery stays even across the slower phrasing.
         voice_settings: {
-          stability: 0.75,
+          stability: 0.85,
           similarity_boost: 0.75,
           style: 0.0,
           use_speaker_boost: true,
+          speed: 0.85,
         },
       }),
     });
@@ -338,8 +374,12 @@ async function callElevenLabsChunked(
 async function synthesize(
   apiKey: string,
   voiceId: string,
-  text: string
+  text: string,
+  noProjects = false
 ): Promise<Buffer> {
+  if (noProjects) {
+    return callElevenLabsChunked(apiKey, voiceId, text);
+  }
   try {
     return await callElevenLabsProjects(apiKey, voiceId, text);
   } catch (err) {
@@ -362,7 +402,7 @@ async function main() {
     process.exit(1);
   }
 
-  const { title, theme, voice, id: rawId, script: scriptPath } = parseArgs();
+  const { title, theme, voice, id: rawId, script: scriptPath, noProjects } = parseArgs();
   if (!theme && !scriptPath) {
     console.error('ERROR: --theme is required when --script is not given.');
     process.exit(1);
@@ -399,8 +439,11 @@ async function main() {
   writeFileSync(scriptFilePath, script);
   console.log(`  ✓  Saved ${scriptFilePath}`);
 
-  // Synthesize (Projects → chunked fallback).
-  const audioData = await synthesize(elevenLabsKey, voiceId, script);
+  // Synthesize. Default tries Projects first (single-file long-form) and
+  // falls back to chunked TTS on failure. Pass --no-projects to force the
+  // chunked path; necessary when you want per-request voice_settings (eg
+  // speed:0.85) to actually apply — Projects uses portal voice defaults.
+  const audioData = await synthesize(elevenLabsKey, voiceId, script, noProjects);
 
   const audioFilePath = join(STORIES_DIR, audioPath);
   writeFileSync(audioFilePath, audioData);

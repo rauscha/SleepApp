@@ -445,11 +445,17 @@ async function callElevenLabs(
       body: JSON.stringify({
         text,
         model_id: 'eleven_multilingual_v2',
+        // speed:0.85 drops delivery to a sleepy cadence — out-of-box 1.0
+        // reads too briskly for sleep stories. stability bumped 0.75→0.85
+        // alongside the speed drop so the slower delivery stays even.
+        // Range is 0.7–1.2; 0.85 is roughly the floor where prosody stays
+        // natural. Mirrors the chunked-TTS settings in tools/gen-story.ts.
         voice_settings: {
-          stability: 0.75,
+          stability: 0.85,
           similarity_boost: 0.75,
           style: 0.0,
           use_speaker_boost: true,
+          speed: 0.85,
         },
       }),
     }

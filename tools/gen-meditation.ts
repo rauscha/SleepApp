@@ -207,11 +207,17 @@ async function callElevenLabs(
         // Higher stability + low style = a steadier, slower delivery
         // suited to bedtime narration. style:0 keeps the voice from
         // adding any conversational lift; speaker boost stays on.
+        // speed:0.85 drops delivery to a sleepy cadence — the
+        // out-of-box 1.0 read too briskly for a sleep meditation.
+        // Valid range is 0.7–1.2; below 0.85 the prosody starts to
+        // sound unnatural ("stretched"), so 0.85 is the floor for
+        // intelligibility.
         voice_settings: {
           stability: 0.9,
           similarity_boost: 0.75,
           style: 0.0,
           use_speaker_boost: true,
+          speed: 0.85,
         },
       }),
     }
