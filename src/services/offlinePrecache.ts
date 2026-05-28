@@ -13,18 +13,11 @@
 // skipped on hit.
 
 import { fetchSceneIndex, fetchSceneDefinition } from '../audio/sceneRegistry';
+import { resolvePublicUrl } from '../lib/baseUrl';
 import type {
   BundledStoryIndex,
   MeditationIndex,
 } from '../storage/types';
-
-/** Resolve a public-folder path against Vite's BASE_URL. Mirrors the
- *  helper in sceneRegistry.ts — duplicated to avoid widening that module's
- *  public surface. */
-function resolvePublicUrl(path: string): string {
-  const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
-  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
-}
 
 // Static URLs that don't appear in any scene/meditation/story index but
 // the app still needs to launch offline. The Vite build-time SW precache

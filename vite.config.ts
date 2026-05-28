@@ -34,9 +34,16 @@ const httpsOptions = USE_HTTPS && hasMkcert
 // post-bundle string replace, not a virtual import, so the SW file
 // remains a plain JS file that runs unmodified in dev.
 function swPrecachePlugin(): Plugin {
+  // Captured from configResolved so we don't repeat the deploy base in two
+  // places. Vite always normalizes base with a trailing slash (e.g.
+  // '/SleepApp/' or '/'), which is exactly the shape we need for prefixing.
+  let base = '/';
   return {
     name: 'sw-precache-inject',
     apply: 'build',
+    configResolved(config) {
+      base = config.base;
+    },
     writeBundle: {
       sequential: true,
       handler(_options, bundle) {
@@ -45,15 +52,15 @@ function swPrecachePlugin(): Plugin {
         // discovered late (by @font-face) and a flaky first-load network
         // would force the system fallback for the whole session.
         const precache: string[] = [
-          '/',
-          '/manifest.json',
-          '/icons/icon.svg',
-          '/fonts/InterVariable.woff2',
+          base,
+          `${base}manifest.json`,
+          `${base}icons/icon.svg`,
+          `${base}fonts/InterVariable.woff2`,
         ];
         for (const key of Object.keys(bundle)) {
           if (key.startsWith('assets/') &&
               (key.endsWith('.js') || key.endsWith('.css'))) {
-            precache.push('/' + key);
+            precache.push(base + key);
           }
         }
         const swPath = resolve('dist/sw.js');
@@ -79,6 +86,14 @@ function swPrecachePlugin(): Plugin {
 // the URL directly to AudioContext.audioWorklet.addModule(). Vite will serve
 // /public/* at the site root.
 export default defineConfig({
+  // Deploy target is GitHub Pages at andrewrausch.com/SleepApp/, so every
+  // bundled asset URL needs the /SleepApp/ prefix. Vite rewrites <script>,
+  // <link rel=stylesheet>, and image hrefs in index.html automatically; for
+  // ad-hoc <link> tags (manifest, icons, font preload) we use %BASE_URL%
+  // placeholders. App code reads import.meta.env.BASE_URL to compose URLs
+  // (see src/lib/baseUrl.ts). Local `npm run preview` will serve under
+  // http://localhost:4173/SleepApp/.
+  base: '/SleepApp/',
   // basicSsl() is only needed in the VITE_USE_HTTPS path when no mkcert
   // pair is present. Default tailscale path is plain HTTP — no TLS plugin.
   plugins: [

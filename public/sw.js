@@ -33,6 +33,12 @@ const SCENE_CACHE = `sleep-scenes-${CACHE_VERSION}`;
 const SHELL_CACHE = `sleep-shell-${CACHE_VERSION}`;
 const KNOWN_CACHES = new Set([AUDIO_CACHE, SCENE_CACHE, SHELL_CACHE]);
 
+// Deploy-base prefix, e.g. '/SleepApp/' on GitHub Pages or '/' on a root
+// deploy. Derived from the SW registration scope so the same file works at
+// any base without a Vite-time substitution. Always has a trailing slash —
+// path matchers below can safely do `${BASE}audio/` without double slashes.
+const BASE = new URL('./', self.registration.scope).pathname;
+
 // Precache manifest. The marker comment is what the vite-build-time
 // plugin (`swPrecachePlugin` in vite.config.ts) substitutes with the
 // actual hashed asset list. In dev — or any environment where the build
@@ -110,10 +116,10 @@ self.addEventListener('fetch', (event) => {
   const path = url.pathname;
 
   if (
-    path.startsWith('/audio/') ||
-    path.startsWith('/worklets/') ||
-    path.startsWith('/meditations/') ||
-    (path.startsWith('/stories/') && path.endsWith('.mp3'))
+    path.startsWith(`${BASE}audio/`) ||
+    path.startsWith(`${BASE}worklets/`) ||
+    path.startsWith(`${BASE}meditations/`) ||
+    (path.startsWith(`${BASE}stories/`) && path.endsWith('.mp3'))
   ) {
     event.respondWith(cacheFirst(req, AUDIO_CACHE));
     return;
@@ -121,12 +127,12 @@ self.addEventListener('fetch', (event) => {
 
   // /stories/index.json — stale-while-revalidate (small catalogue file,
   // similar pattern to scenes/index.json).
-  if (path.startsWith('/stories/')) {
+  if (path.startsWith(`${BASE}stories/`)) {
     event.respondWith(staleWhileRevalidate(req, SCENE_CACHE));
     return;
   }
 
-  if (path.startsWith('/scenes/')) {
+  if (path.startsWith(`${BASE}scenes/`)) {
     event.respondWith(staleWhileRevalidate(req, SCENE_CACHE));
     return;
   }
@@ -189,7 +195,7 @@ async function networkFirst(req, cacheName) {
   } catch {
     const cached = await cache.match(req);
     if (cached) return cached;
-    const shell = await cache.match('/');
+    const shell = await cache.match(BASE);
     if (shell) return shell;
     return new Response('Offline', { status: 504, statusText: 'Offline' });
   }

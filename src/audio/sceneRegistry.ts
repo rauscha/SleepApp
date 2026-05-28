@@ -7,6 +7,7 @@
 // available without forcing a fetch of every full definition up front.
 
 import type { SceneDefinition } from './sceneFormat';
+import { resolvePublicUrl } from '../lib/baseUrl';
 
 export interface SceneIndexEntry {
   id: string;
@@ -19,12 +20,6 @@ export interface SceneIndexEntry {
 
 export interface SceneIndex {
   scenes: SceneIndexEntry[];
-}
-
-/** Resolve a public-folder path against Vite's BASE_URL. */
-function resolvePublicUrl(path: string): string {
-  const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
-  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
 export async function fetchSceneIndex(): Promise<SceneIndex> {

@@ -11,22 +11,29 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <!-- CSP: this is a static, single-page PWA. The only same-origin scripts
          are the bundled app + the public worklet. Inter is self-hosted from
-         /fonts/ so no third-party font origin is needed. Phase 4 will need
-         to relax connect-src for ElevenLabs + Anthropic; that scope
-         expansion happens then. -->
+         /fonts/ so no third-party font origin is needed. connect-src is
+         widened for the in-app meditation/story generators which call the
+         Anthropic Messages API for script writing and the ElevenLabs TTS
+         API for synthesis (src/services/storyGenerator.ts). The CLI tools
+         hit the same origins but bypass CSP entirely via Node. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; media-src 'self' blob: data:; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none';"
+      content="default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.elevenlabs.io https://api.anthropic.com; media-src 'self' blob: data:; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none';"
     />
     <title>Sleep</title>
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- The base-URL placeholder below is substituted by Vite to the
+         resolved base ('/SleepApp/' on the GitHub Pages deploy, '/' at the
+         root). Vite only rewrites a known set of HTML attributes
+         automatically; ad-hoc <link> hrefs aren't on that list, so we use
+         the placeholder explicitly to keep these references base-correct. -->
+    <link rel="manifest" href="%BASE_URL%manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%icons/icon.svg" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png" />
     <!-- Preload the variable font so it's in flight while CSS parses. Without
          this, @font-face discovery is late and the first paint flashes the
          system fallback (FOUT). crossorigin is required even for same-origin
          font preloads — fonts are always fetched in CORS mode. -->
-    <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="%BASE_URL%fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <div id="root"></div>

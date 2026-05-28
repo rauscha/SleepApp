@@ -1,8 +1,9 @@
 # Next steps — current project state
 
-Last updated: 2026-05-26 PM. Offline-readiness pass under way.
+Last updated: 2026-05-27 PM. Offline-readiness batch complete; deploy
+to GitHub Pages is the next user-driven step.
 
-## 2026-05-26 batch (in progress)
+## 2026-05-26 batch (shipped)
 
 Goal: make the app fully usable on Android + desktop with no network
 after install (story generation excepted). iOS work is explicitly
@@ -10,13 +11,13 @@ deferred — "me-first" app, revisit deploy once everything else works.
 Target deploy: GitHub Pages at `andrewrausch.com/SleepApp/`
 (andrewrausch.com is the user's GH Pages user site).
 
-1. **Self-host Inter font** (b311799, shipped) — Inter Variable
+1. **Self-host Inter font** (b311799) — Inter Variable
    (`public/fonts/InterVariable.woff2`, 352 KB) replaces the rsms.me
    stylesheet link. CSP `style-src` / `font-src` tightened to drop the
    rsms.me origin entirely. `<link rel="preload">` added so the font is
    in flight while CSS parses (no FOUT). Added to SW install-time
    precache list so first offline launch already has Inter.
-2. **"Download for offline" button** on Settings (this commit) — new
+2. **"Download for offline" button** on Settings (ad94c57) — new
    "Offline" section between Playback and AI features. Walks the asset
    graph (scene index → scene defs → variant URLs, plus the meditation
    + bundled-story indexes, plus the worklet and self-hosted font) and
@@ -26,16 +27,53 @@ Target deploy: GitHub Pages at `andrewrausch.com/SleepApp/`
    skips files already cached, so re-tap is a no-op. Cancellable mid-
    download. Disabled in dev (no SW controller). Size warning ("about
    290 MB total") inline above the button.
+3. **GH Pages deploy prep** (this commit) — vite gets
+   `base: '/SleepApp/'`; the SW precache plugin now reads the resolved
+   base from `configResolved` and prefixes every shell URL with it (no
+   double-hardcoded prefix). `public/sw.js` derives `BASE` once at
+   startup from `self.registration.scope` and matches `${BASE}audio/`
+   etc., so the same file works under any deploy base. SW registration
+   in `src/main.tsx` switched to `${import.meta.env.BASE_URL}sw.js`.
+   `index.html` uses `%BASE_URL%` placeholders for the manifest, icon,
+   apple-touch-icon, and font-preload hrefs (Vite only auto-rewrites a
+   known set of HTML attributes; ad-hoc `<link>` hrefs aren't on it).
+   CSP `connect-src` widened with `https://api.elevenlabs.io` and
+   `https://api.anthropic.com` — latent bug fix: in-app story/meditation
+   generation was CSP-blocked in prod, only the CLI worked because
+   Node bypasses CSP. `public/manifest.json` uses relative paths
+   (`./`, `./icons/...`) so it resolves correctly at any base — GH
+   Pages serves it as a static file with no Vite substitution.
+   `resolvePublicUrl` lifted to `src/lib/baseUrl.ts` and re-used from
+   `sceneRegistry.ts` + `offlinePrecache.ts`.
 
-**Still to do this batch:**
-3. **GH Pages deploy prep** — vite `base: '/SleepApp/'`, SW path
-   matchers made base-aware, SW registration in `main.tsx` likewise,
-   CSP `connect-src` widened for `api.elevenlabs.io` +
-   `api.anthropic.com` (latent bug: in-app story generation is
-   currently CSP-blocked in prod, only works via CLI which bypasses
-   CSP). Note: `resolvePublicUrl` helper is now duplicated between
-   `src/audio/sceneRegistry.ts` and `src/services/offlinePrecache.ts`
-   — if the GH Pages work centralises it, lift the duplicate too.
+81/81 tests pass, typecheck clean, build clean. Verified at the HTTP
+level via `npm run preview` (`/SleepApp/` → 200, `/SleepApp/sw.js` →
+200, `/SleepApp/fonts/InterVariable.woff2` → 200, manifest + icons +
+scenes/index.json all 200). In-browser DevTools smoke test still
+deserves a manual run before the public push.
+
+**Next session priorities:**
+1. **Live offline-mode verification on Android** — load the preview
+   over the tailnet host on the phone, tap Settings → "Download for
+   offline", wait for the progress bar to complete, switch the device
+   to airplane mode, and confirm scene + meditation + bundled story
+   all play. This is the first end-to-end check that the SW cache
+   actually survives a network-loss event in the wild.
+2. **Public repo push + GH Pages enable** — push the repo to
+   `github.com/<user>/SleepApp` (new public repo), turn on Pages from
+   the main branch, confirm it serves at `andrewrausch.com/SleepApp/`.
+   The repo is safe to make public — API keys are user-supplied at
+   runtime via localStorage, nothing baked into the bundle. A GH
+   Actions deploy workflow is a future polish; manual `npm run build`
+   + copying `dist/` works for the first cut.
+3. **Bug A5 follow-up** — ElevenLabs Projects 405 still open. With the
+   in-app path no longer CSP-blocked, a real prod call will tell us
+   whether the API endpoint shape changed or just our request was
+   wrong.
+4. **Android overnight retest** — still pending; the offline-cache
+   work above is the prerequisite, since we want to test scene
+   playback without depending on the dev server staying reachable
+   from the phone all night.
 
 ---
 
@@ -82,31 +120,10 @@ Five-commit batch shipped overnight:
 81/81 tests pass. Bundle size grew by ~34 MB (the two bundled stories);
 public/audio is unchanged at 238 MB.
 
-**Next session priorities:**
-1. **Live playback verification** — start the dev server, walk through
-   the Library and Tonight tabs:
-   - 3 meditations play with the new voices (hush/ember/glen).
-   - 2 bundled stories appear above any user-generated stories, play
-     end-to-end without seam clicks (chunked-TTS concat).
-   - forest-night scene starts cleanly, loops past the 521s mark
-     without artefacts (the FileLayer guard tests passed but real
-     playback is the only honest check).
-2. **Investigate the ElevenLabs Projects 405** — the in-app long-form
-   path also uses Projects with a chunked-TTS fallback (per
-   `src/services/storyGenerator.ts`). If the endpoint shape really
-   changed or the Creator-plan grant lapsed, the in-app fallback
-   handles it the same way, but it's worth knowing.
-3. **Optional script polish** — the 3 meditation `.txt` and 2 story
-   `.txt` files are now editable. If any read oddly, edit and re-run:
-   - Meditations: `npx tsx tools/gen-meditation.ts --id <id>
-     --voice <voice> --script public/meditations/<id>.txt`
-   - Stories: `npx tsx tools/gen-story.ts --id <id> --voice <voice>
-     --script public/stories/<id>.txt`
-   (Pass --title to keep the index.json display name unchanged.)
-4. **Android overnight retest** — still pending. Keep-alive stack
-   (P5-9) and the new bundled content set it up well. Lifecycle log
-   should record `keepalive-start` / `keepalive-stop` per session.
-5. **iOS overnight result** — still pending.
+Live playback verification (meditations on new voices, bundled stories,
+forest-night seam at 521 s) and the script-polish loop
+(`npx tsx tools/gen-{meditation,story}.ts --id <id> --script ...`) are
+still untested — fold them into the next on-device session above.
 
 ---
 
