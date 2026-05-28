@@ -290,28 +290,50 @@ async function main() {
   const wordCount = script.trim().split(/\s+/).length;
   const durationSeconds = Math.round((wordCount / 115) * 60); // ~115 wpm slow narration
 
-  let index: { meditations: object[] } = { meditations: [] };
+  interface IndexEntry {
+    id: string;
+    title: string;
+    description: string;
+    style: string;
+    durationSeconds: number;
+    voiceId: string;
+    createdAt: string;
+    audioPath: string;
+  }
+
+  let index: { meditations: IndexEntry[] } = { meditations: [] };
   try {
     index = JSON.parse(readFileSync(INDEX_PATH, 'utf8'));
   } catch {
     /* first meditation — index will be created */
   }
 
-  // Remove any existing entry with the same id before re-adding.
-  index.meditations = (index.meditations as Array<{ id: string }>).filter(
-    (m) => m.id !== id
-  );
+  // When re-rendering an existing meditation (same id), preserve the
+  // existing entry's curated metadata — the CLI args have defaults
+  // (style:body-scan, title:"Evening body scan") that would otherwise
+  // silently overwrite hand-set values. Always update durationSeconds
+  // (script edits change pace) and the audioPath (stable but cheap to
+  // overwrite). createdAt is preserved so the entry doesn't claim to
+  // be brand-new every time we re-render.
+  const existingIdx = index.meditations.findIndex((m) => m.id === id);
+  const existing = existingIdx >= 0 ? index.meditations[existingIdx] : null;
 
-  index.meditations.push({
+  const entry: IndexEntry = {
     id,
-    title,
-    description: `A ${style.replace('-', ' ')} meditation.`,
-    style,
+    title:       existing?.title       ?? title,
+    description: existing?.description ?? `A ${style.replace('-', ' ')} meditation.`,
+    style:       existing?.style       ?? style,
     durationSeconds,
-    voiceId: voice,
-    createdAt: new Date().toISOString(),
+    voiceId:     existing?.voiceId     ?? voice,
+    createdAt:   existing?.createdAt   ?? new Date().toISOString(),
     audioPath,
-  });
+  };
+
+  if (existingIdx >= 0) {
+    index.meditations[existingIdx] = entry;
+  } else {
+    index.meditations.push(entry);
+  }
 
   writeFileSync(INDEX_PATH, JSON.stringify(index, null, 2));
   console.log(`  ✓  Updated ${INDEX_PATH}`);
