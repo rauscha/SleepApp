@@ -20,6 +20,7 @@ import {
   fetchSceneIndex,
 } from '../audio/sceneRegistry';
 import type { SceneIndex, SceneIndexEntry } from '../audio/sceneRegistry';
+import { resolvePublicUrl } from '../lib/baseUrl';
 import { getSetting, setSetting } from '../storage';
 import { requestFullscreenSafe } from '../utils/fullscreen';
 
@@ -31,12 +32,14 @@ export interface TonightScreenProps {
 }
 
 // Per-scene photo paths (served from /public). Scenes not listed here
-// fall back to the gradient-only treatment via SCENE_GRADIENTS.
+// fall back to the gradient-only treatment via SCENE_GRADIENTS. Paths are
+// run through resolvePublicUrl so the same code works at any deploy base
+// (root '/' for dev, '/SleepApp/' on GitHub Pages).
 const SCENE_PHOTOS: Record<string, string> = {
-  'forest-day':     '/scenes/photos/forest-day.jpg',
-  'forest-night':   '/scenes/photos/forest-night.jpg',
-  'rain-on-window': '/scenes/photos/rain-on-window.jpg',
-  'fireplace':      '/scenes/photos/fireplace.jpg',
+  'forest-day':     resolvePublicUrl('/scenes/photos/forest-day.jpg'),
+  'forest-night':   resolvePublicUrl('/scenes/photos/forest-night.jpg'),
+  'rain-on-window': resolvePublicUrl('/scenes/photos/rain-on-window.jpg'),
+  'fireplace':      resolvePublicUrl('/scenes/photos/fireplace.jpg'),
 };
 
 // Fallback gradients for scenes without photos (and scenes that haven't

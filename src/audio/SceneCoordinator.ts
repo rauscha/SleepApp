@@ -24,6 +24,7 @@ import type { AudioVariant } from './FileLayer';
 import { NoiseGenerator } from './NoiseGenerator';
 import { TinnitusMaskLayer } from './TinnitusMaskLayer';
 import { Scene } from './Scene';
+import { resolvePublicUrl } from '../lib/baseUrl';
 import { generateTestPadBuffer } from './synth/testPad';
 import type {
   SceneDefinition,
@@ -235,8 +236,14 @@ export class SceneCoordinator {
     onLoaded?: (info: VariantLoadOutcome) => void
   ): Promise<AudioVariant> {
     const ctx = this.engine.context;
+    // Scene JSONs store URLs as site-root paths ("/audio/forest/wind.mp3");
+    // resolvePublicUrl prepends the deploy base so the same JSON works at
+    // '/' in dev and '/SleepApp/' on GitHub Pages. Without this, every
+    // variant 404s on the public deploy, the engine silently falls back to
+    // a synthesized pad, and the scene takes a long time to "load".
+    const resolvedUrl = resolvePublicUrl(variant.url);
     try {
-      const buffer = await loadAudioBuffer(ctx, variant.url);
+      const buffer = await loadAudioBuffer(ctx, resolvedUrl);
       onLoaded?.({
         elementId: element.id,
         variantId: variant.id,
