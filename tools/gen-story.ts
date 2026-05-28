@@ -304,16 +304,24 @@ function chunkScript(text: string, maxChars = TTS_CHUNK_LIMIT): string[] {
  * Strip Claude's stage-direction markers ([pause], [softly], …) before
  * standard TTS. The Projects API quietly absorbs these tags, but the
  * standard text-to-speech endpoint reads them aloud verbatim ("bracket
- * pause bracket"), which is jarring at 2am. We convert [pause] → ", …"
- * (the engine respects this as a beat) and drop tone markers entirely
- * (the slowed voice settings already deliver a gentle read).
+ * pause bracket"), which is jarring at 2am.
+ *
+ * Transform conventions (revised 2026-05-28 — see the stripMeditationMarkers
+ * comment in tools/gen-meditation.ts for the full rationale):
+ *   [pause]       → " — "   (em-dash with spaces)
+ *   [long pause]  → ' <break time="2.5s" /> '
+ *   [softly] etc. → dropped
+ *
+ * The regex also eats preceding punctuation so ". [pause] Next" becomes
+ * " — Next" — merging two staccato sentences into one flowing clause.
  *
  * Mirror of tools/gen-meditation.ts:stripMeditationMarkers — duplicated
  * here rather than imported to keep each tool a self-contained script.
  */
 function stripStoryMarkers(text: string): string {
   return text
-    .replace(/\[(?:long\s+)?pause(?:[^\]]*)\]/gi, ', …')
+    .replace(/(?:[.,;:]\s*)?\[long\s+pause[^\]]*\]/gi, ' <break time="2.5s" />')
+    .replace(/(?:[.,;:]\s*)?\[pause[^\]]*\]/gi, ' — ')
     .replace(/\[(?:softly|whisper(?:ing)?|gently|quietly|slowly)\]/gi, '')
     .replace(/\[[^\]]{1,40}\]/g, '')
     .replace(/[ \t]+/g, ' ')
@@ -341,14 +349,18 @@ async function callElevenLabsChunked(
       body: JSON.stringify({
         text: chunks[i]!,
         model_id: 'eleven_multilingual_v2',
-        // speed:0.85 drops delivery to a sleepy cadence — the
-        // out-of-box 1.0 read too briskly for sleep stories. Range
-        // 0.7–1.2; 0.85 is roughly the lowest value that still sounds
-        // natural ("stretched" artifacts appear below it). Bumped
-        // stability from 0.75 → 0.85 alongside the speed drop so the
-        // delivery stays even across the slower phrasing.
+        // Tuned for bedtime narration (revised 2026-05-28 — mirrors
+        // tools/gen-meditation.ts):
+        //   stability:0.70 — practitioner consensus for long-form
+        //                    narration. Higher values (we previously
+        //                    tried 0.85 and 0.95) over-stabilize and
+        //                    damp natural breath/slow-down prosody,
+        //                    producing a flatter, mechanically paced
+        //                    read.
+        //   speed:0.85     — modest slow-down. Floor is 0.7; below
+        //                    ~0.80 introduces "stretched" artifacts.
         voice_settings: {
-          stability: 0.85,
+          stability: 0.70,
           similarity_boost: 0.75,
           style: 0.0,
           use_speaker_boost: true,
@@ -454,22 +466,46 @@ async function main() {
   const wordCount = script.trim().split(/\s+/).length;
   const durationSeconds = Math.round((wordCount / 130) * 60);
 
-  let index: { stories: object[] } = { stories: [] };
+  interface StoryEntry {
+    id: string;
+    title: string;
+    theme: string;
+    voiceId: string;
+    createdAt: string;
+    durationSeconds: number;
+    audioPath: string;
+  }
+
+  let index: { stories: StoryEntry[] } = { stories: [] };
   try {
     index = JSON.parse(readFileSync(INDEX_PATH, 'utf8'));
   } catch {
     /* first story — index will be created */
   }
-  index.stories = (index.stories as Array<{ id: string }>).filter((s) => s.id !== id);
-  index.stories.push({
+
+  // Preserve curated metadata when re-rendering an existing story (same
+  // id). The CLI defaults (title:"Sleep story", theme:"") would otherwise
+  // overwrite hand-set values. durationSeconds gets recomputed (script
+  // edits change pace); createdAt is preserved so the entry doesn't
+  // claim to be brand-new every time we re-render.
+  const existingIdx = index.stories.findIndex((s) => s.id === id);
+  const existing = existingIdx >= 0 ? index.stories[existingIdx] : null;
+
+  const entry: StoryEntry = {
     id,
-    title,
-    theme: theme || `(re-rendered from ${scriptPath})`,
-    voiceId: voice,
-    createdAt: new Date().toISOString(),
+    title:     existing?.title     ?? title,
+    theme:     existing?.theme     ?? (theme || `(re-rendered from ${scriptPath})`),
+    voiceId:   existing?.voiceId   ?? voice,
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
     durationSeconds,
     audioPath,
-  });
+  };
+
+  if (existingIdx >= 0) {
+    index.stories[existingIdx] = entry;
+  } else {
+    index.stories.push(entry);
+  }
 
   writeFileSync(INDEX_PATH, JSON.stringify(index, null, 2));
   console.log(`  ✓  Updated ${INDEX_PATH}`);

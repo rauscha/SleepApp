@@ -166,15 +166,37 @@ async function callClaude(apiKey: string, style: string): Promise<string> {
  * Strip Claude's stage-direction markers ([pause], [softly], [long pause]…)
  * from the script before it goes to ElevenLabs. The markers were authored
  * for human prosody guidance; the TTS engine reads them out loud verbatim
- * ("bracket pause bracket"), which is jarring at 2am. We convert [pause]
- * variants to a real comma+ellipsis (which the engine respects as a beat)
- * and drop the speaker-tone markers entirely (the slowed voice settings
- * already deliver a gentle delivery).
+ * ("bracket pause bracket"), which is jarring at 2am.
+ *
+ * Transform conventions (revised 2026-05-28):
+ *   [pause]       → " — "   (em-dash with spaces)
+ *   [long pause]  → ' <break time="2.5s" /> '  (real SSML break)
+ *   [softly] etc. → dropped (the voice settings already carry the tone)
+ *
+ * Why em-dash for [pause]? Per ElevenLabs practitioner consensus, the
+ * em-dash is the most reliable pause signal — more consistent than the
+ * previous ", …" substitution (which produced malformed punctuation
+ * after sentence-ending periods, like ". , …") and avoids the
+ * "hesitation/nervousness" tone that ellipsis can introduce. The
+ * regex also eats preceding punctuation (". [pause]" → " — ") so two
+ * short staccato sentences get merged into one flowing clause, which
+ * relaxes the model's natural fast-read cadence on short fragments.
+ *
+ * Why <break> only for [long pause]? Excessive break tags cause an
+ * ElevenLabs speed-up artifact (documented). Reserving break tags
+ * for the rare deliberate long beats keeps us well under the threshold.
  */
 export function stripMeditationMarkers(text: string): string {
   return text
-    // [long pause] / [pause] / [pause for a moment] → comma + ellipsis
-    .replace(/\[(?:long\s+)?pause(?:[^\]]*)\]/gi, ', …')
+    // [long pause] FIRST — eat any preceding sentence punctuation +
+    // whitespace, replace with a real 2.5-second break tag.
+    .replace(/(?:[.,;:]\s*)?\[long\s+pause[^\]]*\]/gi, ' <break time="2.5s" />')
+    // [pause] / [pause for a moment] / etc. — eat preceding punctuation
+    // so ". [pause] Next" becomes " — Next" (merges the period+pause
+    // into a single em-dash break, which v2 reads as a definite,
+    // flowing pause rather than two staccato sentences with a clipped
+    // gap between them).
+    .replace(/(?:[.,;:]\s*)?\[pause[^\]]*\]/gi, ' — ')
     // [softly] / [whisper] / [gently] etc. — drop the marker, keep flow
     .replace(/\[(?:softly|whisper(?:ing)?|gently|quietly|slowly)\]/gi, '')
     // Any other bracketed stage direction we didn't anticipate
@@ -204,27 +226,28 @@ async function callElevenLabs(
       body: JSON.stringify({
         text: cleaned,
         model_id: 'eleven_multilingual_v2',
-        // Tuned for bedtime narration:
-        //   speed:0.80      — slower than the 0.85 first pass; the
-        //                     mid-meditation prosody at 0.85 still
-        //                     accelerated noticeably through short
-        //                     consecutive sentences. 0.80 is roughly
-        //                     the slowest setting before "stretched"
-        //                     artifacts appear.
-        //   stability:0.95  — high stability damps the within-render
-        //                     pace variation that made the 0.85 render
-        //                     feel uneven; the voice should hold the
-        //                     slow cadence end-to-end.
+        // Tuned for bedtime narration (revised 2026-05-28):
+        //   stability:0.70  — practitioner consensus for long-form
+        //                     narration is 0.6–0.8. Our previous 0.95
+        //                     over-stabilized: it damped the *good*
+        //                     prosodic variation (natural slow-downs,
+        //                     breaths) and left a flatter, mechanically
+        //                     paced delivery. 0.70 restores the breath.
+        //   speed:0.85      — bumped up from the previous 0.80 floor.
+        //                     If stability:0.70 + em-dash transform
+        //                     fix the within-paragraph cadence, we
+        //                     don't need the aggressive speed cut
+        //                     (which approaches "stretched artifact"
+        //                     territory near 0.80).
         //   style:0.0       — no conversational lift; flat editorial
         //                     read.
-        //   similarity_boost:0.75 + use_speaker_boost:true — leave
-        //                     as defaults.
+        //   similarity_boost:0.75 + use_speaker_boost:true — defaults.
         voice_settings: {
-          stability: 0.95,
+          stability: 0.70,
           similarity_boost: 0.75,
           style: 0.0,
           use_speaker_boost: true,
-          speed: 0.80,
+          speed: 0.85,
         },
       }),
     }

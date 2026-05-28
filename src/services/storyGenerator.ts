@@ -350,8 +350,16 @@ export async function synthesizeStoryAudio(
     projectsPollMaxMs,
   } = args;
 
-  if (!isLongForm(text)) {
-    return callElevenLabs(apiKey, voiceId, text, signal);
+  // Strip Claude's stage-direction markers before *any* TTS path. The
+  // prompt asks Claude to insert [pause] / [softly] etc. for prosody
+  // guidance; the chunked /text-to-speech endpoint reads brackets aloud
+  // verbatim, and even the Projects API (which absorbs the markers)
+  // produces less reliable pauses than our em-dash substitution. Mirror
+  // of tools/gen-story.ts:stripStoryMarkers — keep in sync.
+  const cleaned = stripStoryMarkers(text);
+
+  if (!isLongForm(cleaned)) {
+    return callElevenLabs(apiKey, voiceId, cleaned, signal);
   }
 
   if (useProjects) {
@@ -363,7 +371,7 @@ export async function synthesizeStoryAudio(
       return await callElevenLabsProjects(
         apiKey,
         voiceId,
-        text,
+        cleaned,
         signal,
         onProgress,
         projectsPollIntervalMs,
@@ -380,7 +388,26 @@ export async function synthesizeStoryAudio(
     }
   }
 
-  return callElevenLabsChunked(apiKey, voiceId, text, signal, onProgress);
+  return callElevenLabsChunked(apiKey, voiceId, cleaned, signal, onProgress);
+}
+
+/**
+ * Strip Claude's stage-direction markers before TTS. See the matching
+ * implementation in tools/gen-story.ts for the full rationale — em-dash
+ * is the most reliable pause mechanism per ElevenLabs practitioner
+ * consensus, more so than ellipsis (which adds hesitation/nervousness
+ * tone).
+ */
+export function stripStoryMarkers(text: string): string {
+  return text
+    .replace(/(?:[.,;:]\s*)?\[long\s+pause[^\]]*\]/gi, ' <break time="2.5s" />')
+    .replace(/(?:[.,;:]\s*)?\[pause[^\]]*\]/gi, ' — ')
+    .replace(/\[(?:softly|whisper(?:ing)?|gently|quietly|slowly)\]/gi, '')
+    .replace(/\[[^\]]{1,40}\]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ ,/g, ',')
+    .replace(/\n[ \t]+/g, '\n')
+    .trim();
 }
 
 // ---------------------------------------------------------------------------
@@ -445,13 +472,15 @@ async function callElevenLabs(
       body: JSON.stringify({
         text,
         model_id: 'eleven_multilingual_v2',
-        // speed:0.85 drops delivery to a sleepy cadence — out-of-box 1.0
-        // reads too briskly for sleep stories. stability bumped 0.75→0.85
-        // alongside the speed drop so the slower delivery stays even.
-        // Range is 0.7–1.2; 0.85 is roughly the floor where prosody stays
-        // natural. Mirrors the chunked-TTS settings in tools/gen-story.ts.
+        // Voice settings revised 2026-05-28. Mirrors tools/gen-story.ts.
+        //   stability:0.70 — practitioner consensus for long-form
+        //                    narration (0.6–0.8). Higher values
+        //                    over-stabilize and damp the natural
+        //                    breath/slow-down prosody.
+        //   speed:0.85     — modest slow-down. Floor is 0.7; below
+        //                    ~0.80 introduces stretched artifacts.
         voice_settings: {
-          stability: 0.85,
+          stability: 0.70,
           similarity_boost: 0.75,
           style: 0.0,
           use_speaker_boost: true,
