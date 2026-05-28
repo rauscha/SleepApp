@@ -1,0 +1,71 @@
+name: Deploy to GitHub Pages
+
+# Triggers on every push to main. Also runs from the Actions tab via the
+# manual trigger — useful for redeploying without an empty commit (e.g.
+# after editing a Pages setting that needs a fresh build to pick up).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Pages deployment requires id-token + pages write. contents: read is
+# enough for the checkout step (no commits back to the repo).
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Don't run two deploys in parallel — GH Pages serializes upstream anyway,
+# and a half-cancelled deploy can leave the live site in a torn state.
+# cancel-in-progress: false means a new push waits for the in-flight deploy
+# to finish rather than killing it mid-upload.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build dist/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `npm run build` is `tsc --noEmit && vite build` — the typecheck
+      # gate keeps a broken main from publishing even if CI was skipped
+      # somehow. vite.config.ts already has base: '/SleepApp/' so the
+      # output is GH-Pages-ready with no extra flags.
+      - name: Build
+        run: npm run build
+
+      # Pages expects a single artifact named "github-pages". The official
+      # action tars + gzips the directory and stamps it for the deploy
+      # step to pick up. dist/ is ~290 MB (mostly audio) — well under the
+      # 1 GB Pages site limit and the 10 GB artifact limit.
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+
+    # The github-pages environment is implicit — referenced by deploy-pages.
+    # Capturing the URL here makes it show up in the workflow summary so
+    # the deploy link is one click away from the Actions run.
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
