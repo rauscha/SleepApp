@@ -78,6 +78,8 @@ export function LibraryScreen({
   const [bundledStories, setBundledStories] = useState<BundledStoryMetadata[]>([]);
   const [stories, setStories] = useState<StoryMetadata[]>([]);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [storyError, setStoryError] = useState<{ id: string; message: string } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMeditationIndex()
@@ -112,6 +114,7 @@ export function LibraryScreen({
   const handlePlayStory = useCallback(
     async (story: StoryMetadata) => {
       setLoadingId(story.id);
+      setStoryError(null);
       try {
         const asset = await getStoryAudio(story.id);
         if (!asset) throw new Error('Audio not found — try regenerating.');
@@ -126,7 +129,10 @@ export function LibraryScreen({
         });
       } catch (err) {
         console.error('[LibraryScreen] story load failed:', err);
-        alert(err instanceof Error ? err.message : String(err));
+        setStoryError({
+          id: story.id,
+          message: err instanceof Error ? err.message : String(err),
+        });
       } finally {
         setLoadingId(null);
       }
@@ -148,11 +154,11 @@ export function LibraryScreen({
     [onPlay]
   );
 
-  const handleDeleteStory = useCallback(
+  const handleConfirmDelete = useCallback(
     async (id: string) => {
-      if (!confirm('Delete this story? This cannot be undone.')) return;
       try {
         await deleteStory(id);
+        setConfirmDeleteId((current) => (current === id ? null : current));
         refreshStories();
       } catch (err) {
         console.error('[LibraryScreen] delete failed:', err);
@@ -256,8 +262,12 @@ export function LibraryScreen({
                 description={s.theme}
                 meta={fmtDuration(s.durationSeconds)}
                 busy={loadingId === s.id}
+                errorMessage={storyError?.id === s.id ? storyError.message : null}
+                confirmingDelete={confirmDeleteId === s.id}
                 onPlay={() => handlePlayStory(s)}
-                onDelete={() => handleDeleteStory(s.id)}
+                onDelete={() => setConfirmDeleteId(s.id)}
+                onConfirmDelete={() => handleConfirmDelete(s.id)}
+                onCancelDelete={() => setConfirmDeleteId(null)}
               />
             ))}
           </div>
@@ -272,44 +282,83 @@ function ContentCard({
   description,
   meta,
   busy = false,
+  errorMessage = null,
+  confirmingDelete = false,
   onPlay,
   onDelete,
+  onConfirmDelete,
+  onCancelDelete,
 }: {
   title: string;
   description: string;
   meta: string;
   busy?: boolean;
+  errorMessage?: string | null;
+  confirmingDelete?: boolean;
   onPlay: () => void;
   onDelete?: () => void;
+  onConfirmDelete?: () => void;
+  onCancelDelete?: () => void;
 }) {
   return (
     <div className="bg-ink-800 rounded-softer px-5 py-4">
       <div className="flex items-start justify-between gap-3 mb-1">
         <h3 className="font-serif text-stone-50 text-lg leading-tight">{title}</h3>
-        <div className="flex gap-2 shrink-0 mt-0.5">
-          <button
-            onClick={onPlay}
-            disabled={busy}
-            className="text-xs text-moon-300 hover:text-moon-200
-                       transition-colors duration-slow disabled:opacity-40 px-1"
-            aria-label={`Play ${title}`}
-          >
-            {busy ? 'Loading…' : 'Play →'}
-          </button>
-          {onDelete && (
-            <button
-              onClick={onDelete}
-              className="text-xs text-stone-500 hover:text-ember-400
-                         transition-colors duration-slow px-1"
-              aria-label={`Delete ${title}`}
-            >
-              ×
-            </button>
+        <div className="flex gap-3 shrink-0 mt-0.5">
+          {confirmingDelete ? (
+            <>
+              <button
+                onClick={onCancelDelete}
+                className="text-xs text-stone-400 hover:text-stone-200
+                           transition-colors duration-slow px-1"
+                aria-label="Cancel delete"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onConfirmDelete}
+                className="text-xs text-ember-400 hover:text-ember-300
+                           transition-colors duration-slow px-1"
+                aria-label={`Confirm delete ${title}`}
+              >
+                Delete
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onPlay}
+                disabled={busy}
+                className="text-xs text-moon-300 hover:text-moon-200
+                           transition-colors duration-slow disabled:opacity-40 px-1"
+                aria-label={`Play ${title}`}
+              >
+                {busy ? 'Loading…' : 'Play →'}
+              </button>
+              {onDelete && (
+                <button
+                  onClick={onDelete}
+                  className="text-xs text-stone-500 hover:text-ember-400
+                             transition-colors duration-slow px-1"
+                  aria-label={`Delete ${title}`}
+                >
+                  ×
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
       <p className="text-stone-400 text-xs mb-1">{description}</p>
       <p className="text-stone-600 text-xs">{meta}</p>
+      {errorMessage && (
+        <p
+          role="alert"
+          className="text-ember-400 text-xs mt-2"
+        >
+          {errorMessage}
+        </p>
+      )}
     </div>
   );
 }

@@ -15,7 +15,9 @@ const STORAGE_KEY = 'sleep-app:settings:v1';
 
 export const DEFAULT_SETTINGS: UserSettings = {
   lastSceneId: null,
-  masterVolume: 0.7,
+  // Conservative default so first launch doesn't blast a sleeping user.
+  // Settings has a master slider for those who want more.
+  masterVolume: 0.4,
   tinnitus: {
     centerHz: 8000,
     bandwidthHz: 400,
