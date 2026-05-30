@@ -68,7 +68,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
 
         <div className="mb-6">
           <label className="block">
-            <span className="block text-sm text-stone-300 mb-2">
+            <span className="block body-text text-stone-300 mb-2">
               Master volume — {Math.round(settings.masterVolume * 100)}%
             </span>
             <input
@@ -89,8 +89,8 @@ export function SettingsScreen(_props: SettingsScreenProps) {
         </div>
 
         <div>
-          <p className="text-sm text-stone-300 mb-2">Default sleep timer</p>
-          <p className="text-xs text-stone-500 mb-3">
+          <p className="body-text text-stone-300 mb-2">Default sleep timer</p>
+          <p className="body-text text-stone-400 mb-3">
             When set, the timer starts automatically every time you begin a scene.
           </p>
           <div className="flex flex-wrap gap-2">
@@ -102,11 +102,12 @@ export function SettingsScreen(_props: SettingsScreenProps) {
                   onClick={() => update('defaultTimerMinutes', opt.value)}
                   aria-pressed={selected}
                   className={[
-                    'px-3 py-1.5 rounded-soft text-xs transition-colors duration-slow',
+                    'px-3 py-2 rounded-soft ui-label transition-colors duration-slow',
                     selected
                       ? 'bg-moon-600 text-stone-50'
                       : 'bg-ink-700 text-stone-300 hover:bg-ink-600',
                   ].join(' ')}
+                  style={{ minHeight: 44 }}
                 >
                   {opt.label}
                 </button>
@@ -121,7 +122,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
       {/* ── Offline ──────────────────────────────────────────────────── */}
       <section className="mb-8 px-1">
         <h2 className="font-serif text-stone-300 text-lg mb-2">Offline</h2>
-        <p className="text-xs text-stone-500 mb-5">
+        <p className="body-text text-stone-400 mb-5">
           Download every scene, meditation, and bundled story so the app
           plays with no network. About 290 MB total. Already-downloaded
           files are skipped, so tapping this again is safe.
@@ -134,7 +135,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
       {/* ── AI features ──────────────────────────────────────────────── */}
       <section className="mb-8 px-1">
         <h2 className="font-serif text-stone-300 text-lg mb-2">AI features</h2>
-        <p className="text-xs text-stone-500 mb-5">
+        <p className="body-text text-stone-400 mb-5">
           Your keys are stored in this browser only and are never sent
           anywhere except directly to ElevenLabs and Anthropic from your
           device.
@@ -163,7 +164,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
       {/* ── Diagnostics ──────────────────────────────────────────────── */}
       <section className="mb-8 px-1">
         <h2 className="font-serif text-stone-300 text-lg mb-2">Diagnostics</h2>
-        <p className="text-xs text-stone-500 mb-5">
+        <p className="body-text text-stone-400 mb-5">
           Local-only log of page lifecycle events (visibility, freeze/resume,
           audio state). Useful when an overnight session ends earlier than
           expected. Nothing leaves the device unless you share it.
@@ -174,7 +175,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
       <div className="h-px bg-ink-700 mb-8" />
 
       {/* ── About ─────────────────────────────────────────────────────── */}
-      <footer className="px-1 text-xs text-stone-500 space-y-1">
+      <footer className="px-1 ui-label text-stone-500 space-y-1">
         <p>Sleep App · v0.1.0</p>
         <p>No accounts. No telemetry. No notifications. Ever.</p>
       </footer>
@@ -240,7 +241,7 @@ function OfflineDownloadPanel() {
 
   if (!swControlling) {
     return (
-      <p className="text-xs text-stone-400 bg-ink-800 rounded-soft px-3 py-2.5">
+      <p className="body-text text-stone-300 bg-ink-800 rounded-soft px-3 py-2.5">
         The service worker isn't active in this environment, so a download
         wouldn't persist. Install the app (Add to Home Screen) or run a
         production build to enable offline.
@@ -256,7 +257,7 @@ function OfflineDownloadPanel() {
   return (
     <div className="space-y-3">
       {status && !running && (
-        <p className="text-xs text-stone-400">
+        <p className="body-text text-stone-300">
           {status.complete ? (
             <span className="text-moon-300">
               Ready to play offline · {status.totalCount} files cached
@@ -270,14 +271,14 @@ function OfflineDownloadPanel() {
       )}
 
       {statusError && (
-        <p className="text-xs text-red-400" role="status">
+        <p className="body-text text-red-400" role="status">
           {statusError}
         </p>
       )}
 
       {running && progress && (
         <div className="space-y-2">
-          <p className="text-xs text-stone-300" role="status">
+          <p className="body-text text-stone-300" role="status">
             Downloading… {progress.done} / {progress.total} ({pct}%)
           </p>
           <div className="h-1.5 bg-ink-800 rounded-full overflow-hidden">
@@ -296,12 +297,12 @@ function OfflineDownloadPanel() {
             onClick={handleDownload}
             disabled={status?.complete === true}
             className={[
-              'px-3 py-1.5 rounded-soft text-xs transition-colors duration-slow',
+              'px-3 py-2 rounded-soft ui-label transition-colors duration-slow',
               status?.complete
                 ? 'bg-ink-700 text-stone-500 cursor-not-allowed'
                 : 'bg-moon-600 text-stone-50 hover:bg-moon-500',
             ].join(' ')}
-            style={{ minHeight: 32 }}
+            style={{ minHeight: 44 }}
           >
             {status?.complete ? 'Already downloaded' : 'Download for offline'}
           </button>
@@ -310,9 +311,9 @@ function OfflineDownloadPanel() {
           <button
             type="button"
             onClick={handleCancel}
-            className="bg-ink-700 text-stone-300 hover:bg-ink-600 px-3 py-1.5
-                       rounded-soft text-xs transition-colors duration-slow"
-            style={{ minHeight: 32 }}
+            className="bg-ink-700 text-stone-300 hover:bg-ink-600 px-3 py-2
+                       rounded-soft ui-label transition-colors duration-slow"
+            style={{ minHeight: 44 }}
           >
             Cancel
           </button>
@@ -320,7 +321,7 @@ function OfflineDownloadPanel() {
       </div>
 
       {error && (
-        <p className="text-xs text-red-400" role="status">
+        <p className="body-text text-red-400" role="status">
           {error}
         </p>
       )}
@@ -388,12 +389,12 @@ function DiagnosticsPanel() {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-stone-400">
+      <p className="body-text text-stone-300">
         {entries.length} {entries.length === 1 ? 'entry' : 'entries'} captured
         {entries.length > 0 && (
           <>
             {' '}· last:{' '}
-            <span className="text-stone-300">
+            <span className="text-stone-200">
               {new Date(entries[entries.length - 1]!.ts).toLocaleString()}
             </span>
           </>
@@ -409,25 +410,25 @@ function DiagnosticsPanel() {
       </div>
 
       {status && (
-        <p className="text-xs text-moon-300" role="status">
+        <p className="body-text text-moon-300" role="status">
           {status}
         </p>
       )}
 
       {lastTen.length > 0 && (
         <div className="mt-3 bg-ink-800 rounded-soft p-3 max-h-56 overflow-y-auto">
-          <p className="text-xs text-stone-500 mb-2">
+          <p className="ui-label text-stone-400 mb-2">
             Most recent {lastTen.length} (newest first):
           </p>
-          <ul className="space-y-1 text-xs font-mono text-stone-300">
+          <ul className="space-y-1 ui-label font-mono text-stone-300">
             {lastTen.map((e, i) => (
               <li key={`${e.ts}-${i}`} className="leading-snug break-words">
-                <span className="text-stone-500">
+                <span className="text-stone-400">
                   {new Date(e.ts).toLocaleTimeString()}
                 </span>{' '}
                 <span className="text-stone-200">{e.kind}</span>
                 {e.detail && (
-                  <span className="text-stone-500"> · {e.detail}</span>
+                  <span className="text-stone-400"> · {e.detail}</span>
                 )}
               </li>
             ))}
@@ -455,8 +456,8 @@ function DiagButton({
     <button
       type="button"
       onClick={onClick}
-      className={`${cls} px-3 py-1.5 rounded-soft text-xs transition-colors duration-slow`}
-      style={{ minHeight: 32 }}
+      className={`${cls} px-3 py-2 rounded-soft ui-label transition-colors duration-slow`}
+      style={{ minHeight: 44 }}
     >
       {children}
     </button>
@@ -482,10 +483,10 @@ function ApiKeyField({
   return (
     <div className="mb-5">
       <label className="block">
-        <span className="block text-sm text-stone-400 mb-1">{label}</span>
-        <span className="block text-xs text-stone-600 mb-2">{hint}</span>
+        <span className="block body-text text-stone-300 mb-1">{label}</span>
+        <span className="block body-text text-stone-400 mb-2">{hint}</span>
         {envOverride ? (
-          <p className="text-xs text-moon-300 bg-ink-800 rounded-soft px-3 py-2.5">
+          <p className="body-text text-moon-300 bg-ink-800 rounded-soft px-3 py-2.5">
             Loaded from build env — no entry needed.
           </p>
         ) : (
@@ -497,9 +498,9 @@ function ApiKeyField({
               onChange={(e) => onChange(e.target.value)}
               autoComplete="off"
               spellCheck={false}
-              className="w-full bg-ink-800 text-stone-200 text-xs rounded-soft
-                         px-3 py-2.5 pr-12 border border-ink-600
-                         placeholder-ink-500 focus:outline-none
+              className="w-full bg-ink-800 text-stone-200 body-text rounded-soft
+                         px-3 py-2.5 pr-16 border border-ink-600
+                         placeholder-ink-400 focus:outline-none
                          focus:border-moon-600 transition-colors"
               aria-label={label}
             />
@@ -507,9 +508,10 @@ function ApiKeyField({
               <button
                 type="button"
                 onClick={() => setVisible((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2
-                           text-xs text-stone-500 hover:text-stone-300
-                           transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2
+                           ui-label text-stone-400 hover:text-stone-200
+                           transition-colors px-2 py-2"
+                style={{ minHeight: 44 }}
                 aria-label={visible ? 'Hide key' : 'Show key'}
               >
                 {visible ? 'hide' : 'show'}

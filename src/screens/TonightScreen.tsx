@@ -152,7 +152,7 @@ export function TonightScreen({
         <h1 className="font-serif text-stone-50 text-4xl leading-tight">
           Tonight
         </h1>
-        <p className="text-stone-400 text-sm mt-2">
+        <p className="text-stone-400 body-text mt-2">
           {lastSceneId
             ? 'Pick up where you left off, or try something new.'
             : 'A place to land at the end of the day.'}
@@ -160,7 +160,7 @@ export function TonightScreen({
       </header>
 
       {indexError && (
-        <p className="text-ember-400 text-sm mb-4 px-1">
+        <p className="text-ember-400 body-text mb-4 px-1">
           Couldn't load scenes: {indexError}
         </p>
       )}
@@ -186,7 +186,7 @@ export function TonightScreen({
             <button
               onClick={handleSurpriseMe}
               disabled={busySceneId !== null}
-              className="text-sm text-stone-400 hover:text-stone-200 active:text-moon-300
+              className="body-text text-stone-400 hover:text-stone-200 active:text-moon-300
                          transition-colors duration-slow disabled:opacity-40
                          px-4 py-2"
             >
@@ -197,7 +197,7 @@ export function TonightScreen({
       </div>
 
       {startError && (
-        <p className="mt-4 text-xs text-ember-400 break-words px-1">
+        <p className="mt-4 body-text text-ember-400 break-words px-1">
           Couldn't start: {startError}
         </p>
       )}
@@ -205,8 +205,10 @@ export function TonightScreen({
       <footer className="mt-8 pt-4 px-1 flex justify-end">
         <button
           onClick={onDevToolsRequested}
-          className="text-[10px] text-stone-600 hover:text-stone-400
-                     active:text-moon-300 transition-colors duration-slow"
+          className="text-xs text-stone-400 hover:text-stone-200
+                     active:text-moon-300 transition-colors duration-slow
+                     px-2 py-2"
+          style={{ minHeight: 44 }}
         >
           Dev tools
         </button>
@@ -265,16 +267,16 @@ function SceneCard({
           </h2>
           <div className="flex flex-col items-end gap-1 shrink-0 mt-0.5">
             {isLastPlayed && (
-              <span className="text-[10px] uppercase tracking-widest text-stone-400">
+              <span className="text-xs uppercase tracking-widest text-stone-400">
                 last played
               </span>
             )}
             {busy ? (
-              <span className="text-xs text-stone-300">Loading…</span>
+              <span className="ui-label text-stone-300">Loading…</span>
             ) : (
               <span
                 className={[
-                  'text-xs',
+                  'ui-label',
                   primary ? 'text-moon-300' : 'text-stone-400',
                 ].join(' ')}
               >
@@ -287,7 +289,7 @@ function SceneCard({
           <p
             className={[
               'text-stone-400 leading-relaxed',
-              primary ? 'text-sm' : 'text-xs',
+              primary ? 'body-text' : 'ui-label',
             ].join(' ')}
           >
             {entry.description}

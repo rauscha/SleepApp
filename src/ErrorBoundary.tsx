@@ -39,12 +39,13 @@ export class ErrorBoundary extends Component<Props, State> {
             <h1 className="font-serif text-stone-50 text-2xl mb-3">
               Something went quiet here.
             </h1>
-            <p className="text-stone-300 text-sm mb-6">
+            <p className="text-stone-300 body-text mb-6">
               Audio may still be playing. Tap to reload only when you're ready.
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 rounded-soft bg-ink-700 text-stone-100 text-sm"
+              className="px-4 py-3 rounded-soft bg-ink-700 text-stone-100 body-text"
+              style={{ minHeight: 44 }}
             >
               Reload
             </button>

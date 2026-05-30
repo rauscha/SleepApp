@@ -185,11 +185,12 @@ export function LibraryScreen({
               key={t}
               onClick={() => setTab(t)}
               className={[
-                'flex-1 py-2 text-xs rounded capitalize transition-colors duration-slow',
+                'flex-1 py-2 ui-label rounded capitalize transition-colors duration-slow',
                 tab === t
                   ? 'bg-ink-600 text-stone-100'
                   : 'text-stone-400 hover:text-stone-200',
               ].join(' ')}
+              style={{ minHeight: 44 }}
             >
               {t}
             </button>
@@ -201,7 +202,7 @@ export function LibraryScreen({
       {tab === 'meditations' && (
         <div className="flex-1">
           {meditationError && (
-            <p className="text-ember-400 text-sm mb-4 px-1">
+            <p className="text-ember-400 body-text mb-4 px-1">
               Couldn't load: {meditationError}
             </p>
           )}
@@ -232,9 +233,10 @@ export function LibraryScreen({
           <div className="flex justify-end mb-4 px-1">
             <button
               onClick={onGenerateStory}
-              className="text-xs text-moon-300 hover:text-moon-200
+              className="ui-label text-moon-300 hover:text-moon-200
                          transition-colors duration-slow px-3 py-1.5
                          border border-moon-700 rounded-soft"
+              style={{ minHeight: 44 }}
             >
               Generate new story →
             </button>
@@ -309,16 +311,18 @@ function ContentCard({
             <>
               <button
                 onClick={onCancelDelete}
-                className="text-xs text-stone-400 hover:text-stone-200
-                           transition-colors duration-slow px-1"
+                className="ui-label text-stone-400 hover:text-stone-200
+                           transition-colors duration-slow px-2 py-2"
+                style={{ minHeight: 44 }}
                 aria-label="Cancel delete"
               >
                 Cancel
               </button>
               <button
                 onClick={onConfirmDelete}
-                className="text-xs text-ember-400 hover:text-ember-300
-                           transition-colors duration-slow px-1"
+                className="ui-label text-ember-400 hover:text-ember-300
+                           transition-colors duration-slow px-2 py-2"
+                style={{ minHeight: 44 }}
                 aria-label={`Confirm delete ${title}`}
               >
                 Delete
@@ -329,8 +333,10 @@ function ContentCard({
               <button
                 onClick={onPlay}
                 disabled={busy}
-                className="text-xs text-moon-300 hover:text-moon-200
-                           transition-colors duration-slow disabled:opacity-40 px-1"
+                className="ui-label text-moon-300 hover:text-moon-200
+                           transition-colors duration-slow disabled:opacity-40
+                           px-2 py-2"
+                style={{ minHeight: 44 }}
                 aria-label={`Play ${title}`}
               >
                 {busy ? 'Loading…' : 'Play →'}
@@ -338,8 +344,9 @@ function ContentCard({
               {onDelete && (
                 <button
                   onClick={onDelete}
-                  className="text-xs text-stone-500 hover:text-ember-400
-                             transition-colors duration-slow px-1"
+                  className="ui-label text-stone-500 hover:text-ember-400
+                             transition-colors duration-slow px-2 py-2"
+                  style={{ minHeight: 44, minWidth: 44 }}
                   aria-label={`Delete ${title}`}
                 >
                   ×
@@ -349,12 +356,12 @@ function ContentCard({
           )}
         </div>
       </div>
-      <p className="text-stone-400 text-xs mb-1">{description}</p>
-      <p className="text-stone-600 text-xs">{meta}</p>
+      <p className="text-stone-400 body-text mb-1">{description}</p>
+      <p className="text-stone-500 ui-label">{meta}</p>
       {errorMessage && (
         <p
           role="alert"
-          className="text-ember-400 text-xs mt-2"
+          className="text-ember-400 body-text mt-2"
         >
           {errorMessage}
         </p>
@@ -374,10 +381,10 @@ function EmptyState({
 }) {
   return (
     <div className="px-1 py-8 text-center">
-      <p className="text-stone-300 text-sm mb-2">{heading}</p>
-      <p className="text-stone-500 text-xs max-w-xs mx-auto mb-3">{body}</p>
+      <p className="text-stone-300 body-text mb-2">{heading}</p>
+      <p className="text-stone-400 body-text max-w-xs mx-auto mb-3">{body}</p>
       {codeHint && (
-        <code className="text-xs text-moon-300 bg-ink-800 px-2 py-1 rounded-soft">
+        <code className="ui-label text-moon-300 bg-ink-800 px-2 py-1 rounded-soft">
           {codeHint}
         </code>
       )}

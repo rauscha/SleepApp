@@ -353,7 +353,9 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         <div className="flex items-center justify-between mb-7">
           <button
             onClick={onExit}
-            className="text-xs text-stone-400 hover:text-stone-200 transition-colors duration-slow"
+            className="ui-label text-stone-400 hover:text-stone-200
+                       transition-colors duration-slow px-2 py-2"
+            style={{ minHeight: 44, minWidth: 44 }}
             aria-label="Back to scenes"
           >
             ← Scenes
@@ -375,9 +377,10 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
               <button
                 key={m}
                 onClick={() => startTimer(m)}
-                className="px-3 py-1 rounded-soft text-xs text-stone-200
+                className="px-3 py-2 rounded-soft ui-label text-stone-200
                            bg-ink-700 hover:bg-ink-600 active:bg-moon-700
                            transition-colors duration-slow"
+                style={{ minHeight: 44, minWidth: 44 }}
               >
                 {m} min
               </button>
@@ -388,7 +391,7 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         <h1 className="font-serif text-stone-50 text-3xl leading-tight">
           {scene.definition.label}
         </h1>
-        <p className="text-stone-400 text-sm mt-1">
+        <p className="text-stone-400 body-text mt-1">
           {timer.status === 'fading'
             ? 'Fading out…'
             : timer.status === 'running'
@@ -408,7 +411,7 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         >
           Stop
         </button>
-        <p className="text-stone-400 text-xs mt-4 max-w-xs text-center">
+        <p className="text-stone-400 body-text mt-4 max-w-xs text-center">
           {timer.status === 'fading'
             ? `${TIMER_FADE_SECONDS}s fade. Walk away.`
             : '8-second fade. Tap Stop and walk away.'}
@@ -417,7 +420,7 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
 
       <div className="mb-6">
         <label className="block">
-          <span className="block text-xs text-stone-400 mb-2">
+          <span className="block body-text text-stone-300 mb-2">
             Master volume — {Math.round(masterVolume * 100)}%
           </span>
           <input
@@ -441,8 +444,9 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
       <div>
         <button
           onClick={() => setMixerOpen((open) => !open)}
-          className="w-full flex justify-between items-center px-3 py-2 text-xs
+          className="w-full flex justify-between items-center px-3 py-3 body-text
                      text-stone-300 hover:text-stone-100 transition-colors duration-slow"
+          style={{ minHeight: 44 }}
         >
           <span>Mixer</span>
           <span>{mixerOpen ? '▾' : '▸'}</span>
@@ -474,9 +478,10 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
             requestFullscreenSafe();
             setDisplayMode('nightstand');
           }}
-          className="text-xs text-stone-500 hover:text-stone-300
+          className="ui-label text-stone-400 hover:text-stone-200
                      active:text-moon-300 transition-colors duration-slow
-                     px-3 py-2"
+                     px-3 py-3"
+          style={{ minHeight: 44 }}
         >
           Nightstand mode
         </button>
@@ -525,14 +530,14 @@ function NightstandView({
       >
         {/* Scene name + timer status */}
         <div className="text-center">
-          <p className="text-stone-300 text-sm tracking-wide">
+          <p className="text-stone-300 body-text tracking-wide">
             {scene.definition.label}
           </p>
           {timer.status === 'running' && (
-            <p className="text-moon-300 text-xs mt-1">{formatMs(remaining)}</p>
+            <p className="text-moon-300 body-text mt-1">{formatMs(remaining)}</p>
           )}
           {timer.status === 'fading' && (
-            <p className="text-stone-400 text-xs mt-1 italic">Fading…</p>
+            <p className="text-stone-300 body-text mt-1 italic">Fading…</p>
           )}
         </div>
 
@@ -551,8 +556,9 @@ function NightstandView({
         {/* Exit to Lush */}
         <button
           onClick={(e) => { e.stopPropagation(); onExitNightstand(); }}
-          className="text-xs text-stone-400 hover:text-stone-200
-                     transition-colors duration-slow px-4 py-2"
+          className="ui-label text-stone-400 hover:text-stone-200
+                     transition-colors duration-slow px-4 py-3"
+          style={{ minHeight: 44 }}
           aria-label="Exit Nightstand mode"
         >
           Lush mode
@@ -620,7 +626,7 @@ function LayerSlider({
 }) {
   return (
     <label className="block">
-      <span className="block text-xs text-stone-300 mb-1">
+      <span className="block body-text text-stone-300 mb-1">
         {label} — {Math.round(value * 100)}%
       </span>
       <input

@@ -296,7 +296,7 @@ function NavButton({
       <span className="block" aria-hidden="true">
         {icon}
       </span>
-      <span className="text-[11px] tracking-wide">{label}</span>
+      <span className="text-xs tracking-wide">{label}</span>
     </button>
   );
 }

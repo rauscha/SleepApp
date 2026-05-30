@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Body-text floor — the brief sets 16px as a hard minimum so a half-asleep
+ * user can read screen text at arm's length in the dark. Use `.body-text`
+ * for anything users actually read (descriptions, hints, status, error
+ * messages, form labels). Use `.ui-label` for non-essential UI metadata
+ * (back-button glyphs, decorative pills, secondary CTAs). Anything smaller
+ * than 12px is forbidden by the design language. */
+@layer components {
+  .body-text { @apply text-base leading-relaxed; }
+  .ui-label  { @apply text-sm; }
+}
+
 /* Inter, self-hosted. One variable woff2 covers weights 100–900 so we
  * don't need separate files per weight. Served from /fonts/ so the app
  * works fully offline once installed — no rsms.me round-trip on cold

@@ -149,8 +149,9 @@ export function ContentPlayerScreen({
       <header className="mb-8">
         <button
           onClick={onBack}
-          className="text-xs text-stone-400 hover:text-stone-200
-                     transition-colors duration-slow mb-6 block"
+          className="ui-label text-stone-400 hover:text-stone-200
+                     transition-colors duration-slow mb-6 block px-2 py-2"
+          style={{ minHeight: 44, minWidth: 44 }}
           aria-label="Back to Library"
         >
           ← Library
@@ -158,12 +159,12 @@ export function ContentPlayerScreen({
         <h1 className="font-serif text-stone-50 text-3xl leading-tight mb-2">
           {title}
         </h1>
-        <p className="text-stone-400 text-sm">{description}</p>
+        <p className="text-stone-400 body-text">{description}</p>
       </header>
 
       {state === 'error' && (
         <div className="bg-ink-800 rounded-soft px-4 py-3 mb-6">
-          <p className="text-ember-400 text-sm">{errorMsg}</p>
+          <p className="text-ember-400 body-text">{errorMsg}</p>
         </div>
       )}
 
@@ -181,7 +182,7 @@ export function ContentPlayerScreen({
           disabled={state === 'loading' || state === 'error'}
           className="w-full disabled:opacity-40"
         />
-        <div className="flex justify-between text-xs text-stone-500 mt-1">
+        <div className="flex justify-between ui-label text-stone-400 mt-1 font-mono">
           <span>{formatSeconds(position)}</span>
           <span>{duration > 0 ? formatSeconds(duration) : '--:--'}</span>
         </div>
@@ -210,7 +211,7 @@ export function ContentPlayerScreen({
       </div>
 
       {/* Status line */}
-      <p className="text-center text-xs text-stone-500">
+      <p className="text-center body-text text-stone-400">
         {state === 'loading'
           ? 'Loading…'
           : state === 'playing'

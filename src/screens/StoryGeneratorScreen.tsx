@@ -106,9 +106,10 @@ export function StoryGeneratorScreen({
         <button
           onClick={onBack}
           disabled={busy}
-          className="text-xs text-stone-400 hover:text-stone-200
+          className="ui-label text-stone-400 hover:text-stone-200
                      transition-colors duration-slow mb-6 block
-                     disabled:opacity-40"
+                     disabled:opacity-40 px-2 py-2"
+          style={{ minHeight: 44 }}
           aria-label="Back to Library"
         >
           ← Library
@@ -116,7 +117,7 @@ export function StoryGeneratorScreen({
         <h1 className="font-serif text-stone-50 text-3xl leading-tight mb-2">
           New story
         </h1>
-        <p className="text-stone-400 text-sm">
+        <p className="text-stone-400 body-text">
           Claude writes the script · ElevenLabs narrates it · takes 2–5 min
         </p>
       </header>
@@ -124,7 +125,7 @@ export function StoryGeneratorScreen({
       <div className="space-y-7">
         {/* Theme */}
         <div>
-          <label htmlFor="theme" className="block text-sm text-stone-300 mb-2">
+          <label htmlFor="theme" className="block body-text text-stone-300 mb-2">
             Theme
           </label>
           <input
@@ -134,9 +135,9 @@ export function StoryGeneratorScreen({
             onChange={(e) => setTheme(e.target.value)}
             disabled={busy}
             placeholder="A slow walk through an autumn forest"
-            className="w-full bg-ink-800 text-stone-100 text-sm rounded-soft
+            className="w-full bg-ink-800 text-stone-100 body-text rounded-soft
                        px-3 py-2.5 border border-ink-600
-                       placeholder-stone-600 focus:outline-none
+                       placeholder-stone-500 focus:outline-none
                        focus:border-moon-600 transition-colors
                        disabled:opacity-40"
           />
@@ -144,7 +145,7 @@ export function StoryGeneratorScreen({
 
         {/* Voice */}
         <div>
-          <p className="text-sm text-stone-300 mb-3">Voice</p>
+          <p className="body-text text-stone-300 mb-3">Voice</p>
           <div className="space-y-2">
             {(['tide', 'stone'] as const).map((v) => (
               <button
@@ -152,15 +153,16 @@ export function StoryGeneratorScreen({
                 onClick={() => setVoice(v)}
                 disabled={busy}
                 className={[
-                  'w-full text-left px-4 py-3 rounded-soft text-sm',
+                  'w-full text-left px-4 py-3 rounded-soft body-text',
                   'transition-colors duration-slow disabled:opacity-40',
                   voice === v
                     ? 'bg-ink-600 text-stone-100'
                     : 'bg-ink-800 text-stone-300 hover:bg-ink-700',
                 ].join(' ')}
+                style={{ minHeight: 44 }}
               >
                 <span className="capitalize font-medium">{v}</span>
-                <span className="text-stone-500 ml-2 text-xs">
+                <span className="text-stone-400 ml-2 ui-label">
                   — {VOICE_DESCRIPTIONS[v]}
                 </span>
               </button>
@@ -169,7 +171,7 @@ export function StoryGeneratorScreen({
         </div>
 
         {/* Cost note */}
-        <p className="text-xs text-stone-500 px-1">
+        <p className="body-text text-stone-400 px-1">
           Estimated cost: ~$0.05–0.10 (Claude) + ~$1–3 (ElevenLabs) per
           story. Stories are saved permanently — no regeneration needed.
         </p>
@@ -179,8 +181,9 @@ export function StoryGeneratorScreen({
           <button
             onClick={handleCancel}
             className="w-full py-3 rounded-soft bg-ink-700 text-stone-200
-                       text-sm font-medium transition-all duration-slow ease-exhale
+                       body-text font-medium transition-all duration-slow ease-exhale
                        active:bg-ink-600"
+            style={{ minHeight: 44 }}
           >
             Cancel
           </button>
@@ -189,8 +192,9 @@ export function StoryGeneratorScreen({
             onClick={handleGenerate}
             disabled={!theme.trim()}
             className="w-full py-3 rounded-soft bg-moon-600 text-stone-50
-                       text-sm font-medium transition-all duration-slow ease-exhale
+                       body-text font-medium transition-all duration-slow ease-exhale
                        active:bg-moon-500 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ minHeight: 44 }}
           >
             Generate story
           </button>
@@ -200,13 +204,13 @@ export function StoryGeneratorScreen({
         {steps.length > 0 && (
           <div className="space-y-2">
             {steps.map((s, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs text-stone-400">
+              <div key={i} className="flex items-center gap-2 body-text text-stone-400">
                 <span className="text-moon-400">✓</span>
                 <span>{s}</span>
               </div>
             ))}
             {busy && (
-              <div className="flex items-center gap-2 text-xs text-stone-300">
+              <div className="flex items-center gap-2 body-text text-stone-300">
                 <span className="animate-pulse text-moon-300">●</span>
                 <span>Running…</span>
               </div>
@@ -217,7 +221,7 @@ export function StoryGeneratorScreen({
         {/* Error */}
         {error && (
           <div className="bg-ink-800 rounded-soft px-4 py-3">
-            <p className="text-ember-400 text-sm">{error}</p>
+            <p className="text-ember-400 body-text">{error}</p>
           </div>
         )}
       </div>
