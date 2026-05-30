@@ -104,12 +104,24 @@ export class AudioEngine {
       );
     }
     const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
-    this.workletPromise = ctx.audioWorklet
+    // The .catch() that clears the cached promise is load-bearing: if the
+    // first addModule() rejects (transient network blip, stale SW serving
+    // a deleted asset after a deploy), without this branch every later
+    // call returns the same rejected promise forever and only a tab
+    // reload recovers. Clearing the cache on failure means the next
+    // user gesture re-tries cleanly. The throw is rethrown so the
+    // current caller still sees the original error.
+    const attempt = ctx.audioWorklet
       .addModule(`${base}/worklets/noise-processor.js`)
       .then(() => {
         this.workletReady = true;
+      })
+      .catch((err) => {
+        if (this.workletPromise === attempt) this.workletPromise = null;
+        throw err;
       });
-    return this.workletPromise;
+    this.workletPromise = attempt;
+    return attempt;
   }
 
   get isWorkletReady(): boolean {
