@@ -135,10 +135,14 @@ export function SettingsScreen(_props: SettingsScreenProps) {
       {/* ── AI features ──────────────────────────────────────────────── */}
       <section className="mb-8 px-1">
         <h2 className="font-serif text-stone-300 text-lg mb-2">AI features</h2>
-        <p className="body-text text-stone-400 mb-5">
+        <p className="body-text text-stone-400 mb-2">
           Your keys are stored in this browser only and are never sent
           anywhere except directly to ElevenLabs and Anthropic from your
           device.
+        </p>
+        <p className="body-text text-stone-500 italic mb-5">
+          Stored unencrypted on this device — anyone with access to this
+          unlocked browser can read them. Consider rotating quarterly.
         </p>
 
         <ApiKeyField
