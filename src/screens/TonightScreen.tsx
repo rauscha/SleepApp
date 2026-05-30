@@ -47,7 +47,10 @@ const SCENE_PHOTOS: Record<string, string> = {
 const SCENE_GRADIENTS: Record<string, [string, string]> = {
   'forest-day':     ['#182A1E', '#0B0D10'],
   'forest-night':   ['#0C1812', '#0B0D10'],
+  'forest-evening': ['#1A2418', '#0B0D10'],
   'rain-on-window': ['#161D2A', '#0B0D10'],
+  'monsoon':        ['#1A2228', '#0B0D10'],
+  'ocean-night':    ['#10202A', '#0B0D10'],
   'fireplace':      ['#2A1810', '#0B0D10'],
 };
 

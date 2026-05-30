@@ -1,0 +1,80 @@
+{
+  "id": "monsoon",
+  "label": "Monsoon",
+  "description": "Heavy nighttime downpour on a metal garage roof in Chiang Mai, softer rain on canvas a little farther off, and the muffled rumble of distant thunder behind it all.",
+  "synth": {
+    "color": "brown",
+    "defaultVolume": 0.10
+  },
+  "tinnitus": {
+    "enabledByDefault": false,
+    "defaultVolume": 0.2
+  },
+  "elements": [
+    {
+      "id": "rain",
+      "label": "Heavy rain",
+      "loopOffsetSeconds": 251,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.55,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "rain-1",
+          "url": "/audio/monsoon/rain/rain-1.mp3",
+          "attribution": "freetousesounds sound library — see /audio/monsoon/rain/rain-1.json for license."
+        },
+        {
+          "id": "rain-2",
+          "url": "/audio/monsoon/rain/rain-2.mp3",
+          "attribution": "freetousesounds sound library — see /audio/monsoon/rain/rain-2.json for license."
+        },
+        {
+          "id": "rain-3",
+          "url": "/audio/monsoon/rain/rain-3.mp3",
+          "attribution": "freetousesounds sound library — see /audio/monsoon/rain/rain-3.json for license."
+        }
+      ]
+    },
+    {
+      "id": "rain-distant",
+      "label": "Rain, farther off",
+      "loopOffsetSeconds": 409,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.30,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "distant-1",
+          "url": "/audio/monsoon/rain-distant/distant-1.mp3",
+          "attribution": "freetousesounds sound library — see /audio/monsoon/rain-distant/distant-1.json for license."
+        },
+        {
+          "id": "distant-2",
+          "url": "/audio/monsoon/rain-distant/distant-2.mp3",
+          "attribution": "freetousesounds sound library — see /audio/monsoon/rain-distant/distant-2.json for license."
+        }
+      ]
+    },
+    {
+      "id": "thunder-rumble",
+      "label": "Distant thunder (rumble only)",
+      "loopOffsetSeconds": 521,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.20,
+      "variantRotation": "sequential",
+      "variants": [
+        {
+          "id": "rumble-1",
+          "url": "/audio/monsoon/thunder-rumble/rumble-1.mp3",
+          "attribution": "freetousesounds sound library — see /audio/monsoon/thunder-rumble/rumble-1.json for license. Low-passed at 600 Hz, sparse event layer."
+        },
+        {
+          "id": "rumble-2",
+          "url": "/audio/monsoon/thunder-rumble/rumble-2.mp3",
+          "attribution": "freetousesounds sound library — see /audio/monsoon/thunder-rumble/rumble-2.json for license. Low-passed at 600 Hz, sparse event layer."
+        }
+      ]
+    }
+  ]
+}

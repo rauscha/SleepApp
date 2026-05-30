@@ -1,0 +1,9 @@
+{
+  "source": "freetousesounds sound library",
+  "originalFilename": "forest-day/creek-trickle/creek-2.mp3 + creek-1.mp3 (acrossfade, reverse order)",
+  "license": "Free To Use Sounds paid library — derivative works permitted (including commercial), no attribution required. Original sounds may not be redistributed in their original form; the shipped MP3 is a derivative (transcoded + loudnorm-normalized). See https://freetousesounds.com/license-agreement",
+  "downloadedAt": "2026-05-29",
+  "trimmedTo": "750s (acrossfade of two forest-day creek MP3s, swapped order)",
+  "outputFormat": "44.1 kHz / 128 kbps / stereo MP3",
+  "notes": "Reverse-order acrossfade of the same two forest-day creek MP3s, giving a different entry point within the 691 s loop window so variant rotation gives real variety. Same pipeline as creek-1."
+}

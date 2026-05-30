@@ -1,0 +1,80 @@
+{
+  "id": "ocean-night",
+  "label": "Ocean, at night",
+  "description": "Steady surf rolling against a sand beach from a hotel window, crashing waves a little farther out, and the occasional distant rigging of a shipyard across the bay.",
+  "synth": {
+    "color": "brown",
+    "defaultVolume": 0.12
+  },
+  "tinnitus": {
+    "enabledByDefault": false,
+    "defaultVolume": 0.2
+  },
+  "elements": [
+    {
+      "id": "waves",
+      "label": "Surf, near",
+      "loopOffsetSeconds": 251,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.55,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "wave-1",
+          "url": "/audio/ocean-night/waves/wave-1.mp3",
+          "attribution": "freetousesounds sound library — see /audio/ocean-night/waves/wave-1.json for license."
+        },
+        {
+          "id": "wave-2",
+          "url": "/audio/ocean-night/waves/wave-2.mp3",
+          "attribution": "freetousesounds sound library — see /audio/ocean-night/waves/wave-2.json for license."
+        },
+        {
+          "id": "wave-3",
+          "url": "/audio/ocean-night/waves/wave-3.mp3",
+          "attribution": "freetousesounds sound library — see /audio/ocean-night/waves/wave-3.json for license."
+        }
+      ]
+    },
+    {
+      "id": "waves-far",
+      "label": "Surf, further out",
+      "loopOffsetSeconds": 409,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.30,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "far-1",
+          "url": "/audio/ocean-night/waves-far/far-1.mp3",
+          "attribution": "freetousesounds sound library — see /audio/ocean-night/waves-far/far-1.json for license."
+        },
+        {
+          "id": "far-2",
+          "url": "/audio/ocean-night/waves-far/far-2.mp3",
+          "attribution": "freetousesounds sound library — see /audio/ocean-night/waves-far/far-2.json for license."
+        }
+      ]
+    },
+    {
+      "id": "dockside-distant",
+      "label": "Distant dockside",
+      "loopOffsetSeconds": 521,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.18,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "dock-1",
+          "url": "/audio/ocean-night/dockside-distant/dock-1.mp3",
+          "attribution": "freetousesounds sound library — see /audio/ocean-night/dockside-distant/dock-1.json for license. Sparse event layer: one ~3-min dockside ambience per ~9-min loop, otherwise silence under the wave layers."
+        },
+        {
+          "id": "dock-2",
+          "url": "/audio/ocean-night/dockside-distant/dock-2.mp3",
+          "attribution": "freetousesounds sound library — see /audio/ocean-night/dockside-distant/dock-2.json for license. Sparse event layer."
+        }
+      ]
+    }
+  ]
+}

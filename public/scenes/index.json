@@ -13,10 +13,28 @@
       "url": "/scenes/forest-night.json"
     },
     {
+      "id": "forest-evening",
+      "label": "Forest, evening rain",
+      "description": "Light rain dripping from leaves at dusk, wind in the tree tops, a slow creek, quiet birds settling.",
+      "url": "/scenes/forest-evening.json"
+    },
+    {
       "id": "rain-on-window",
       "label": "Rain on the window",
       "description": "Steady rain against glass, distant rain on pavement, a bass rumble miles off.",
       "url": "/scenes/rain-on-window.json"
+    },
+    {
+      "id": "monsoon",
+      "label": "Monsoon",
+      "description": "Heavy downpour on a metal roof, softer rain a little farther off, muffled thunder behind it all.",
+      "url": "/scenes/monsoon.json"
+    },
+    {
+      "id": "ocean-night",
+      "label": "Ocean, at night",
+      "description": "Surf rolling against a sand beach, crashing waves further out, the occasional distant shipyard across the bay.",
+      "url": "/scenes/ocean-night.json"
     },
     {
       "id": "fireplace",

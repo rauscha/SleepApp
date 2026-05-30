@@ -28,6 +28,50 @@ this step in a fresh clone that doesn't have one.
 - Tinnitus features are shelved — keep the engine, hide the UI.
 - Phase 5 items (PWA, iOS device test, perf) come last.
 
+## Scene authoring — the incommensurate-loops rule (READ THIS BEFORE TOUCHING SCENES)
+
+The whole reason scenes feel alive instead of loopy is **pairwise-coprime
+loop offsets across multiple layered elements** — Brian Eno's *Music for
+Airports* technique. The combined audio pattern only repeats at the LCM of
+the per-element offsets, which (for the canonical primes below) is tens of
+hours. Lose that and the scene starts sounding like a tape loop within ten
+minutes. This is core audio design, not an implementation detail.
+
+**Hard rules** when adding or editing a scene JSON in `public/scenes/`:
+
+1. **Every scene MUST have at least 2 layered ambient `elements`, ideally
+   3–4.** A scene that is just `synth` + one element is a bug, not a scene
+   — it defeats the whole point and **must not be committed**. The older
+   shipped scenes (forest-day, rain-on-window, fireplace) are the reference
+   pattern: 2–3 elements stacked over a synth bed, each on its own offset.
+
+2. **Each element MUST use a different loop offset, picked from
+   `PRIME_ADJACENT_LOOP_OFFSETS_SECONDS`** in [src/audio/sceneFormat.ts]
+   (current list: **251, 409, 521, 691, 887** seconds — true primes,
+   pairwise gcd 1, LCM ≈ 28 h for the smallest pair). Off-list values
+   (e.g. 175, 230, 590) are wrong even if they're "close to a prime" —
+   the canonical list is the contract. If you need a sixth offset, add
+   another true prime to that list, don't pick an arbitrary number.
+
+3. **Every variant MP3 must be longer than its element's
+   `loopOffsetSeconds + crossfadeSeconds`** (default crossfade = 5s).
+   FileLayer needs the tail to crossfade into the next iteration. If your
+   source audio is shorter than the offset, either pick a longer source,
+   acrossfade-extend the source (see `tools/grow-out-scenes.sh` for an
+   example), or pad sparse "event" layers with silence — don't lower the
+   offset off the prime list.
+
+4. **Voice the stack like a mix**, not like a flat sum: the closest /
+   primary element rides loudest (~0.55–0.60), supporting layers sit at
+   0.25–0.35, and the synth bed underneath at ~0.10–0.16 to glue the
+   spectrum. Sparse "event" layers (distant thunder, occasional dockside)
+   sit quieter still (~0.18–0.20) and use a long mostly-silent loop.
+
+If you're adding a scene with only one element because that's all the
+source audio you have, **don't ship it yet** — either find/transcode more
+layers first, or stub it as a comment in `public/scenes/index.json`. A
+sparse scene shipped now is harder to fix later than one held back.
+
 ## Audio engine invariants
 
 - `FileLayer` pre-fills a 3-iteration pipeline (`LOOKAHEAD_COUNT = 3`) so

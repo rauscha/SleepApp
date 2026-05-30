@@ -1,0 +1,95 @@
+{
+  "id": "forest-evening",
+  "label": "Forest, evening rain",
+  "description": "Light rain dripping from leaves in a Tasmanian forest at dusk — wind through the tree tops, a slow creek behind it, quiet birds settling for the night.",
+  "synth": {
+    "color": "brown",
+    "defaultVolume": 0.10
+  },
+  "tinnitus": {
+    "enabledByDefault": false,
+    "defaultVolume": 0.2
+  },
+  "elements": [
+    {
+      "id": "forest-rain",
+      "label": "Forest with light rain",
+      "loopOffsetSeconds": 251,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.55,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "forest-1",
+          "url": "/audio/forest-evening/forest-rain/forest-1.mp3",
+          "attribution": "freetousesounds sound library — see /audio/forest-evening/forest-rain/forest-1.json for license."
+        },
+        {
+          "id": "forest-3",
+          "url": "/audio/forest-evening/forest-rain/forest-3.mp3",
+          "attribution": "freetousesounds sound library — see /audio/forest-evening/forest-rain/forest-3.json for license."
+        }
+      ]
+    },
+    {
+      "id": "wind-in-leaves",
+      "label": "Wind in leaves",
+      "loopOffsetSeconds": 409,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.30,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "wind-1",
+          "url": "/audio/forest-day/wind-in-leaves/wind-1.mp3",
+          "attribution": "Pixabay — see /audio/forest-day/wind-in-leaves/wind-1.json for license. Reused across forest-day, forest-night, and forest-evening."
+        },
+        {
+          "id": "wind-2",
+          "url": "/audio/forest-day/wind-in-leaves/wind-2.mp3",
+          "attribution": "User-provided — see /audio/forest-day/wind-in-leaves/wind-2.json for license. Reused across forest-day, forest-night, and forest-evening."
+        }
+      ]
+    },
+    {
+      "id": "distant-birds",
+      "label": "Distant birds",
+      "loopOffsetSeconds": 521,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.20,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "birds-1",
+          "url": "/audio/forest-day/distant-birds/birds-1.mp3",
+          "attribution": "Pixabay — see /audio/forest-day/distant-birds/birds-1.json for license. Reused across forest-day and forest-evening; quieter here to suit dusk."
+        },
+        {
+          "id": "birds-2",
+          "url": "/audio/forest-day/distant-birds/birds-2.mp3",
+          "attribution": "Pixabay — see /audio/forest-day/distant-birds/birds-2.json. Flagged for replacement (24 kHz source)."
+        }
+      ]
+    },
+    {
+      "id": "creek-trickle",
+      "label": "Slow creek",
+      "loopOffsetSeconds": 691,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.25,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "creek-1",
+          "url": "/audio/forest-evening/creek-trickle/creek-1.mp3",
+          "attribution": "freetousesounds sound library — see /audio/forest-evening/creek-trickle/creek-1.json for license. Acrossfade-extension of the forest-day creek MP3s into ~750s variants so loopOffset 691 holds."
+        },
+        {
+          "id": "creek-2",
+          "url": "/audio/forest-evening/creek-trickle/creek-2.mp3",
+          "attribution": "freetousesounds sound library — see /audio/forest-evening/creek-trickle/creek-2.json for license. Reverse-order acrossfade companion to creek-1."
+        }
+      ]
+    }
+  ]
+}
