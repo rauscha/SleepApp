@@ -528,16 +528,23 @@ function NightstandView({
           awake ? 'opacity-40 pointer-events-auto' : 'opacity-0 pointer-events-none',
         ].join(' ')}
       >
-        {/* Scene name + timer status */}
+        {/* Scene name + timer status. Text labels on the status line are
+            paired with colour cues but never depend on colour alone —
+            the user is colourblind and won't reliably distinguish
+            moon-300 from stone-300 from stone-400. */}
         <div className="text-center">
           <p className="text-stone-300 body-text tracking-wide">
             {scene.definition.label}
           </p>
           {timer.status === 'running' && (
-            <p className="text-moon-300 body-text mt-1">{formatMs(remaining)}</p>
+            <p className="text-moon-300 body-text mt-1">
+              ▸ {formatMs(remaining)}
+            </p>
           )}
           {timer.status === 'fading' && (
-            <p className="text-stone-300 body-text mt-1 italic">Fading…</p>
+            <p className="text-stone-300 body-text mt-1 italic">
+              fading…
+            </p>
           )}
         </div>
 
@@ -580,21 +587,25 @@ function TimerChip({
   remaining: number;
   onTap: () => void;
 }) {
+  // Each state pairs an explicit text label with a colour cue. The
+  // colour reinforces the state but never carries it alone — the user
+  // is colourblind and several of these greys are nearly indistinguishable
+  // for him in particular. Text labels are the load-bearing signal here.
   let label: string;
   let accent: string;
 
   if (timer.status === 'running') {
-    label = formatMs(remaining);
+    label = `▸ ${formatMs(remaining)}`;
     accent = 'text-moon-300';
   } else if (timer.status === 'fading') {
-    label = 'Fading…';
-    accent = 'text-stone-400 italic';
+    label = 'fading…';
+    accent = 'text-stone-300 italic';
   } else if (timer.status === 'picking') {
-    label = 'Timer ×';
-    accent = 'text-stone-300';
+    label = 'pick a time ×';
+    accent = 'text-stone-200';
   } else {
-    label = 'Timer';
-    accent = 'text-stone-500';
+    label = 'set timer';
+    accent = 'text-stone-400';
   }
 
   return (
@@ -605,10 +616,13 @@ function TimerChip({
           ? `Cancel timer (${formatMs(remaining)} remaining)`
           : timer.status === 'fading'
           ? 'Cancel timer fade'
+          : timer.status === 'picking'
+          ? 'Close timer picker'
           : 'Set sleep timer'
       }
-      className={`text-xs transition-colors duration-slow ${accent}
-                  hover:text-stone-200 active:text-moon-300 px-1 py-1`}
+      className={`ui-label transition-colors duration-slow ${accent}
+                  hover:text-stone-100 active:text-moon-300 px-3 py-2`}
+      style={{ minHeight: 44 }}
     >
       {label}
     </button>
