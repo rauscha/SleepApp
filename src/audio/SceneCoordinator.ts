@@ -19,7 +19,7 @@
 // run on the AudioContext clock so the overlap is sample-accurate.
 
 import { AudioEngine } from './AudioEngine';
-import { FileLayer, loadAudioBuffer } from './FileLayer';
+import { AudioLoadError, FileLayer, loadAudioBuffer } from './FileLayer';
 import type { AudioVariant } from './FileLayer';
 import { NoiseGenerator } from './NoiseGenerator';
 import { TinnitusMaskLayer } from './TinnitusMaskLayer';
@@ -256,7 +256,17 @@ export class SceneCoordinator {
         loopOffsetSeconds: element.loopOffsetSeconds,
       };
     } catch (err) {
-      if (!fallback) {
+      // Synthesized fallback is only safe for the "intentional dev
+      // convenience" case: the JSON references a file that doesn't
+      // exist yet because the scene is being authored before its
+      // recordings land in /public/audio/. A 404 is the marker for
+      // that case. Anything else (real network failure, decode error,
+      // 5xx) is a genuine problem — silently substituting a synth pad
+      // would hide it. The original error is rethrown intact so
+      // diagnostics keep the cause chain.
+      const isDevSubstitutable =
+        fallback && err instanceof AudioLoadError && err.kind === 'not-found';
+      if (!isDevSubstitutable) {
         onLoaded?.({
           elementId: element.id,
           variantId: variant.id,

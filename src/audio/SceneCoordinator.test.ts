@@ -14,6 +14,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AudioEngine } from './AudioEngine';
+import { AudioLoadError } from './FileLayer';
 import { SceneCoordinator } from './SceneCoordinator';
 import { installAudioContextMock, MockAudioBuffer } from '../test/audioMock';
 import type { SceneDefinition } from './sceneFormat';
@@ -131,6 +132,45 @@ describe('SceneCoordinator', () => {
     await expect(
       coord.loadScene(basicScene('s4'), { fallbackToSynthetic: false })
     ).rejects.toThrow();
+  });
+
+  // P1.8: real network failures must NOT be silently substituted with a
+  // synth pad, even when fallbackToSynthetic=true. Only 404s fall back —
+  // they are the marker for "scene authored before the recording landed."
+  // Network errors, decode failures, and other HTTP errors all indicate a
+  // genuine problem and must surface.
+  it('rethrows network errors even when fallbackToSynthetic=true', async () => {
+    // Stub: fetch itself rejects (simulates offline / abort / DNS / CORS).
+    const spy = vi.fn(async () => {
+      throw new TypeError('Failed to fetch');
+    });
+    (globalThis as { fetch: typeof fetch }).fetch = spy as unknown as typeof fetch;
+    const outcomes: string[] = [];
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    await expect(
+      coord.loadScene(basicScene('s7'), {
+        fallbackToSynthetic: true,
+        onVariantLoaded: (info) => outcomes.push(info.status),
+      })
+    ).rejects.toThrow(AudioLoadError);
+    expect(outcomes).toContain('failed');
+  });
+
+  it('rethrows HTTP non-404 errors even when fallbackToSynthetic=true', async () => {
+    // Stub: every fetch returns HTTP 500.
+    (globalThis as { fetch: typeof fetch }).fetch = vi.fn(async () => ({
+      ok: false,
+      status: 500,
+      arrayBuffer: async () => new ArrayBuffer(0),
+    }) as Response) as unknown as typeof fetch;
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    await expect(
+      coord.loadScene(basicScene('s8'), { fallbackToSynthetic: true })
+    ).rejects.toThrow(AudioLoadError);
   });
 
   it('startScene wires the scene output to the bus input and fades it in', async () => {

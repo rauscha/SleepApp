@@ -440,13 +440,70 @@ function wait(ms: number): Promise<void> {
 // Helpers for loading audio buffers — kept here so callers don't need to
 // re-implement the same fetch+decodeAudioData dance everywhere.
 
-/** Fetch and decode an audio file into an AudioBuffer. */
+/**
+ * What went wrong loading an audio buffer. Callers can react differently
+ * to each kind — most importantly, SceneCoordinator only falls back to a
+ * synthesized placeholder on 'not-found' (intentional dev convenience
+ * during Phase 2 when scene authors check in JSON before recordings land).
+ * 'network' and 'decode' and unknown 'http' codes indicate a real
+ * problem — silently substituting a synth pad in those cases makes
+ * production failures invisible.
+ */
+export type AudioLoadErrorKind = 'not-found' | 'http' | 'network' | 'decode';
+
+export class AudioLoadError extends Error {
+  constructor(
+    public readonly kind: AudioLoadErrorKind,
+    public readonly url: string,
+    public readonly cause?: unknown,
+    message?: string
+  ) {
+    super(message ?? `[audio-load] ${kind} (${url})`);
+    this.name = 'AudioLoadError';
+  }
+}
+
+/**
+ * Fetch and decode an audio file into an AudioBuffer. Rejects with an
+ * `AudioLoadError` whose `kind` distinguishes the failure mode so the
+ * caller can decide whether falling back to a synthesized placeholder
+ * is safe.
+ */
 export async function loadAudioBuffer(
   ctx: AudioContext,
   url: string
 ): Promise<AudioBuffer> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to load ${url}: ${res.status}`);
-  const arrayBuffer = await res.arrayBuffer();
-  return await ctx.decodeAudioData(arrayBuffer);
+  let res: Response;
+  try {
+    res = await fetch(url);
+  } catch (err) {
+    // fetch() rejects on real network failures — DNS, CORS, aborts,
+    // offline, connection-reset. Never on a non-2xx HTTP status.
+    throw new AudioLoadError('network', url, err);
+  }
+  if (res.status === 404) {
+    throw new AudioLoadError('not-found', url, undefined, `404 ${url}`);
+  }
+  if (!res.ok) {
+    throw new AudioLoadError(
+      'http',
+      url,
+      undefined,
+      `HTTP ${res.status} ${url}`
+    );
+  }
+  let arrayBuffer: ArrayBuffer;
+  try {
+    arrayBuffer = await res.arrayBuffer();
+  } catch (err) {
+    // Body read can fail mid-stream after a successful response head.
+    throw new AudioLoadError('network', url, err);
+  }
+  try {
+    return await ctx.decodeAudioData(arrayBuffer);
+  } catch (err) {
+    // The bytes arrived but aren't valid audio — corrupted file, wrong
+    // mime, unsupported codec. Not a substitute-with-synth case.
+    throw new AudioLoadError('decode', url, err);
+  }
 }
