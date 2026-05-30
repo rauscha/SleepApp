@@ -52,6 +52,7 @@
 import { writeFileSync, readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { normalizeVoiceMp3 } from './normalize-voice-audio';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..');
@@ -455,7 +456,16 @@ async function main() {
   // falls back to chunked TTS on failure. Pass --no-projects to force the
   // chunked path; necessary when you want per-request voice_settings (eg
   // speed:0.85) to actually apply — Projects uses portal voice defaults.
-  const audioData = await synthesize(elevenLabsKey, voiceId, script, noProjects);
+  const raw = await synthesize(elevenLabsKey, voiceId, script, noProjects);
+
+  // Loudness-normalize. The chunked fallback path is especially
+  // vulnerable: each TTS chunk has its own loudness profile, and the
+  // byte-concat output can have audible level shifts at chunk seams.
+  // -19 LUFS matches gen-meditation.ts so meditations and stories sit at
+  // the same perceived level. See tools/normalize-voice-audio.ts.
+  console.log('  ⟳  Normalizing loudness (-19 LUFS)…');
+  const audioData = normalizeVoiceMp3(raw);
+  console.log(`  ✓  Normalized (${(audioData.byteLength / 1024 / 1024).toFixed(1)} MB)`);
 
   const audioFilePath = join(STORIES_DIR, audioPath);
   writeFileSync(audioFilePath, audioData);

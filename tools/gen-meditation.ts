@@ -44,6 +44,7 @@
 import { writeFileSync, readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { normalizeVoiceMp3 } from './normalize-voice-audio';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..');
@@ -309,9 +310,18 @@ async function main() {
   console.log(`  ✓  Saved ${scriptFilePath}`);
 
   // 3. Synthesize
-  const audioData = await callElevenLabs(elevenLabsKey, voiceId, script);
+  const raw = await callElevenLabs(elevenLabsKey, voiceId, script);
 
-  // 4. Save MP3
+  // 4. Loudness-normalize. ElevenLabs output varies meaningfully between
+  // voices and scripts — body-scan was measured ~12 dB louder than
+  // seaside-village pre-fix. -19 LUFS sits at audiobook standard so the
+  // voice reads present against the rest of the app without punching
+  // through at 2am. See tools/normalize-voice-audio.ts for the rationale.
+  console.log('  ⟳  Normalizing loudness (-19 LUFS)…');
+  const audioData = normalizeVoiceMp3(raw);
+  console.log(`  ✓  Normalized (${(audioData.byteLength / 1024 / 1024).toFixed(1)} MB)`);
+
+  // 5. Save MP3
   const audioFilePath = join(MEDITATIONS_DIR, audioPath);
   writeFileSync(audioFilePath, audioData);
   console.log(`  ✓  Saved ${audioFilePath}`);

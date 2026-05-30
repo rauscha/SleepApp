@@ -34,3 +34,6 @@ certs/
 # Personal working notebooks — kept local, not part of the public repo.
 NEXT_STEPS.md
 USER_TODO.md
+
+# loudnorm backups created by tools/normalize-existing-content.sh
+*.pre-loudnorm.mp3
