@@ -27,11 +27,13 @@ const SCENE_GRADIENTS: Record<string, [string, string]> = {
   'fireplace':      ['#2A1810', '#0B0D10'],
 };
 
-// Card overlay — moderate darkening so the editorial title sits over the
+// Card overlay — light darkening so the editorial title sits over the
 // photo's upper portion without washing it out. Used on the Tonight cards
-// where the image is the headline element.
+// where the image is the headline element. Tuned down (25/45/85) once all
+// 7 scenes had photos — the prior 35/55/95 was set when most scenes were
+// gradient-only and the heavier overlay was masking the photo too much.
 const CARD_OVERLAY =
-  'linear-gradient(to bottom, rgba(11,13,16,0.35) 0%, rgba(11,13,16,0.55) 55%, rgba(11,13,16,0.95) 100%)';
+  'linear-gradient(to bottom, rgba(11,13,16,0.25) 0%, rgba(11,13,16,0.45) 55%, rgba(11,13,16,0.85) 100%)';
 
 // Player overlay — heavier than the card overlay because the photo sits
 // behind controls and is stared at for tens of minutes pre-sleep. The
