@@ -24,6 +24,7 @@ import {
 } from '../audio/mediaSession';
 import { recordEvent } from '../diagnostics/lifecycleLog';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { scenePlayerBackground } from '../lib/sceneBackground';
 import { startSwKeepAlive, stopSwKeepAlive } from '../serviceWorker/keepAlive';
 import { getSetting, setSetting } from '../storage';
 import { exitFullscreenSafe, requestFullscreenSafe } from '../utils/fullscreen';
@@ -324,31 +325,17 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     return <div className="h-full bg-ink-950" aria-hidden="true" />;
   }
 
-  if (displayMode === 'nightstand') {
-    return (
-      <NightstandView
-        scene={scene}
-        timer={timer}
-        remaining={remaining}
-        awake={awake}
-        onTap={() => {
-          // Each wake-tap is a user gesture — opportunistically re-request
-          // fullscreen so the status bar disappears even if the auto-engage
-          // path could not get it the first time. requestFullscreenSafe is
-          // a noop when we're already fullscreen.
-          requestFullscreenSafe();
-          wake();
-        }}
-        onStop={handleStop}
-        onExitNightstand={() => setDisplayMode('lush')}
-      />
-    );
-  }
-
   const layers = scene.getLayers();
 
   return (
-    <div className="bg-ink-950 text-stone-100 flex flex-col px-6 py-8 max-w-md mx-auto min-h-full">
+    <div
+      className="relative min-h-full"
+      style={{ background: scenePlayerBackground(scene.definition.id) }}
+    >
+    <div
+      className="text-stone-100 flex flex-col px-6 py-8 max-w-md mx-auto min-h-full"
+      aria-hidden={displayMode === 'nightstand'}
+    >
       <header className="mb-10">
         <div className="flex items-center justify-between mb-7">
           <button
@@ -487,13 +474,51 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         </button>
       </div>
     </div>
+
+      {/* Nightstand black overlay — opacity crossfade hides the scene photo
+          when the user goes idle (or taps "Nightstand mode"). Lives in the
+          same DOM as Lush so the photo background can be staring-at while
+          falling asleep, then the screen smoothly goes flat-black for the
+          sleep portion. Pointer-events gated so taps fall through to Lush
+          while disengaged. */}
+      <NightstandOverlay
+        engaged={displayMode === 'nightstand'}
+        scene={scene}
+        timer={timer}
+        remaining={remaining}
+        awake={awake}
+        onTap={() => {
+          // Each wake-tap is a user gesture — opportunistically re-request
+          // fullscreen so the status bar disappears even if the auto-engage
+          // path could not get it the first time. requestFullscreenSafe is
+          // a noop when we're already fullscreen.
+          requestFullscreenSafe();
+          wake();
+        }}
+        onStop={handleStop}
+        onExitNightstand={() => setDisplayMode('lush')}
+      />
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// NightstandView
+// NightstandOverlay
+//
+// Sibling layer to the Lush UI. When engaged, a near-opaque black field
+// crossfades in over the scene-photo background; the overlay's controls
+// (scene name, timer status, Stop, Lush button) reveal on tap. When not
+// engaged, the overlay is opacity 0 + pointer-events-none, so clicks fall
+// through to the Lush content underneath.
+//
+// Crossfade duration is 1800ms — slow enough to feel like an exhale rather
+// than a UI transition, short enough that an intentional Nightstand tap
+// doesn't feel laggy.
 
-function NightstandView({
+const NIGHTSTAND_FADE_MS = 1800;
+
+function NightstandOverlay({
+  engaged,
   scene,
   timer,
   remaining,
@@ -502,6 +527,7 @@ function NightstandView({
   onStop,
   onExitNightstand,
 }: {
+  engaged: boolean;
   scene: Scene;
   timer: TimerMode;
   remaining: number;
@@ -511,13 +537,22 @@ function NightstandView({
   onExitNightstand: () => void;
 }) {
   return (
-    // Full-viewport black. onClick on the outer div catches taps on the
-    // dark areas; inner buttons call stopPropagation to avoid double-waking.
+    // Full-viewport black overlay. Opacity tweens between 0 (Lush — clicks
+    // pass through to the photo-backed Lush UI underneath) and 1 (Nightstand
+    // — flat black, taps wake the inner controls). The bg-photo lives on the
+    // Player's outer container, so when this overlay reaches opacity 1 the
+    // photo is fully hidden behind it.
     <div
-      className="fixed inset-0 bg-black flex flex-col items-center justify-center cursor-default"
-      onClick={onTap}
-      role="main"
+      className={[
+        'fixed inset-0 bg-black flex flex-col items-center justify-center cursor-default',
+        'transition-opacity ease-exhale',
+        engaged ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+      ].join(' ')}
+      style={{ transitionDuration: `${NIGHTSTAND_FADE_MS}ms` }}
+      onClick={engaged ? onTap : undefined}
+      role={engaged ? 'main' : undefined}
       aria-label="Nightstand mode — tap anywhere to see controls"
+      aria-hidden={!engaged}
     >
       {/* Controls overlay — always in DOM; visibility driven by opacity only
           so the Stop button retains its position and tap area. */}
@@ -525,7 +560,7 @@ function NightstandView({
         className={[
           'flex flex-col items-center gap-8 px-8 w-full max-w-xs',
           'transition-opacity duration-slow ease-exhale',
-          awake ? 'opacity-40 pointer-events-auto' : 'opacity-0 pointer-events-none',
+          engaged && awake ? 'opacity-40 pointer-events-auto' : 'opacity-0 pointer-events-none',
         ].join(' ')}
       >
         {/* Scene name + timer status. Text labels on the status line are

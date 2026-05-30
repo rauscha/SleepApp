@@ -20,7 +20,7 @@ import {
   fetchSceneIndex,
 } from '../audio/sceneRegistry';
 import type { SceneIndex, SceneIndexEntry } from '../audio/sceneRegistry';
-import { resolvePublicUrl } from '../lib/baseUrl';
+import { sceneCardBackground } from '../lib/sceneBackground';
 import { getSetting, setSetting } from '../storage';
 import { requestFullscreenSafe } from '../utils/fullscreen';
 
@@ -29,41 +29,6 @@ export interface TonightScreenProps {
   onDevToolsRequested: () => void;
   /** Unlocks the AudioContext lazily on the first audio gesture. */
   ensureUnlocked: () => Promise<void>;
-}
-
-// Per-scene photo paths (served from /public). Scenes not listed here
-// fall back to the gradient-only treatment via SCENE_GRADIENTS. Paths are
-// run through resolvePublicUrl so the same code works at any deploy base
-// (root '/' for dev, '/SleepApp/' on GitHub Pages).
-const SCENE_PHOTOS: Record<string, string> = {
-  'forest-day':     resolvePublicUrl('/scenes/photos/forest-day.jpg'),
-  'forest-night':   resolvePublicUrl('/scenes/photos/forest-night.jpg'),
-  'rain-on-window': resolvePublicUrl('/scenes/photos/rain-on-window.jpg'),
-  'fireplace':      resolvePublicUrl('/scenes/photos/fireplace.jpg'),
-};
-
-// Fallback gradients for scenes without photos (and scenes that haven't
-// been shipped yet — the brief reserves slots for more).
-const SCENE_GRADIENTS: Record<string, [string, string]> = {
-  'forest-day':     ['#182A1E', '#0B0D10'],
-  'forest-night':   ['#0C1812', '#0B0D10'],
-  'forest-evening': ['#1A2418', '#0B0D10'],
-  'rain-on-window': ['#161D2A', '#0B0D10'],
-  'monsoon':        ['#1A2228', '#0B0D10'],
-  'ocean-night':    ['#10202A', '#0B0D10'],
-  'fireplace':      ['#2A1810', '#0B0D10'],
-};
-
-// Photo cards layer a top→bottom dark gradient over the image so the
-// editorial-serif title and stone-400 description stay legible even on
-// bright source frames.
-const PHOTO_OVERLAY = 'linear-gradient(to bottom, rgba(11,13,16,0.35) 0%, rgba(11,13,16,0.55) 55%, rgba(11,13,16,0.95) 100%)';
-
-function sceneBackground(id: string): string {
-  const photo = SCENE_PHOTOS[id];
-  if (photo) return `${PHOTO_OVERLAY}, url(${photo}) center/cover no-repeat`;
-  const [from, to] = SCENE_GRADIENTS[id] ?? ['#1E2028', '#0B0D10'];
-  return `linear-gradient(to bottom, ${from}, ${to})`;
 }
 
 export function TonightScreen({
@@ -176,7 +141,7 @@ export function TonightScreen({
             isLastPlayed={entry.id === lastSceneId}
             busy={busySceneId === entry.id}
             disabled={busySceneId !== null && busySceneId !== entry.id}
-            background={sceneBackground(entry.id)}
+            background={sceneCardBackground(entry.id)}
             onClick={() => handlePick(entry)}
           />
         ))}

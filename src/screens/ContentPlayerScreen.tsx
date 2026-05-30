@@ -195,18 +195,21 @@ export function ContentPlayerScreen({
           disabled={state === 'loading' || state === 'error'}
           aria-label={state === 'playing' ? 'Pause' : 'Play'}
           className="w-20 h-20 rounded-full bg-moon-600 text-stone-50
-                     font-serif text-lg transition-all duration-slow ease-exhale
+                     flex items-center justify-center
+                     transition-all duration-slow ease-exhale
                      active:scale-95 active:bg-moon-500
                      disabled:opacity-40 shadow-ambient"
           style={{ minWidth: 44, minHeight: 44 }}
         >
-          {state === 'loading'
-            ? '…'
-            : state === 'ended'
-            ? '↺'
-            : state === 'playing'
-            ? '⏸'
-            : '▶'}
+          {state === 'loading' ? (
+            <LoadingIcon />
+          ) : state === 'ended' ? (
+            <ReplayIcon />
+          ) : state === 'playing' ? (
+            <PauseIcon />
+          ) : (
+            <PlayIcon />
+          )}
         </button>
       </div>
 
@@ -221,5 +224,76 @@ export function ContentPlayerScreen({
           : null}
       </p>
     </div>
+  );
+}
+
+// Inline SVGs sized to fill ~40% of the 80px button; currentColor inherits
+// the button's text-stone-50 so the icon picks up disabled-state opacity too.
+
+function PlayIcon() {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      style={{ marginLeft: 3 }}
+    >
+      <path d="M8 5.5v13a1 1 0 0 0 1.54.84l10-6.5a1 1 0 0 0 0-1.68l-10-6.5A1 1 0 0 0 8 5.5z" />
+    </svg>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <rect x="6" y="5" width="4" height="14" rx="1" />
+      <rect x="14" y="5" width="4" height="14" rx="1" />
+    </svg>
+  );
+}
+
+function ReplayIcon() {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 12a9 9 0 1 0 3-6.7" />
+      <polyline points="3 4 3 9 8 9" />
+    </svg>
+  );
+}
+
+function LoadingIcon() {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      aria-hidden="true"
+      className="animate-spin"
+      style={{ animationDuration: '1.4s' }}
+    >
+      <path d="M12 3a9 9 0 1 0 9 9" />
+    </svg>
   );
 }
