@@ -10,7 +10,10 @@ import { resolvePublicUrl } from './baseUrl';
 const SCENE_PHOTOS: Record<string, string> = {
   'forest-day':     resolvePublicUrl('/scenes/photos/forest-day.jpg'),
   'forest-night':   resolvePublicUrl('/scenes/photos/forest-night.jpg'),
+  'forest-evening': resolvePublicUrl('/scenes/photos/forest-evening.jpg'),
   'rain-on-window': resolvePublicUrl('/scenes/photos/rain-on-window.jpg'),
+  'monsoon':        resolvePublicUrl('/scenes/photos/monsoon.jpg'),
+  'ocean-night':    resolvePublicUrl('/scenes/photos/ocean-night.jpg'),
   'fireplace':      resolvePublicUrl('/scenes/photos/fireplace.jpg'),
 };
 
