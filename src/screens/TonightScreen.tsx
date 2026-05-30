@@ -53,12 +53,13 @@ export function TonightScreen({
     return () => { cancelled = true; };
   }, []);
 
-  // If a scene is already playing (mid-session nav or HMR), send to player.
-  useEffect(() => {
-    if (engine.isInitialized && coordinator.getCurrentScene()) {
-      onPlaybackStarted();
-    }
-  }, [engine, coordinator, onPlaybackStarted]);
+  // Note: there's no runtime "if a scene is already playing, bounce to
+  // Player" effect here on purpose. App.tsx's initial-state initializer
+  // already routes cold-start / HMR cases straight to Player when audio
+  // is alive; a runtime redirect would also fire on user-initiated back
+  // navigation from Player ("← Scenes") and trap the user in a loop. We
+  // accept that picking the currently-playing scene re-enters Player
+  // (via the existing handlePick path) as the way to get back.
 
   const handlePick = useCallback(
     async (entry: SceneIndexEntry) => {
