@@ -19,6 +19,19 @@ const VOICE_DESCRIPTIONS: Record<VoiceName, string> = {
   stone: 'Warm, resonant (male)',
 };
 
+// Window during which the same (theme, voice) combo is treated as a
+// duplicate of an immediately-prior request and rejected with an inline
+// hint instead of firing a fresh API call. Picked to catch genuine
+// double-taps and accidental re-submits without ever blocking a user
+// who legitimately wants the same theme back-to-back.
+const DEDUP_WINDOW_MS = 30_000;
+
+interface RecentAttempt {
+  theme: string;
+  voice: VoiceName;
+  at: number;
+}
+
 export interface StoryGeneratorScreenProps {
   onBack: () => void;
   /** Called after a story is successfully saved, with the new story id. */
@@ -38,6 +51,10 @@ export function StoryGeneratorScreen({
   // forcing a re-render every time it changes. Aborted on unmount as well
   // so leaving the screen mid-generation tears the fetch down.
   const abortRef = useRef<AbortController | null>(null);
+  // Last (theme, voice, timestamp) attempt — see DEDUP_WINDOW_MS. Held
+  // in a ref so the dedup check sees the freshest value without React
+  // batching a re-render between two same-tick taps.
+  const lastAttemptRef = useRef<RecentAttempt | null>(null);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
@@ -52,6 +69,11 @@ export function StoryGeneratorScreen({
   }, []);
 
   const handleGenerate = useCallback(async () => {
+    // Re-entrance guard. `busy` already disables the visible button,
+    // but a synchronous double-tap on a slow device can land before
+    // React has applied the disabled state, so the function-level
+    // guard is the actual line of defence.
+    if (busy) return;
     const anthropicKey = getAnthropicApiKey();
     const elevenLabsKey = getElevenLabsApiKey();
 
@@ -68,6 +90,19 @@ export function StoryGeneratorScreen({
       return;
     }
 
+    const trimmedTheme = theme.trim();
+    const last = lastAttemptRef.current;
+    if (
+      last &&
+      last.theme === trimmedTheme &&
+      last.voice === voice &&
+      Date.now() - last.at < DEDUP_WINDOW_MS
+    ) {
+      setError('Already generating that one. Give it a moment.');
+      return;
+    }
+    lastAttemptRef.current = { theme: trimmedTheme, voice, at: Date.now() };
+
     setBusy(true);
     setError(null);
     setSteps([]);
@@ -77,7 +112,7 @@ export function StoryGeneratorScreen({
 
     try {
       const meta = await generateStory({
-        theme: theme.trim(),
+        theme: trimmedTheme,
         voiceName: voice,
         anthropicApiKey: anthropicKey,
         elevenLabsApiKey: elevenLabsKey,
@@ -89,6 +124,9 @@ export function StoryGeneratorScreen({
       onDone(meta.id);
     } catch (err) {
       // AbortError is the user pressing Cancel — not really an error.
+      // Cancelled / failed attempts also clear the dedup memo so a
+      // legitimate retry with the same (theme, voice) is not blocked.
+      lastAttemptRef.current = null;
       if (err instanceof DOMException && err.name === 'AbortError') {
         setError('Cancelled.');
       } else {
@@ -98,7 +136,7 @@ export function StoryGeneratorScreen({
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [theme, voice, addStep, onDone]);
+  }, [busy, theme, voice, addStep, onDone]);
 
   return (
     <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-6 py-8 min-h-full">
