@@ -9,8 +9,10 @@ license does not strictly require it.
 | forest-evening   | forest-evening.jpg    | Jonathan Klok       | Unsplash — Unsplash License (free use)    |
 | monsoon          | monsoon.jpg           | Daniel Lerman       | Unsplash — Unsplash License (free use)    |
 | ocean-night      | ocean-night.jpg       | Joakim Honkasalo    | Unsplash — Unsplash License (free use)    |
+| fireplace        | fireplace.jpg         | Elisabeth Arnold    | Unsplash — Unsplash License (free use)    |
 
-Earlier photos (forest-day, forest-night, rain-on-window, fireplace) predate
-this file; sources to be backfilled here when known.
+Earlier photos (forest-day, forest-night, rain-on-window) predate this file;
+sources to be backfilled here when known. The original fireplace photo was a
+user-provided shot, replaced 2026-05-30 with the Unsplash photo above.
 
 All files were downloaded from the Unsplash CDN at 1200×800 (`?w=1200&h=800&fit=crop&q=80&fm=jpg`) on 2026-05-30.
