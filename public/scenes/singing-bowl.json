@@ -1,0 +1,60 @@
+{
+  "id": "singing-bowl",
+  "label": "Singing bowls",
+  "description": "Deep bronze bowl drone with a slow shimmer of higher bowls overhead. Designed as a sound-bath bed under meditations.",
+  "synth": {
+    "color": "brown",
+    "defaultVolume": 0.12
+  },
+  "tinnitus": {
+    "enabledByDefault": false,
+    "defaultVolume": 0.2
+  },
+  "elements": [
+    {
+      "id": "bowl-drone",
+      "label": "Bowl drone (deep)",
+      "loopOffsetSeconds": 251,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.58,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "drone-1",
+          "url": "/audio/singing-bowl/bowl-drone/drone-1.mp3",
+          "attribution": "Locally generated with audiocraft MusicGen-medium — see /audio/singing-bowl/bowl-drone/drone-1.json for prompt + license."
+        },
+        {
+          "id": "drone-2",
+          "url": "/audio/singing-bowl/bowl-drone/drone-2.mp3",
+          "attribution": "Locally generated with audiocraft MusicGen-medium — see /audio/singing-bowl/bowl-drone/drone-2.json for prompt + license."
+        },
+        {
+          "id": "drone-3",
+          "url": "/audio/singing-bowl/bowl-drone/drone-3.mp3",
+          "attribution": "Locally generated with audiocraft MusicGen-medium — see /audio/singing-bowl/bowl-drone/drone-3.json for prompt + license."
+        }
+      ]
+    },
+    {
+      "id": "bowl-shimmer",
+      "label": "Bowl shimmer (overhead)",
+      "loopOffsetSeconds": 409,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.28,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "shimmer-1",
+          "url": "/audio/singing-bowl/bowl-shimmer/shimmer-1.mp3",
+          "attribution": "Locally generated with audiocraft MusicGen-medium — see /audio/singing-bowl/bowl-shimmer/shimmer-1.json for prompt + license."
+        },
+        {
+          "id": "shimmer-2",
+          "url": "/audio/singing-bowl/bowl-shimmer/shimmer-2.mp3",
+          "attribution": "Locally generated with audiocraft MusicGen-medium — see /audio/singing-bowl/bowl-shimmer/shimmer-2.json for prompt + license."
+        }
+      ]
+    }
+  ]
+}

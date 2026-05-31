@@ -41,6 +41,12 @@
       "label": "Fireplace",
       "description": "Slow wood fire close at hand, a distant room-mic crackle behind it.",
       "url": "/scenes/fireplace.json"
+    },
+    {
+      "id": "singing-bowl",
+      "label": "Singing bowls",
+      "description": "Deep bronze bowl drone with a slow shimmer of higher bowls overhead. Designed as a sound-bath bed under meditations.",
+      "url": "/scenes/singing-bowl.json"
     }
   ]
 }

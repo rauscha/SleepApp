@@ -61,6 +61,11 @@ export interface MeditationMetadata {
   createdAt: string;
   /** Path to the MP3 relative to /meditations/, e.g. "morning-scan.mp3". */
   audioPath: string;
+  /** Backing scene id played underneath narration. Meditations use
+   *  'stop-with-content' behavior — bed stops when narration ends —
+   *  so this is purely an underbed for the spoken track. Same field
+   *  shape as BundledStoryMetadata.sceneId. */
+  sceneId?: string | null;
 }
 
 export interface MeditationIndex {

@@ -123,6 +123,7 @@ export function LibraryScreen({
         title: m.title,
         description: m.description,
         audioUrl,
+        sceneId: m.sceneId ?? null,
       });
     },
     [onPlay]

@@ -8,7 +8,8 @@
       "durationSeconds": 507,
       "voiceId": "hush",
       "createdAt": "2026-05-18T00:35:14.694Z",
-      "audioPath": "body-scan-01.mp3"
+      "audioPath": "body-scan-01.mp3",
+      "sceneId": "singing-bowl"
     },
     {
       "id": "breath-01",
@@ -18,7 +19,8 @@
       "durationSeconds": 438,
       "voiceId": "ember",
       "createdAt": "2026-05-18T00:36:45.835Z",
-      "audioPath": "breath-01.mp3"
+      "audioPath": "breath-01.mp3",
+      "sceneId": "singing-bowl"
     },
     {
       "id": "forest-01",
@@ -28,7 +30,8 @@
       "durationSeconds": 526,
       "voiceId": "glen",
       "createdAt": "2026-05-18T00:38:35.885Z",
-      "audioPath": "forest-01.mp3"
+      "audioPath": "forest-01.mp3",
+      "sceneId": "singing-bowl"
     }
   ]
 }
