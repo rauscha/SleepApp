@@ -17,6 +17,30 @@ this step in a fresh clone that doesn't have one.
   "Validated:" line, and the Co-Authored-By trailer.
 - Never commit `.env` or credential files.
 
+## Worktrees — the real invariant is "committed and pushed on main"
+
+This repo lives on Google Drive, which constantly holds file handles open
+inside `.git/worktrees/` and `.claude/worktrees/`. As a result:
+
+- **`git worktree prune` / `rm -rf` on those dirs will fail with
+  "Permission denied", and that is EXPECTED — not a problem to solve.**
+  Every git op prints ~16 lines of permission spam. It's cosmetic. Commits
+  and pushes still succeed.
+- **The thing that actually matters: is the work committed and pushed to
+  `origin/main`?** If yes, we're safe — stranded worktree state, dangling
+  commits, and leftover `claude/*` branches are all just litter, not lost
+  work. Always verify with `git worktree list` (should show only `main`)
+  and `git rev-list --left-right --count origin/main...HEAD` (ahead should
+  be 0 after a push).
+- **Keep notes about where we left off** instead of trying to force a clean
+  tree — the hand-off / pick-up skills already do this. That's the
+  mitigation, not pruning.
+- **Don't attempt the actual worktree cleanup unprompted.** Save it for
+  when I explicitly ask to do "deferred clean-up work" — that's the signal
+  to pause Drive sync, then `git worktree prune` + `rm -rf
+  .claude/worktrees/* .git/worktrees/*` and confirm `git worktree list` is
+  healthy.
+
 ## Design constraints (from the brief)
 
 - **The One Thing:** put me to sleep and let me stay there.
