@@ -187,3 +187,30 @@ I left `howler` in `package.json` so it's still on the table for Phase 4 (story 
 5. **Variant pool size** — the brief says 2–4 recordings per element. Do you want me to enforce a minimum (e.g. require 2) or let single-variant layers exist?
 
 None of these are blocking. I'll keep building tomorrow once you weigh in.
+
+---
+
+# Later additions
+
+## Secondary-button tier: ghost-border (2026-05-31)
+
+**What.** Settled the visual style for secondary buttons (Cancel, alternate actions) after the Phase 3 UI grew several inconsistent variants. Target style:
+
+```
+border border-moon-700 rounded-soft text-moon-300 hover:text-moon-200
+px-3 py-1.5 ui-label transition-colors duration-slow
+```
+
+with `style={{ minHeight: 44 }}` for tap-target compliance. The "Generate new story" button in LibraryScreen is the canonical example.
+
+**Where it applies.** Cancel buttons in SettingsScreen (the download Cancel) and StoryGeneratorScreen (the mid-generation Cancel). NOT on: back-arrow text links (`← Back`, `← Scenes`), Library row Play/Delete text links — those are a still-lighter tier (see below).
+
+**Tiers, for future buttons.**
+- **Primary**: filled moon button (`bg-moon-600 text-stone-50`). The view's main affirmative action — Generate, Download for offline. One per view per §7 of the brief.
+- **Secondary**: ghost-border (this decision). Cancels, alt actions, ghost CTAs.
+- **Text-link**: bare text in stone palette (`text-stone-400 hover:text-stone-200`). Navigation (back arrows), row-level affordances (Play/Delete on cards).
+
+**Why this style.** Distinct from the filled moon primary (no fill, lighter weight) but inherits the moon accent so it stays in palette. Smaller footprint than the primary so the hierarchy reads. Matches the moonlit-sage editorial constraint in CLAUDE.md.
+
+**Trade-off accepted.** In StoryGeneratorScreen the Cancel button was previously full-width (replacing the full-width Generate during the busy state). Under this tier it becomes a small right-aligned ghost — visually lighter mid-generation. That's a feature, not a bug: the destructive mid-flight action shouldn't dominate the layout, and accidentally clicking it costs a $1–3 ElevenLabs job.
+

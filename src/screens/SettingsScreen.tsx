@@ -315,8 +315,9 @@ function OfflineDownloadPanel() {
           <button
             type="button"
             onClick={handleCancel}
-            className="bg-ink-700 text-stone-300 hover:bg-ink-600 px-3 py-2
-                       rounded-soft ui-label transition-colors duration-slow"
+            className="border border-moon-700 rounded-soft text-moon-300
+                       hover:text-moon-200 px-3 py-1.5 ui-label
+                       transition-colors duration-slow"
             style={{ minHeight: 44 }}
           >
             Cancel

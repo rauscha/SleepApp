@@ -270,15 +270,17 @@ export function StoryGeneratorScreen({
 
         {/* Generate / Cancel button */}
         {busy ? (
-          <button
-            onClick={handleCancel}
-            className="w-full py-3 rounded-soft bg-ink-700 text-stone-200
-                       body-text font-medium transition-all duration-slow ease-exhale
-                       active:bg-ink-600"
-            style={{ minHeight: 44 }}
-          >
-            Cancel
-          </button>
+          <div className="flex justify-end">
+            <button
+              onClick={handleCancel}
+              className="border border-moon-700 rounded-soft text-moon-300
+                         hover:text-moon-200 px-3 py-1.5 ui-label
+                         transition-colors duration-slow"
+              style={{ minHeight: 44 }}
+            >
+              Cancel
+            </button>
+          </div>
         ) : (
           <button
             onClick={handleGenerate}
