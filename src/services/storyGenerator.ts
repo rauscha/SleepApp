@@ -63,6 +63,20 @@ export const TTS_CHUNK_LIMIT = 4500;
 export const PROJECT_POLL_INTERVAL_MS = 5_000;
 export const PROJECT_POLL_MAX_MS = 20 * 60 * 1000;
 
+/** Per-request fetch timeout. Generation calls (Claude completion,
+ *  ElevenLabs TTS, Projects control + poll) normally settle in well under
+ *  a minute; 150s leaves headroom while guaranteeing that a request the OS
+ *  half-killed — what happens when a phone screen sleeps mid-generation and
+ *  suspends the tab — surfaces as a recoverable TimeoutError instead of
+ *  leaving the UI stuck on "Writing script with Claude…" forever. */
+export const FETCH_TIMEOUT_MS = 150_000;
+
+/** Longer ceiling for the Projects audio download specifically: a full
+ *  ~20-min story MP3 can be 15–20 MB, which legitimately takes minutes on a
+ *  weak mobile connection — don't false-timeout a download still making
+ *  progress. */
+export const DOWNLOAD_TIMEOUT_MS = 5 * 60 * 1000;
+
 const ELEVENLABS_BASE = 'https://api.elevenlabs.io';
 
 // ---------------------------------------------------------------------------
@@ -420,12 +434,66 @@ export function stripStoryMarkers(text: string): string {
 // ---------------------------------------------------------------------------
 // API helpers
 
+/** fetch() with a hard timeout that still honors an external abort signal.
+ *
+ *  The bare fetch() has no timeout. On mobile, when the screen turns off
+ *  mid-generation the OS suspends the tab and can leave an in-flight request
+ *  neither resolved nor rejected — the UI then sits on its current step
+ *  indefinitely (the "stuck on Writing script for 20 minutes" bug).
+ *  Wrapping every request in a timeout converts that dead state into a
+ *  clear, retryable error.
+ *
+ *  Two abort sources are merged onto one internal controller:
+ *    - the caller's `init.signal` (user pressed Cancel / unmount) → AbortError
+ *    - the timeout firing                                          → TimeoutError
+ *  Callers tell them apart by `err.name` to message the user correctly. */
+export async function fetchWithTimeout(
+  input: string,
+  init: RequestInit = {},
+  timeoutMs: number = FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const externalSignal = init.signal ?? undefined;
+  const controller = new AbortController();
+  const onExternalAbort = () => controller.abort(externalSignal?.reason);
+
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort(externalSignal.reason);
+    else externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+  }
+
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort(
+      new DOMException(`Request timed out after ${Math.round(timeoutMs / 1000)}s`, 'TimeoutError')
+    );
+  }, timeoutMs);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (err) {
+    // When we aborted for the timeout, some engines surface a generic
+    // AbortError rather than the reason we passed — normalize it so the
+    // caller can always distinguish timeout from a user cancel.
+    if (timedOut) {
+      throw new DOMException(
+        `Request timed out after ${Math.round(timeoutMs / 1000)}s`,
+        'TimeoutError'
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    externalSignal?.removeEventListener('abort', onExternalAbort);
+  }
+}
+
 async function callClaude(
   apiKey: string,
   theme: string,
   signal?: AbortSignal
 ): Promise<string> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     signal,
     headers: {
@@ -467,7 +535,7 @@ async function callElevenLabs(
   text: string,
   signal?: AbortSignal
 ): Promise<ArrayBuffer> {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${ELEVENLABS_BASE}/v1/text-to-speech/${voiceId}`,
     {
       method: 'POST',
@@ -570,7 +638,7 @@ export async function callElevenLabsProjects(
 
   // --- 1. Create project ---
   onProgress?.({ stage: 'synthesizing', message: 'Creating Projects job…' });
-  const createRes = await fetch(`${ELEVENLABS_BASE}/v1/projects`, {
+  const createRes = await fetchWithTimeout(`${ELEVENLABS_BASE}/v1/projects`, {
     method: 'POST',
     signal,
     headers,
@@ -599,7 +667,7 @@ export async function callElevenLabsProjects(
 
   // --- 2. Add content (idempotent: skip if create already attached it) ---
   if (!created.chapter_id && !created.chapters?.length) {
-    const contentRes = await fetch(
+    const contentRes = await fetchWithTimeout(
       `${ELEVENLABS_BASE}/v1/projects/${projectId}/content`,
       {
         method: 'POST',
@@ -620,7 +688,7 @@ export async function callElevenLabsProjects(
 
   // --- 3. Trigger conversion ---
   onProgress?.({ stage: 'synthesizing', message: 'Converting (1–3 min)…' });
-  const convertRes = await fetch(
+  const convertRes = await fetchWithTimeout(
     `${ELEVENLABS_BASE}/v1/projects/${projectId}/convert`,
     { method: 'POST', signal, headers }
   );
@@ -642,13 +710,14 @@ export async function callElevenLabsProjects(
 
   // --- 5. Download audio ---
   onProgress?.({ stage: 'synthesizing', message: 'Downloading audio…' });
-  const audioRes = await fetch(
+  const audioRes = await fetchWithTimeout(
     `${ELEVENLABS_BASE}/v1/projects/${projectId}/chapters/${chapterId}/audio`,
     {
       method: 'GET',
       signal,
       headers: { 'xi-api-key': apiKey },
-    }
+    },
+    DOWNLOAD_TIMEOUT_MS
   );
   if (!audioRes.ok) {
     const body = await audioRes.text().catch(() => '');
@@ -675,7 +744,7 @@ async function pollProjectUntilConverted(
       );
     }
 
-    const res = await fetch(`${ELEVENLABS_BASE}/v1/projects/${projectId}`, {
+    const res = await fetchWithTimeout(`${ELEVENLABS_BASE}/v1/projects/${projectId}`, {
       method: 'GET',
       signal,
       headers: { 'xi-api-key': apiKey },

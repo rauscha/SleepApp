@@ -9,6 +9,7 @@ import {
   countWords,
   deriveTitle,
   estimateDurationSeconds,
+  fetchWithTimeout,
   isLongForm,
   isProjectsEnabled,
   makeStoryId,
@@ -596,5 +597,58 @@ describe('synthesizeStoryAudio dispatcher', () => {
     ).rejects.toMatchObject({ name: 'AbortError' });
     // Only the Projects-create attempt — no fallback fired.
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// fetchWithTimeout — the mobile "stuck forever" guard
+
+describe('fetchWithTimeout', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // A fetch that never settles on its own — it only rejects when its
+  // signal aborts. Mirrors a request the OS froze after the screen slept.
+  const hangingFetch = () =>
+    vi.fn(
+      (_input: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          const sig = init?.signal;
+          if (sig?.aborted) {
+            reject(sig.reason ?? new DOMException('Aborted', 'AbortError'));
+            return;
+          }
+          sig?.addEventListener('abort', () =>
+            reject(sig.reason ?? new DOMException('Aborted', 'AbortError'))
+          );
+        })
+    );
+
+  it('rejects with TimeoutError when the request outlasts the timeout', async () => {
+    vi.stubGlobal('fetch', hangingFetch());
+    // Short real timeout so the test is fast but exercises the real timer.
+    await expect(
+      fetchWithTimeout('https://example.test', {}, 20)
+    ).rejects.toMatchObject({ name: 'TimeoutError' });
+  });
+
+  it('rejects with AbortError (not TimeoutError) when the caller aborts', async () => {
+    vi.stubGlobal('fetch', hangingFetch());
+    const ctrl = new AbortController();
+    ctrl.abort();
+    await expect(
+      fetchWithTimeout('https://example.test', { signal: ctrl.signal }, 10_000)
+    ).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('passes a successful response through unchanged', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(new Uint8Array([1, 2, 3]).buffer, { status: 200 }))
+    );
+    const res = await fetchWithTimeout('https://example.test', {}, 10_000);
+    expect(res.status).toBe(200);
+    expect((await res.arrayBuffer()).byteLength).toBe(3);
   });
 });

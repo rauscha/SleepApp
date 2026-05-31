@@ -13,6 +13,7 @@ import { generateStory } from '../services/storyGenerator';
 import type { GenerationStep } from '../services/storyGenerator';
 import { fetchSceneIndex } from '../audio/sceneRegistry';
 import type { SceneIndexEntry } from '../audio/sceneRegistry';
+import { useWakeLock } from '../hooks/useWakeLock';
 
 type VoiceName = 'tide' | 'stone';
 
@@ -32,6 +33,28 @@ interface RecentAttempt {
   theme: string;
   voice: VoiceName;
   at: number;
+}
+
+/** Map a generation failure to a calm, actionable message.
+ *
+ *  The two mobile failure modes we most care about both resolve to the
+ *  same user fix — keep the screen on and retry:
+ *    - TypeError ("Failed to fetch") — the request never completed because
+ *      the tab was suspended when the phone screen slept.
+ *    - TimeoutError — our per-request fetch timeout fired on a request the
+ *      OS left hanging, so the UI no longer sits stuck on one step.
+ *  AbortError is the user's own Cancel and stays terse. */
+export function describeGenerationError(err: unknown): string {
+  if (err instanceof DOMException && err.name === 'AbortError') {
+    return 'Cancelled.';
+  }
+  if (err instanceof DOMException && err.name === 'TimeoutError') {
+    return 'The request timed out — if your screen turned off mid-generation the connection drops. Keep the screen on and tap Generate again.';
+  }
+  if (err instanceof TypeError) {
+    return 'Connection dropped mid-generation. This usually happens when the phone screen turns off — keep your screen on and tap Generate again.';
+  }
+  return err instanceof Error ? err.message : String(err);
 }
 
 export interface StoryGeneratorScreenProps {
@@ -62,6 +85,14 @@ export function StoryGeneratorScreen({
   // in a ref so the dedup check sees the freshest value without React
   // batching a re-render between two same-tick taps.
   const lastAttemptRef = useRef<RecentAttempt | null>(null);
+
+  // Keep the screen awake for the whole generation. It runs 2–5 min with no
+  // touch input, so a phone would otherwise dim and sleep mid-run; once the
+  // tab is backgrounded the OS kills the in-flight fetch ("Failed to fetch")
+  // and the progress UI gets stranded. Best-effort (a refused lock on low
+  // battery / unsupported browser is silent) — the "keep your screen on"
+  // hint below is the fallback for that case.
+  useWakeLock(busy);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
@@ -150,16 +181,13 @@ export function StoryGeneratorScreen({
       });
       onDone(meta.id);
     } catch (err) {
-      // AbortError is the user pressing Cancel — not really an error.
-      // Cancelled / failed attempts also clear the dedup memo so a
-      // legitimate retry with the same (theme, voice) is not blocked.
+      // Cancelled / failed attempts clear the dedup memo so a legitimate
+      // retry with the same (theme, voice) is not blocked. Error wording
+      // lives in describeGenerationError so the mobile sleep/timeout cases
+      // get an actionable message instead of a raw "Failed to fetch".
       lastAttemptRef.current = null;
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        setError('Cancelled.');
-      } else {
-        setError(err instanceof Error ? err.message : String(err));
-      }
       setBusy(false);
+      setError(describeGenerationError(err));
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
@@ -292,6 +320,15 @@ export function StoryGeneratorScreen({
           >
             Generate story
           </button>
+        )}
+
+        {/* Keep-awake hint while running. Belt-and-suspenders to the wake
+            lock, which a browser can refuse (low battery / unsupported). */}
+        {busy && (
+          <p className="ui-label text-stone-400 px-1">
+            Keep your screen on while this runs — if the phone sleeps,
+            generation may stop.
+          </p>
         )}
 
         {/* Progress steps */}
