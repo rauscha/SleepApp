@@ -37,3 +37,7 @@ USER_TODO.md
 
 # loudnorm backups created by tools/normalize-existing-content.sh
 *.pre-loudnorm.mp3
+
+# Diagnostic clip-scrubber page (audio QA tool, served by dev server only —
+# must never ship to the public build). Throwaway; regenerate as needed.
+public/scrub/
