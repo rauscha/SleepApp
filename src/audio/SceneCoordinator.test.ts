@@ -188,13 +188,18 @@ describe('SceneCoordinator', () => {
     expect(out.connections.length).toBe(1);
     expect(out.connections[0]).toBe(engine.bus.input);
 
-    // The scene's master gain should have a fade-in scheduled —
-    // linearRampToValueAtTime(1, now + firstFade).
-    const sceneGain = scene.output as unknown as { gain: { scheduledEvents: { kind: string; value?: number }[] } };
+    // The first start from silence uses a front-loaded fade-in: a
+    // setValueCurveAtTime ramp (pow exponent < 1) over the first-start
+    // duration, ending at full gain. Cross-scene fades stay linear.
+    const sceneGain = scene.output as unknown as {
+      gain: { value: number; scheduledEvents: { kind: string; curveDuration?: number }[] };
+    };
     const fadeIn = sceneGain.gain.scheduledEvents.find(
-      (e) => e.kind === 'linearRampToValueAtTime' && e.value === 1
+      (e) => e.kind === 'setValueCurveAtTime'
     );
     expect(fadeIn).toBeDefined();
+    // Curve ends at the target volume (1.0); the mock settles .value there.
+    expect(sceneGain.gain.value).toBe(1);
   });
 
   it('crossfadeTo disposes the outgoing scene and installs the incoming as current', async () => {

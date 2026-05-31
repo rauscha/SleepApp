@@ -31,6 +31,16 @@ export interface SceneOptions {
 
 const SCENE_LAYER_CAP = 6;
 
+// First-start fade shape. A pure linear amplitude ramp from silence sits
+// below the room-noise floor for the first ~second, long enough that the
+// user wonders whether playback even started. Raising the gain on a
+// front-loaded curve (pow with exponent < 1) crosses audibility within
+// the first ~0.7s, then eases into the target. 1.0 would be linear; lower
+// = more front-loaded. Tunable by ear — bump toward 1.0 if the onset
+// feels too sudden, toward 0.4 if it still feels slow to arrive.
+const FIRST_START_FADE_EXPONENT = 0.6;
+const FIRST_START_FADE_CURVE_STEPS = 64;
+
 export class Scene {
   readonly id: string;
   readonly definition: SceneDefinition;
@@ -100,17 +110,37 @@ export class Scene {
 
   /**
    * Ramp scene-level gain up to `targetVolume` (default 1.0) over
-   * `durationSeconds`. Uses a linear ramp — equal-power doesn't apply
-   * at the scene level because we're fading from silence, not against
-   * a partner.
+   * `durationSeconds`.
+   *
+   * `shape` selects the ramp curve:
+   *   - 'linear'   — constant-slope ramp. Used for cross-scene fade-ins,
+   *     where the outgoing scene is fading out on a matching linear ramp
+   *     and the per-layer crossfades carry the "no dip" feel.
+   *   - 'ease-out' — front-loaded curve that rises quickly off zero so a
+   *     first start from silence becomes audible fast, then eases into
+   *     the target. See FIRST_START_FADE_EXPONENT.
    */
-  fadeIn(durationSeconds: number, targetVolume = 1.0): void {
+  fadeIn(
+    durationSeconds: number,
+    targetVolume = 1.0,
+    shape: 'linear' | 'ease-out' = 'linear'
+  ): void {
     const fade = Math.max(0.05, durationSeconds);
     const target = clamp01(targetVolume);
     const now = this.ctx.currentTime;
     this.output.gain.cancelScheduledValues(now);
-    this.output.gain.setValueAtTime(this.output.gain.value, now);
-    this.output.gain.linearRampToValueAtTime(target, now + fade);
+    if (shape === 'ease-out') {
+      const steps = FIRST_START_FADE_CURVE_STEPS;
+      const curve = new Float32Array(steps);
+      for (let i = 0; i < steps; i++) {
+        const t = i / (steps - 1);
+        curve[i] = Math.pow(t, FIRST_START_FADE_EXPONENT) * target;
+      }
+      this.output.gain.setValueCurveAtTime(curve, now, fade);
+    } else {
+      this.output.gain.setValueAtTime(this.output.gain.value, now);
+      this.output.gain.linearRampToValueAtTime(target, now + fade);
+    }
     this.currentSceneVolume = target;
   }
 

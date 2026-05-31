@@ -161,7 +161,14 @@ export class SceneCoordinator {
     const scene = await this.loadScene(definition, options);
     scene.output.connect(this.engine.bus.input);
     scene.start();
-    scene.fadeIn(options.firstFadeSeconds ?? DEFAULT_SCENE_FIRST_START_SECONDS);
+    // First start from silence uses the front-loaded 'ease-out' curve so
+    // the scene becomes audible quickly. Cross-scene fades (crossfadeTo)
+    // keep the linear ramp, which pairs with the outgoing fade-out.
+    scene.fadeIn(
+      options.firstFadeSeconds ?? DEFAULT_SCENE_FIRST_START_SECONDS,
+      1.0,
+      'ease-out'
+    );
     this.currentScene = scene;
     return scene;
   }
