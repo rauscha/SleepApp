@@ -182,6 +182,8 @@ export function App() {
               title={activeContent.title}
               description={activeContent.description}
               audioUrl={activeContent.audioUrl}
+              bedSceneId={activeContent.sceneId ?? null}
+              bedBehavior={activeContent.type === 'story' ? 'continue' : 'stop-with-content'}
               onBack={leaveContentPlayer}
             />
           </Suspense>

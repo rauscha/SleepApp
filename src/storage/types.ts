@@ -102,6 +102,9 @@ export interface BundledStoryMetadata {
   durationSeconds: number;
   /** Path to the MP3 relative to /stories/, e.g. "seaside-village.mp3". */
   audioPath: string;
+  /** Backing scene id played underneath during narration, then left
+   *  running so the room doesn't go silent. Same field as StoryMetadata. */
+  sceneId?: string | null;
 }
 
 export interface BundledStoryIndex {

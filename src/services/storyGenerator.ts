@@ -90,6 +90,10 @@ export interface GenerateStoryOptions {
   voiceName: 'tide' | 'stone';
   anthropicApiKey: string;
   elevenLabsApiKey: string;
+  /** Bed scene id to pair with this story. Played underneath narration
+   *  and left running afterwards so the room stays filled all night.
+   *  Null is allowed for back-compat / no bed. */
+  sceneId?: string | null;
   onProgress?: (step: GenerationStep) => void;
   /** Pass an AbortSignal to allow the user (or unmount) to cancel
    *  mid-flight. fetch() rejects with an AbortError when aborted; the
@@ -157,6 +161,7 @@ export function buildStoryMetadata(args: {
   theme: string;
   voiceName: string;
   script: string;
+  sceneId?: string | null;
   createdAt?: string;
 }): StoryMetadata {
   return {
@@ -167,7 +172,7 @@ export function buildStoryMetadata(args: {
     createdAt: args.createdAt ?? new Date().toISOString(),
     durationSeconds: estimateDurationSeconds(args.script),
     script: args.script,
-    sceneId: null,
+    sceneId: args.sceneId ?? null,
   };
 }
 
@@ -271,6 +276,7 @@ export async function generateStory(
     voiceName,
     anthropicApiKey,
     elevenLabsApiKey,
+    sceneId,
     onProgress,
     signal,
     useProjects,
@@ -303,6 +309,7 @@ export async function generateStory(
     theme,
     voiceName,
     script,
+    sceneId: sceneId ?? null,
   });
 
   await saveStory(meta);

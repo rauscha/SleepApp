@@ -7,7 +7,8 @@
       "voiceId": "tide",
       "createdAt": "2026-05-18T00:59:09.530Z",
       "durationSeconds": 1259,
-      "audioPath": "seaside-village.mp3"
+      "audioPath": "seaside-village.mp3",
+      "sceneId": "ocean-night"
     },
     {
       "id": "night-train",
@@ -16,7 +17,8 @@
       "voiceId": "stone",
       "createdAt": "2026-05-18T01:04:02.890Z",
       "durationSeconds": 1257,
-      "audioPath": "night-train.mp3"
+      "audioPath": "night-train.mp3",
+      "sceneId": "forest-night"
     }
   ]
 }

@@ -11,6 +11,8 @@ import {
 } from '../storage';
 import { generateStory } from '../services/storyGenerator';
 import type { GenerationStep } from '../services/storyGenerator';
+import { fetchSceneIndex } from '../audio/sceneRegistry';
+import type { SceneIndexEntry } from '../audio/sceneRegistry';
 
 type VoiceName = 'tide' | 'stone';
 
@@ -44,6 +46,11 @@ export function StoryGeneratorScreen({
 }: StoryGeneratorScreenProps) {
   const [theme, setTheme] = useState('');
   const [voice, setVoice] = useState<VoiceName>('tide');
+  const [scenes, setScenes] = useState<SceneIndexEntry[]>([]);
+  // `null` here means "no bed". On first load we replace it with the
+  // first scene from the index as the default — picked by the user via
+  // the dropdown thereafter.
+  const [sceneId, setSceneId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [steps, setSteps] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +65,25 @@ export function StoryGeneratorScreen({
 
   useEffect(() => {
     return () => abortRef.current?.abort();
+  }, []);
+
+  // Load the scene catalogue once so the user can pick a bed.
+  // Default the selection to the first scene if we don't have one yet.
+  useEffect(() => {
+    let cancelled = false;
+    fetchSceneIndex()
+      .then((idx) => {
+        if (cancelled) return;
+        setScenes(idx.scenes);
+        setSceneId((current) => current ?? idx.scenes[0]?.id ?? null);
+      })
+      .catch((err) => {
+        // Scene-pick is non-blocking — failing the index just means the
+        // user generates a story without a paired bed. They can hand-edit
+        // sceneId later via dev tools if it really matters.
+        console.warn('[StoryGeneratorScreen] scene index load failed:', err);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const addStep = useCallback((msg: string) => {
@@ -116,6 +142,7 @@ export function StoryGeneratorScreen({
         voiceName: voice,
         anthropicApiKey: anthropicKey,
         elevenLabsApiKey: elevenLabsKey,
+        sceneId,
         signal: controller.signal,
         onProgress: (step: GenerationStep) => {
           if (step.stage !== 'done') addStep(step.message);
@@ -136,7 +163,7 @@ export function StoryGeneratorScreen({
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [busy, theme, voice, addStep, onDone]);
+  }, [busy, theme, voice, sceneId, addStep, onDone]);
 
   return (
     <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-6 py-8 min-h-full">
@@ -206,6 +233,33 @@ export function StoryGeneratorScreen({
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Bed scene */}
+        <div>
+          <label htmlFor="bed-scene" className="block body-text text-stone-300 mb-2">
+            Background scene
+          </label>
+          <select
+            id="bed-scene"
+            value={sceneId ?? ''}
+            onChange={(e) => setSceneId(e.target.value || null)}
+            disabled={busy || scenes.length === 0}
+            className="w-full bg-ink-800 text-stone-100 body-text rounded-soft
+                       px-3 py-2.5 border border-ink-600
+                       focus:outline-none focus:border-moon-600
+                       transition-colors disabled:opacity-40"
+            style={{ minHeight: 44 }}
+          >
+            {scenes.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <p className="ui-label text-stone-400 mt-2">
+            Plays underneath the narration, then keeps going all night.
+          </p>
         </div>
 
         {/* Cost note */}

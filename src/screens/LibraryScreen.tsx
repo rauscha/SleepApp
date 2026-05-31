@@ -54,6 +54,11 @@ export interface ContentItem {
   description: string;
   /** Resolved URL or blob URL for the audio. Caller owns revocation. */
   audioUrl: string;
+  /** Bed scene id to play underneath while this content plays. Stories
+   *  leave the bed running after narration ends so the room stays
+   *  filled. Meditations stop the bed with the content. Optional —
+   *  legacy content without a paired scene plays bare. */
+  sceneId?: string | null;
 }
 
 export interface LibraryScreenProps {
@@ -138,6 +143,7 @@ export function LibraryScreen({
           title: story.title,
           description: story.theme,
           audioUrl,
+          sceneId: story.sceneId,
         });
       } catch (err) {
         console.error('[LibraryScreen] story load failed:', err);
@@ -161,6 +167,7 @@ export function LibraryScreen({
         title: story.title,
         description: story.theme,
         audioUrl,
+        sceneId: story.sceneId ?? null,
       });
     },
     [onPlay]

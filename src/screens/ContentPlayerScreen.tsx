@@ -5,8 +5,14 @@
 // When the user taps Back, the caller is responsible for revoking any
 // blob URL it created.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Howl } from 'howler';
+import { getAudioEngine } from '../audio/AudioEngine';
+import { getSceneCoordinator } from '../audio/SceneCoordinator';
+import {
+  fetchSceneDefinition,
+  fetchSceneIndex,
+} from '../audio/sceneRegistry';
 import {
   clearMediaSession,
   setMediaSessionForScene,
@@ -14,11 +20,22 @@ import {
 } from '../audio/mediaSession';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { startSwKeepAlive, stopSwKeepAlive } from '../serviceWorker/keepAlive';
+import { setSetting } from '../storage';
 
 export interface ContentPlayerScreenProps {
   title: string;
   description: string;
   audioUrl: string;
+  /** Optional bed scene to play underneath narration. Null/undefined =
+   *  no bed (legacy / unpaired content plays bare). */
+  bedSceneId?: string | null;
+  /** What the bed should do when the user leaves this screen.
+   *  'continue' (stories): leave the bed running so the room stays
+   *  filled all night after narration ends.
+   *  'stop-with-content' (meditations): fade the bed out with the
+   *  meditation — but only if WE started it this session. A pre-existing
+   *  bed (user was on Tonight first) is left alone. */
+  bedBehavior?: 'continue' | 'stop-with-content';
   onBack: () => void;
 }
 
@@ -32,8 +49,12 @@ export function ContentPlayerScreen({
   title,
   description,
   audioUrl,
+  bedSceneId,
+  bedBehavior = 'continue',
   onBack,
 }: ContentPlayerScreenProps) {
+  const engine = useMemo(() => getAudioEngine(), []);
+  const coordinator = useMemo(() => getSceneCoordinator(engine), [engine]);
   const howlRef = useRef<Howl | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'playing' | 'paused' | 'ended' | 'error'>('loading');
   const [position, setPosition] = useState(0);
@@ -94,6 +115,55 @@ export function ContentPlayerScreen({
       howlRef.current = null;
     };
   }, [audioUrl, startTick, stopTick]);
+
+  // Start the bed scene underneath if one is paired with this content.
+  // For stories, we leave the bed running forever on cleanup so the room
+  // stays filled after narration ends — the whole point of pairing them.
+  // For meditations, the bed stops with the content, but only if WE
+  // started it (preserves a pre-existing Tonight scene the user had up).
+  // If the same scene is already current, we skip the load and just
+  // claim "last played" so Tonight reflects what's actually playing.
+  useEffect(() => {
+    if (!bedSceneId) return;
+    let cancelled = false;
+    let startedHere = false;
+
+    void (async () => {
+      try {
+        const currentId = coordinator.getCurrentScene()?.id ?? null;
+        if (currentId !== bedSceneId) {
+          const idx = await fetchSceneIndex();
+          if (cancelled) return;
+          const entry = idx.scenes.find((s) => s.id === bedSceneId);
+          if (!entry) {
+            console.warn(
+              `[ContentPlayerScreen] bed scene "${bedSceneId}" not in index`
+            );
+            return;
+          }
+          const def = await fetchSceneDefinition(entry);
+          if (cancelled) return;
+          await coordinator.startScene(def, { fallbackToSynthetic: true });
+          startedHere = true;
+        }
+        setSetting('lastSceneId', bedSceneId);
+        // The screen unmounted during our async startup — undo the start
+        // if policy says the bed shouldn't outlive the content.
+        if (cancelled && startedHere && bedBehavior === 'stop-with-content') {
+          coordinator.stopScene();
+        }
+      } catch (err) {
+        console.error('[ContentPlayerScreen] bed scene start failed:', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (startedHere && bedBehavior === 'stop-with-content') {
+        coordinator.stopScene();
+      }
+    };
+  }, [bedSceneId, bedBehavior, coordinator]);
 
   // Keep the device from suspending the page while a meditation or story
   // is playing. Howler with html5: true uses an HTMLAudioElement which
