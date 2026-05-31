@@ -27,7 +27,7 @@
 // Bumping CACHE_VERSION cleans old caches on the next activation. Don't
 // bump it casually — every active install will re-download all audio.
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const AUDIO_CACHE = `sleep-audio-${CACHE_VERSION}`;
 const SCENE_CACHE = `sleep-scenes-${CACHE_VERSION}`;
 const SHELL_CACHE = `sleep-shell-${CACHE_VERSION}`;
