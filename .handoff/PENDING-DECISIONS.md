@@ -1,45 +1,55 @@
 # Pending decisions
 
-Items waiting on your input or queued for the next session. None blocks
-tonight's sleep test. Refreshed 2026-05-30 night.
+Items waiting on your input or queued for the next session.
+Refreshed 2026-05-31 morning.
 
-## 1. Content backgrounds — NEW, the next headline feature
-*(Requested 2026-05-30 night. Mostly a build task; one open design sub-decision.)*
-- **Stories** should play over an appropriate ambient **noise scene that keeps
-  playing all night** after the narration ends — no dead air, so the listener
-  stays asleep. **Meditations** should play over a **singing-bowl sound bath** bed.
-- **Open sub-decision (yours):** how does a story map to "an appropriate scene"
-  — a fixed per-story mapping, whatever's selected on Tonight, or one sensible
-  default (e.g. rain)? Decide this before building.
-- Build notes + rationale in memory `project_content_backgrounds`. Wiring lives
-  in ContentPlayerScreen + SceneCoordinator; respect the FileLayer lookahead /
-  crossfade invariants. Singing-bowl audio to be sourced per the audio-pipeline
-  conventions.
+## 1. ~~Content backgrounds~~ — STORIES DONE; meditations spawned as chip
+*(Stories portion shipped 2026-05-31 in `cd48c24`. The meditation
+singing-bowl bed is queued as a worktree chip — start it from the
+spawn UI when you're ready to let audiocraft cook.)*
+- Stories now play over a paired scene that keeps running all night
+  after narration ends. Bundled mappings: seaside-village → ocean-night,
+  night-train → forest-night. User-generated stories pick their bed via
+  a new scene dropdown in StoryGeneratorScreen.
+- Meditation bed plumbing is in place (`bedBehavior='stop-with-content'`
+  in ContentPlayerScreen + MeditationMetadata.sceneId field still to be
+  added). Singing-bowl audio + scene JSON will land via the chip.
 
-## 2. Secondary-button consolidation — DECIDED, implementation queued
-*(Unchanged — not done yet. Decision made 2026-05-30 evening: style A, ghost border.)*
-- **Target style**: `border border-moon-700 rounded-soft text-moon-300 hover:text-moon-200 px-3 py-1.5 ui-label transition-colors duration-slow`. Match the "Generate new story" button in LibraryScreen.
-- **Migrate**: the gray-pill Cancel buttons in SettingsScreen.tsx and StoryGeneratorScreen.tsx (`bg-ink-700 text-stone-300 rounded-soft`).
-- **Leave alone (text-link tier)**: back arrows (`← Back`, `← Scenes`), Library row Play/Delete.
-- **Document**: append the decision to `DECISIONS.md` in the same commit. ~30 min incl. typecheck + tests.
+## 2. ~~Secondary-button consolidation~~ — DONE
+*(Shipped 2026-05-31 in `2048d9a`.)*
+- Both gray-pill Cancels migrated to the ghost-border tier. Three-tier
+  system documented in DECISIONS.md "Later additions". No action.
 
 ## 3. ~~Stale worktrees~~ — resolved; cosmetic litter remains
 - `git worktree list` shows only main. The on-disk `.git/worktrees/` +
-  `.claude/worktrees/` dirs can't be deleted (Google Drive holds the handles),
-  so every git op still prints ~16 "Permission denied" lines — harmless,
-  commits/pushes succeed. To clean: pause gdrive sync, `git worktree prune`,
-  `rm -rf .claude/worktrees/* .git/worktrees/*`, then `git worktree list` to
-  confirm main is healthy. Low priority.
+  `.claude/worktrees/` dirs can't be deleted (Google Drive holds the
+  handles), so every git op prints ~16 "Permission denied" lines —
+  harmless, commits/pushes succeed. To clean: pause gdrive sync,
+  `git worktree prune`, `rm -rf .claude/worktrees/* .git/worktrees/*`,
+  then `git worktree list` to confirm main is healthy. Low priority.
 
 ## 4. ~~Verify normalized voice content~~ — resolved 2026-05-30 night
-- Phone walkthrough confirmed meditation/story loudness parity is good and
-  there's no body-scan pop. The seaside "soft pop" was not reproducible on
-  device → closed as an artifact (PCM analysis found no click).
-- **Cleanup available** whenever: `rm public/meditations/*.pre-loudnorm.mp3 public/stories/*.pre-loudnorm.mp3` (gitignored backups).
+- Phone walkthrough confirmed loudness parity. **Cleanup available**
+  whenever: `rm public/meditations/*.pre-loudnorm.mp3 public/stories/*.pre-loudnorm.mp3` (gitignored backups).
 
-## 5. PWA install from Tailscale dev URL — re-test on tonight's deployed build
-- Earlier the dev-server PWA install misbehaved (dev doesn't run the
-  `swPrecachePlugin` — build-only). Should resolve from the deployed Pages
-  build, which you're installing tonight (`CACHE_VERSION v5`).
-- **Action**: when you save the PWA tonight, confirm install + offline launch
-  work from the deployed site. If good, close this.
+## 5. PWA install + content backgrounds on tonight's deployed build
+*(Carrying over from yesterday + adding the content-backgrounds
+verification.)*
+- The v6 build adds the content-backgrounds feature on top of the v5
+  PWA-install fix. Two things to check on the deployed Pages build
+  tonight:
+  - PWA installs cleanly from the deployed site; offline launch works.
+  - Tap a bundled story (seaside-village or night-train). Confirm:
+    bed fades in underneath, narration plays over it, narration ends,
+    **bed keeps playing with no dead air**, backing out to Library
+    leaves bed running, Tonight shows the paired scene as "last played".
+- If anything's off, the smallest red flag is most informative — flag
+  the symptom rather than self-diagnose.
+
+## 6. Singing-bowl bed for meditations — chip queued
+*(Spawned 2026-05-31. No user input needed until it runs.)*
+- Lives as a separate worktree chip in the spawn UI. Start it when you
+  want to let audiocraft run (likely overnight or unattended — model
+  generation + scene authoring + cache bump is mostly hands-off).
+- When done, the chip will commit + push from its own branch. Pull on
+  this side after to bring it into main.
