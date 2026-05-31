@@ -1,55 +1,58 @@
 # Pending decisions
 
 Items waiting on your input or queued for the next session.
-Refreshed 2026-05-31 morning.
+Refreshed 2026-05-31 afternoon.
 
-## 1. ~~Content backgrounds~~ — STORIES DONE; meditations spawned as chip
-*(Stories portion shipped 2026-05-31 in `cd48c24`. The meditation
-singing-bowl bed is queued as a worktree chip — start it from the
-spawn UI when you're ready to let audiocraft cook.)*
-- Stories now play over a paired scene that keeps running all night
-  after narration ends. Bundled mappings: seaside-village → ocean-night,
-  night-train → forest-night. User-generated stories pick their bed via
-  a new scene dropdown in StoryGeneratorScreen.
-- Meditation bed plumbing is in place (`bedBehavior='stop-with-content'`
-  in ContentPlayerScreen + MeditationMetadata.sceneId field still to be
-  added). Singing-bowl audio + scene JSON will land via the chip.
+## 1. Device-test the story-generation sleep fix — TOP PRIORITY
+*(Shipped 2026-05-31 in `52ec0cc`. Needs eyes on real hardware.)*
+- Bug was: generating a story on the phone PWA died the moment the screen
+  slept ("Failed to fetch"), and the UI sat stuck on "Writing script with
+  Claude…" for 20+ min.
+- Fix: wake lock while generating + per-request fetch timeouts + clear
+  retry messaging. On the v7 deploy, generate a story and let the screen
+  sleep mid-run — it should stay awake and finish. If it ever does fail,
+  you should now get an actionable message, not a silent hang.
 
-## 2. ~~Secondary-button consolidation~~ — DONE
-*(Shipped 2026-05-31 in `2048d9a`.)*
-- Both gray-pill Cancels migrated to the ghost-border tier. Three-tier
-  system documented in DECISIONS.md "Later additions". No action.
+## 2. Device-test content backgrounds + meditation bed on v7
+*(Carryover. Stories portion `cd48c24`; singing-bowl bed `b766f8b`.)*
+- Tap a bundled story (seaside-village or night-train): bed fades in under
+  the narration, narration ends, **bed keeps playing with no dead air**,
+  backing out to Library leaves it running, Tonight shows the paired scene
+  as "last played".
+- Tap a meditation: the new **singing-bowl bed** plays underneath and
+  **stops with the meditation** (intentionally different from stories).
+- PWA installs cleanly from the deployed site; offline launch works.
+- Smallest red flag is most informative — flag the symptom, don't
+  self-diagnose.
 
-## 3. ~~Stale worktrees~~ — resolved; cosmetic litter remains
-- `git worktree list` shows only main. The on-disk `.git/worktrees/` +
-  `.claude/worktrees/` dirs can't be deleted (Google Drive holds the
-  handles), so every git op prints ~16 "Permission denied" lines —
-  harmless, commits/pushes succeed. To clean: pause gdrive sync,
-  `git worktree prune`, `rm -rf .claude/worktrees/* .git/worktrees/*`,
-  then `git worktree list` to confirm main is healthy. Low priority.
+## 3. ~~Singing-bowl bed for meditations~~ — DONE + pushed
+*(`b766f8b`, pushed 2026-05-31.)*
+- Two ambient layers (drone @251s, shimmer @409s) over a brown synth bed,
+  per the incommensurate-loops rule. `MeditationMetadata.sceneId` wired;
+  CACHE_VERSION bumped to v7. Verification folded into #2 above.
 
-## 4. ~~Verify normalized voice content~~ — resolved 2026-05-30 night
-- Phone walkthrough confirmed loudness parity. **Cleanup available**
-  whenever: `rm public/meditations/*.pre-loudnorm.mp3 public/stories/*.pre-loudnorm.mp3` (gitignored backups).
+## 4. ~~Content backgrounds (stories)~~ — DONE
+*(`cd48c24`. Verification folded into #2.)*
 
-## 5. PWA install + content backgrounds on tonight's deployed build
-*(Carrying over from yesterday + adding the content-backgrounds
-verification.)*
-- The v6 build adds the content-backgrounds feature on top of the v5
-  PWA-install fix. Two things to check on the deployed Pages build
-  tonight:
-  - PWA installs cleanly from the deployed site; offline launch works.
-  - Tap a bundled story (seaside-village or night-train). Confirm:
-    bed fades in underneath, narration plays over it, narration ends,
-    **bed keeps playing with no dead air**, backing out to Library
-    leaves bed running, Tonight shows the paired scene as "last played".
-- If anything's off, the smallest red flag is most informative — flag
-  the symptom rather than self-diagnose.
+## 5. ~~Secondary-button consolidation~~ — DONE
+*(`2048d9a`. Three-tier button system documented in DECISIONS.md.)*
 
-## 6. Singing-bowl bed for meditations — chip queued
-*(Spawned 2026-05-31. No user input needed until it runs.)*
-- Lives as a separate worktree chip in the spawn UI. Start it when you
-  want to let audiocraft run (likely overnight or unattended — model
-  generation + scene authoring + cache bump is mostly hands-off).
-- When done, the chip will commit + push from its own branch. Pull on
-  this side after to bring it into main.
+## 6. Litter to clear during "deferred clean-up work" (low priority)
+- **Worktree dirs**: `.git/worktrees/` + `.claude/worktrees/` can't be
+  deleted (Drive holds handles), so every git op prints ~16 "Permission
+  denied" lines. `git worktree list` shows only main — cosmetic.
+- **NEW: remote-tracking refs bloated to ~1000** (mostly duplicate
+  `origin/main`) from the same Drive-handle chaos during fetches.
+  `git branch -a` floods. Cosmetic; doesn't affect push/pull of main.
+- **3 stray local branches** (`claude/objective-kirch-e41ce1`,
+  `claude/optimistic-khayyam-1e864b`, `backup/pre-rebase-2026-05-30`),
+  all 0 commits ahead of main — safe to delete.
+- To clean (only when you say "deferred clean-up work"): pause Drive sync,
+  then `git worktree prune`, `rm -rf .claude/worktrees/* .git/worktrees/*`,
+  `git remote prune origin` / repack refs, delete the stray branches, and
+  confirm `git worktree list` + `git branch -a` are healthy.
+
+## 7. Cleanup chore (whenever)
+- `rm public/meditations/*.pre-loudnorm.mp3 public/stories/*.pre-loudnorm.mp3`
+  — gitignored loudnorm backups, safe to delete now that loudness is
+  validated.

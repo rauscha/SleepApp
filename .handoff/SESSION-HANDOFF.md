@@ -1,67 +1,62 @@
-# Session hand-off — 2026-05-31 morning (machine: desktop)
+# Session hand-off — 2026-05-31 afternoon (machine: desktop)
 
 ## STATE (read this first)
-- Branch: `main`, clean working tree, synced with `origin/main` at `2048d9a`.
-- Tests 113/113 green; `npm run typecheck` clean.
-- **2 commits this session, both pushed. CACHE_VERSION bumped v5 → v6.**
-  Pages will rebuild on its own — give it a few minutes for the deploy.
-- Worktrees: only `main`. Cosmetic `.git/worktrees/` "Permission denied"
-  spam still there (Google Drive holds the handles); see PENDING #3.
+- Branch: `main`, synced with `origin/main` at `52ec0cc`. Ahead/behind 0/0.
+- Working tree effectively clean: the only tracked "change" is a
+  stat-dirty `.handoff/PENDING-DECISIONS.md` (Google Drive touched it; the
+  content diff is literally 0 lines). Untracked files are all personal /
+  non-project (mkcert .pem certs, .gdoc pointers, go.js/vbs, reviews/).
+- Tests 116/116 green; `npm run typecheck` clean.
+- **3 commits this session, all pushed.** CACHE_VERSION already at v7 (from
+  the singing-bowl commit); NOT bumped again — see "Watch out for".
 
 ## Done this session
-- **Content backgrounds shipped** (`cd48c24`) — the headline feature.
-  Stories now play over a paired ambient scene that's left running on the
-  audio bus after narration ends, so the room stays filled all night.
-  Bundled mappings (fixed, picked this session):
-    - seaside-village → ocean-night
-    - night-train     → forest-night
-  User-generated stories pick their bed at generation time via a new
-  scene dropdown in StoryGeneratorScreen; sceneId rides the existing
-  StoryMetadata.sceneId field through to playback. ContentPlayerScreen
-  was wired to SceneCoordinator with `bedBehavior='continue'` (stories,
-  bed outlives content) and `bedBehavior='stop-with-content'`
-  (meditations — wiring present but no audio yet).
-- **Secondary-button sweep done** (`2048d9a`) — the two gray-pill
-  Cancels (Settings download Cancel + StoryGenerator mid-generation
-  Cancel) now use the ghost-border tier matching "Generate new story" on
-  Library. DECISIONS.md got a new "Later additions" section documenting
-  the three-tier system (primary filled-moon / secondary ghost-border /
-  text-link) so future button additions land on the right tier.
-- **Fireplace photo confirmed on device** — closing the loose end from
-  last session.
-- **Singing-bowl bed for meditations: spawned as a worktree chip** in
-  the UI — uses audiocraft to generate the audio, will author a
-  `singing-bowl` scene respecting the prime-coprime loop rule, wire
-  `MeditationMetadata.sceneId`, and bump CACHE_VERSION. Start it from
-  the chip when ready (it's a separable audio-generation job, no need
-  to interleave with other work).
+- **Pushed the singing-bowl meditation bed (`b766f8b`).** An earlier
+  unattended run had committed it locally but never pushed — it was sitting
+  only on this machine + Drive. Now safe on origin. (Two ambient layers on
+  prime offsets 251/409 over a brown synth bed; meditations now play over
+  it with `bedBehavior='stop-with-content'`.)
+- **Fixed story generation dying when the phone screen sleeps (`52ec0cc`)**
+  — the headline bug this session. Three compounding causes:
+    1. No wake lock on StoryGeneratorScreen → screen slept → tab suspended
+       → in-flight fetch killed. Added `useWakeLock(busy)`.
+    2. No timeout on the Claude/ElevenLabs fetches → a half-dead socket
+       left the call awaiting forever (the "stuck on Writing script for
+       20 min" symptom). Added `fetchWithTimeout` (150s; 5 min for the big
+       Projects audio download) around all 7 request sites.
+    3. Opaque "Failed to fetch" → now `describeGenerationError` gives a
+       calm "keep your screen on and tap Generate again", plus a busy-gated
+       hint under the button. 3 new tests.
+- **Codified the worktree invariant in CLAUDE.md (`6f33000`)** + saved to
+  project memory: Drive permission-denied spam is expected; safe = committed
+  + pushed on main, not a clean tree; only prune on "deferred clean-up work".
 
 ## Next up
-1. **Device-verify content backgrounds tonight** — install/refresh the
-   PWA (CACHE_VERSION v6), tap a bundled story, confirm: bed fades in
-   under the narration, narration ends, bed keeps running with no dead
-   air, backing out to Library leaves the bed running, Tonight shows
-   the paired scene as "last played." See PENDING #1 + #5.
-2. **Start the singing-bowl chip** (when you're ready to babysit the
-   audiocraft run — likely overnight or unattended). Prompt is
-   self-contained on the chip; it'll commit + push when done.
-3. **Cleanup chore** (whenever): `rm public/meditations/*.pre-loudnorm.mp3 public/stories/*.pre-loudnorm.mp3` — gitignored backups,
-   safe to delete now that loudness is validated.
+1. **Device-test the story-gen fix on the phone (v7 deploy).** Generate a
+   story, deliberately let the screen sleep mid-run → it should now stay
+   awake and finish; if it ever fails you get the friendly retry message,
+   not a silent hang.
+2. **Device-test content backgrounds + the singing-bowl meditation bed**
+   (carryover, PENDING #5). Story bed continues after narration; meditation
+   bed stops with the meditation; PWA installs cleanly.
+3. **Optional cleanup (whenever):**
+   `rm public/meditations/*.pre-loudnorm.mp3 public/stories/*.pre-loudnorm.mp3`
+   — gitignored backups, safe to delete.
 
 ## Watch out for
-- **Content-backgrounds is UNVERIFIED on a real device.** Typecheck +
-  tests pass and the logic is straightforward, but the bed-continues-
-  after-narration behaviour wants eyes on actual hardware before being
-  declared shipped. That's the #1 thing to do tonight.
-- **StoryGenerator Cancel is now small/right-aligned during the busy
-  state** (was full-width pill). Intentional — see DECISIONS.md
-  "Later additions" for the rationale (destructive mid-flight action,
-  $1–3 ElevenLabs cost on accidental click). If it reads wrong
-  ergonomically on device, easy revert.
-- **Singing-bowl chip is detached from this session.** Won't auto-run.
-  It's queued in the spawn UI; start it deliberately. The wiring on
-  the SleepApp side (`bedBehavior='stop-with-content'`) is already in
-  place — the chip just needs to drop in audio + scene + metadata.
-- **Worktree litter** unchanged — cosmetic only.
-- **`.pre-loudnorm.mp3` backups** still present in
-  `public/meditations` + `public/stories` (gitignored).
+- **No CACHE_VERSION bump for the story-gen fix, on purpose.** It's a
+  code-only change; Vite content-hashes the bundle and the SW serves the
+  shell network-first, so a cold online launch picks up the new code. A
+  bump would needlessly force every install to re-download all bundled
+  audio (~17 MB/story). Bump only on audio re-renders.
+- **Remote-tracking refs are bloated to ~1000** (mostly duplicate
+  `origin/main`) from Drive holding handles during fetches. `git branch -a`
+  floods with thousands of `remotes/origin/main` lines. Cosmetic — main is
+  pushed and clean — but clear it during "deferred clean-up work" along with
+  the worktree dirs.
+- **3 stray local branches** (`claude/objective-kirch-e41ce1`,
+  `claude/optimistic-khayyam-1e864b`, `backup/pre-rebase-2026-05-30`) are
+  all **0 commits ahead of main** — pure litter, nothing to preserve.
+- **Tool output stalled badly all session** — results arrived in delayed
+  batches; one Edit silently missed its anchor (caught + re-verified). If it
+  persists next session, restart the session for a clean I/O channel.
