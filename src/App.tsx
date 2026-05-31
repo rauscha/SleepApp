@@ -66,19 +66,6 @@ type Screen =
 // drifting off, and ContentPlayer is similarly task-focused.
 const IMMERSIVE_SCREENS = new Set<Screen>(['player', 'content-player']);
 
-const PERSISTENT_SCREENS = new Set<Screen>(['tonight', 'library', 'settings', 'harness']);
-const SCREEN_KEY = 'sleep-app:current-screen:v1';
-
-function loadInitialScreen(): Screen {
-  try {
-    const v = localStorage.getItem(SCREEN_KEY) as Screen | null;
-    if (v && PERSISTENT_SCREENS.has(v)) return v;
-  } catch {
-    /* localStorage unavailable */
-  }
-  return 'tonight';
-}
-
 const SHOW_TINNITUS_HARNESS = false;
 
 export function App() {
@@ -94,14 +81,17 @@ export function App() {
   }, [engine]);
 
   // Initial screen: if a scene is already playing (HMR or reopened PWA
-  // with persisted audio state) jump to the player; otherwise land
-  // straight on Tonight. No Begin interstitial.
+  // with persisted audio state) jump to the player; otherwise always land
+  // straight on Tonight — the app's home. We intentionally do NOT restore
+  // the last-visited screen: reopening the app should put the scene picker
+  // in front of someone who's about to sleep, not wherever they last
+  // browsed (e.g. Library). No Begin interstitial.
   const [screen, setScreen] = useState<Screen>(() => {
     if (engine.isInitialized) {
       const coord = getSceneCoordinator(engine);
       if (coord.getCurrentScene()) return 'player';
     }
-    return loadInitialScreen();
+    return 'tonight';
   });
 
   const [activeContent, setActiveContent] = useState<ContentItem | null>(null);
@@ -137,16 +127,6 @@ export function App() {
     return () => window.removeEventListener('popstate', onPopState);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (PERSISTENT_SCREENS.has(screen)) {
-      try {
-        localStorage.setItem(SCREEN_KEY, screen);
-      } catch {
-        /* noop */
-      }
-    }
-  }, [screen]);
 
   const playContent = useCallback(
     async (item: ContentItem) => {
