@@ -13,6 +13,14 @@ export interface UserSettings {
   /** Master volume in [0, 1]. */
   masterVolume: number;
 
+  /** Bed-scene attenuation under meditation/story narration in [0, 1].
+   *  The bed and the spoken voice are separate audio trees (Web Audio bed
+   *  bus, Howler MP3 voice), so the bed is multiplied by this factor while
+   *  ContentPlayerScreen is mounted to leave the narration audible above
+   *  it. Restored to 1× when the screen unmounts so the standalone Player
+   *  hears the bed at full master. */
+  contentBedAttenuation: number;
+
   /** Tinnitus matcher state. */
   tinnitus: {
     /** Center frequency in Hz, in [2000, 12000]. */

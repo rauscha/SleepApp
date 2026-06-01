@@ -20,7 +20,7 @@ import {
 } from '../audio/mediaSession';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { startSwKeepAlive, stopSwKeepAlive } from '../serviceWorker/keepAlive';
-import { setSetting } from '../storage';
+import { getSetting, setSetting } from '../storage';
 
 export interface ContentPlayerScreenProps {
   title: string;
@@ -60,6 +60,9 @@ export function ContentPlayerScreen({
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [bedAttenuation, setBedAttenuation] = useState<number>(
+    () => getSetting('contentBedAttenuation')
+  );
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopTick = useCallback(() => {
@@ -170,13 +173,52 @@ export function ContentPlayerScreen({
   // gets OS-level background audio treatment, but the wake lock and
   // MediaSession metadata are what keep the *tab* itself alive long
   // enough on Android for the OS to honour that treatment overnight.
-  useWakeLock(state === 'playing');
+  //
+  // For paired bed scenes we extend the lock past `state === 'playing'`:
+  // once narration ends, the bed keeps running (stories) until the user
+  // backs out, but a released wake lock lets the tab freeze a few hours
+  // in — the symptom is "I fell asleep to a story, woke up to silence."
+  // Releases only on 'error' or when the bed has actually stopped (the
+  // 'stop-with-content' meditation case after narration ends).
+  const bedKeepsScreenLive =
+    !!bedSceneId &&
+    state !== 'error' &&
+    !(state === 'ended' && bedBehavior === 'stop-with-content');
+  useWakeLock(state === 'playing' || bedKeepsScreenLive);
 
+  // Pull the bed gain down while narration is on top of it. The slider
+  // below lets the user tune; default is 50% of the user's chosen master
+  // so the singing-bowl + story beds (mixed for standalone listening at
+  // ~0.55 primary element) don't drown out the voice. Restore the master
+  // on unmount so the standalone Player and Tonight hear the bed at full
+  // strength again.
   useEffect(() => {
-    if (state !== 'playing') return;
+    if (!bedSceneId) return;
+    const master = getSetting('masterVolume');
+    engine.bus.setMasterVolume(master * bedAttenuation);
+  }, [bedSceneId, bedAttenuation, engine]);
+  useEffect(() => {
+    if (!bedSceneId) return;
+    return () => {
+      engine.bus.setMasterVolume(getSetting('masterVolume'));
+    };
+  }, [bedSceneId, engine]);
+
+  // Keep both Android-focus signals alive whenever this screen is responsible
+  // for audio (narration playing OR a bed that's still going). Same condition
+  // as the wake lock above — fixes the overnight-silence case where narration
+  // ended at minute 30 and the bed limped along without an audio focus signal
+  // until the OS finally pulled the tab.
+  const keepAudioFocusAlive = state === 'playing' || bedKeepsScreenLive;
+  useEffect(() => {
+    if (!keepAudioFocusAlive) return;
+    engine.startKeepAlive();
     startSwKeepAlive();
-    return () => stopSwKeepAlive();
-  }, [state]);
+    return () => {
+      engine.stopKeepAlive();
+      stopSwKeepAlive();
+    };
+  }, [keepAudioFocusAlive, engine]);
 
   useEffect(() => {
     if (state === 'loading' || state === 'error') return;
@@ -293,6 +335,31 @@ export function ContentPlayerScreen({
           ? 'Finished'
           : null}
       </p>
+
+      {bedSceneId && (
+        <div className="mt-10">
+          <label className="block">
+            <span className="block body-text text-stone-300 mb-2">
+              Background — {Math.round(bedAttenuation * 100)}%
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={bedAttenuation}
+              aria-label="Background volume"
+              aria-valuetext={`${Math.round(bedAttenuation * 100)} percent`}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setBedAttenuation(v);
+                setSetting('contentBedAttenuation', v);
+              }}
+              className="w-full"
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }
