@@ -1,62 +1,59 @@
-# Session hand-off — 2026-05-31 afternoon (machine: desktop)
+# Session hand-off — 2026-06-01 (machine: desktop, continued)
 
 ## STATE (read this first)
-- Branch: `main`, synced with `origin/main` at `52ec0cc`. Ahead/behind 0/0.
-- Working tree effectively clean: the only tracked "change" is a
-  stat-dirty `.handoff/PENDING-DECISIONS.md` (Google Drive touched it; the
-  content diff is literally 0 lines). Untracked files are all personal /
-  non-project (mkcert .pem certs, .gdoc pointers, go.js/vbs, reviews/).
+- Branch: `main`, synced with `origin/main` at `67eaabf`. Ahead/behind 0/0.
+- Working tree clean of project changes. Untracked items are personal /
+  non-project (mkcert .pem certs, .gdoc pointers, go.js/vbs, reviews/,
+  mkcert-go.bat) — same set as the prior hand-off, unchanged.
 - Tests 116/116 green; `npm run typecheck` clean.
-- **3 commits this session, all pushed.** CACHE_VERSION already at v7 (from
-  the singing-bowl commit); NOT bumped again — see "Watch out for".
+- **1 commit this session, pushed.** No CACHE_VERSION bump — code-only.
 
 ## Done this session
-- **Pushed the singing-bowl meditation bed (`b766f8b`).** An earlier
-  unattended run had committed it locally but never pushed — it was sitting
-  only on this machine + Drive. Now safe on origin. (Two ambient layers on
-  prime offsets 251/409 over a brown synth bed; meditations now play over
-  it with `bedBehavior='stop-with-content'`.)
-- **Fixed story generation dying when the phone screen sleeps (`52ec0cc`)**
-  — the headline bug this session. Three compounding causes:
-    1. No wake lock on StoryGeneratorScreen → screen slept → tab suspended
-       → in-flight fetch killed. Added `useWakeLock(busy)`.
-    2. No timeout on the Claude/ElevenLabs fetches → a half-dead socket
-       left the call awaiting forever (the "stuck on Writing script for
-       20 min" symptom). Added `fetchWithTimeout` (150s; 5 min for the big
-       Projects audio download) around all 7 request sites.
-    3. Opaque "Failed to fetch" → now `describeGenerationError` gives a
-       calm "keep your screen on and tap Generate again", plus a busy-gated
-       hint under the button. 3 new tests.
-- **Codified the worktree invariant in CLAUDE.md (`6f33000`)** + saved to
-  project memory: Drive permission-denied spam is expected; safe = committed
-  + pushed on main, not a clean tree; only prune on "deferred clean-up work".
+- **Background slider + overnight-stop fix on ContentPlayerScreen
+  (`67eaabf`).** Two failure modes the user hit overnight on a story,
+  fixed in one logical change:
+    1. Voice was way off balance with the bed underneath. Added a single
+       "Background — N%" slider (only shown when a bed is paired). It
+       multiplies onto the master bus while ContentPlayerScreen is mounted
+       and restores 1× on unmount. New `contentBedAttenuation` setting
+       (default 0.5) — persists what you last set.
+    2. Sound stopped overnight. Root cause: wake lock + SW keep-alive
+       + AudioContext silent loop were all tied to `state === 'playing'`,
+       so they released the moment narration ended, leaving the story
+       bed to limp along without any focus signal until iOS/Android
+       eventually pulled the tab. Now `bedKeepsScreenLive` keeps all
+       three signals alive whenever a bed is paired and hasn't been told
+       to stop with the content. 'ended' + `continue` → lock held;
+       'ended' + `stop-with-content` (meditation bed faded) → released.
 
 ## Next up
-1. **Device-test the story-gen fix on the phone (v7 deploy).** Generate a
-   story, deliberately let the screen sleep mid-run → it should now stay
-   awake and finish; if it ever fails you get the friendly retry message,
-   not a silent hang.
-2. **Device-test content backgrounds + the singing-bowl meditation bed**
-   (carryover, PENDING #5). Story bed continues after narration; meditation
-   bed stops with the meditation; PWA installs cleanly.
-3. **Optional cleanup (whenever):**
-   `rm public/meditations/*.pre-loudnorm.mp3 public/stories/*.pre-loudnorm.mp3`
-   — gitignored backups, safe to delete.
+1. **Device-test all three pending items in one overnight pass on v7:**
+    - Story-generation sleep fix (carried over, `52ec0cc`)
+    - Content backgrounds + singing-bowl meditation bed (carried over,
+      `cd48c24` + `b766f8b`)
+    - **The new Background slider + bed-keeps-alive fix (`67eaabf`).**
+      Specifically: fall asleep to a story; bed should still be playing
+      in the morning. Drag the slider during the story to see if 50% is
+      the right starting default.
+2. **Optional cleanup (whenever):** `rm public/meditations/*.pre-loudnorm.mp3
+   public/stories/*.pre-loudnorm.mp3` — gitignored backups, safe to delete.
 
 ## Watch out for
-- **No CACHE_VERSION bump for the story-gen fix, on purpose.** It's a
-  code-only change; Vite content-hashes the bundle and the SW serves the
-  shell network-first, so a cold online launch picks up the new code. A
-  bump would needlessly force every install to re-download all bundled
-  audio (~17 MB/story). Bump only on audio re-renders.
-- **Remote-tracking refs are bloated to ~1000** (mostly duplicate
-  `origin/main`) from Drive holding handles during fetches. `git branch -a`
-  floods with thousands of `remotes/origin/main` lines. Cosmetic — main is
-  pushed and clean — but clear it during "deferred clean-up work" along with
-  the worktree dirs.
-- **3 stray local branches** (`claude/objective-kirch-e41ce1`,
-  `claude/optimistic-khayyam-1e864b`, `backup/pre-rebase-2026-05-30`) are
-  all **0 commits ahead of main** — pure litter, nothing to preserve.
-- **Tool output stalled badly all session** — results arrived in delayed
-  batches; one Edit silently missed its anchor (caught + re-verified). If it
-  persists next session, restart the session for a clean I/O channel.
+- **Residual wake-lock gap (known, not fixed yet).** If the user backs
+  out of ContentPlayerScreen while a story-style continue-bed is still
+  running, Library/Tonight don't own a wake lock for the bed, so it'll
+  hit the same overnight-suspension problem on a longer fuse. Proper fix
+  is a coordinator-owned keep-alive that engages whenever the coordinator
+  has a current scene, regardless of which screen is mounted. Left for a
+  follow-up commit — this session's fix covers the common case ("fell
+  asleep on the player screen").
+- **No CACHE_VERSION bump.** Code-only change; Vite content-hashes the
+  bundle and the SW serves the shell network-first. Cold online launch
+  picks up the new code without forcing every install to re-download all
+  audio. Only bump on audio re-renders.
+- **Worktree / refs litter unchanged from last session.** Same ~1000
+  duplicate `origin/main` refs, same 16 stuck `.git/worktrees/` dirs,
+  same 3 stray local branches (`claude/objective-kirch-e41ce1`,
+  `claude/optimistic-khayyam-1e864b`, `backup/pre-rebase-2026-05-30`,
+  all 0 ahead of main). All cosmetic; safe = pushed-on-main, which we
+  are. Clean only on "deferred clean-up work".
