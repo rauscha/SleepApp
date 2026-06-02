@@ -31,9 +31,15 @@ anthropic.txt
 # exports, etc.) — never commit these.
 Untitled*.txt
 untitled*.txt
+# Google Drive pointer files (.gdoc/.gsheet/etc.) — these reference cloud
+# docs, several of which hold API keys. Local-only, never publish.
+*.gdoc
 
 # mkcert-generated dev certs — per-machine, regenerate via tools/gen-dev-cert
 certs/
+# TLS certs and private keys (mkcert output at repo root, etc.) — a .pem
+# key is a secret; must never be committed.
+*.pem
 
 # Personal working notebooks — kept local, not part of the public repo.
 NEXT_STEPS.md
