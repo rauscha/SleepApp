@@ -48,6 +48,18 @@ jobs:
       # somehow. vite.config.ts already has base: '/SleepApp/' so the
       # output is GH-Pages-ready with no extra flags.
       - name: Build
+        # Only the ElevenLabs *voice IDs* are injected here. Voice IDs are
+        # not secrets — they're opaque identifiers, useless without an API
+        # key. API keys are deliberately NOT passed: anything Vite sees at
+        # build time gets baked into the public JS bundle, so keys would
+        # leak. The app reads keys at runtime from localStorage/settings
+        # (bring-your-own-key), never from the deployed bundle.
+        env:
+          VITE_VOICE_HUSH: bgU7lBMo69PNEOWHFqxM
+          VITE_VOICE_EMBER: gc5LArFpEOmYx9nYmK9l
+          VITE_VOICE_GLEN: UmQN7jS1Ee8B1czsUtQh
+          VITE_VOICE_TIDE: jv41DhCf464zw0TI7I1w
+          VITE_VOICE_STONE: oae6GCCzwoEbfc5FHdEu
         run: npm run build
 
       # Pages expects a single artifact named "github-pages". The official
