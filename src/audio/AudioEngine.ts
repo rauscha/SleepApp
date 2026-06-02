@@ -8,6 +8,7 @@
 import { MasterBus } from './MasterBus';
 import { SilentKeepAlive } from './silentKeepAlive';
 import type { Layer } from './types';
+import { recordEvent } from '../diagnostics/lifecycleLog';
 
 export type EngineEvent =
   | { kind: 'state'; state: AudioContextState }
@@ -49,7 +50,16 @@ export class AudioEngine {
     this.ctx = ctx;
     this.masterBus = new MasterBus(ctx);
     this.installVisibilityHandler();
+    // Log AudioContext state transitions directly from the engine, so they
+    // land in the lifecycle log regardless of which screen is mounted. This
+    // is the load-bearing signal for diagnosing "audio dies in background"
+    // — a Signal text grabbing audio focus, the OS interrupting the
+    // context, etc., all surface here as suspended/running transitions.
+    // Also record the initial state at context creation so the log
+    // includes the starting point for every session.
+    recordEvent('audio-state', ctx.state);
     ctx.addEventListener('statechange', () => {
+      recordEvent('audio-state', ctx.state);
       this.emit({ kind: 'state', state: ctx.state });
     });
     return ctx;

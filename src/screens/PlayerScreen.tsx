@@ -189,17 +189,10 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     return () => exitFullscreenSafe();
   }, []);
 
-  // Subscribe to AudioContext state changes for the lifecycle log. The
-  // engine emits 'state' events for running/suspended/closed transitions —
-  // critical signal when diagnosing an overnight stall (did the context
-  // get suspended? did it close?).
-  useEffect(() => {
-    const off = engine.addListener((e) => {
-      if (e.kind === 'state') recordEvent('audio-state', e.state);
-    });
-    recordEvent('audio-state', engine.state);
-    return off;
-  }, [engine]);
+  // AudioContext state-change logging moved into AudioEngine itself so it
+  // captures transitions from any screen (including ContentPlayerScreen
+  // where the screen-level listener used to be a blind spot). See
+  // AudioEngine.ensureContext.
 
   // Sleep timer — auto-start from the user's default if one is set.
   const [timer, setTimer] = useState<TimerMode>(() => {

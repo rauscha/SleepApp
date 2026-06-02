@@ -20,6 +20,7 @@ import {
 } from '../audio/mediaSession';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { startSwKeepAlive, stopSwKeepAlive } from '../serviceWorker/keepAlive';
+import { recordEvent } from '../diagnostics/lifecycleLog';
 import { getSetting, setSetting } from '../storage';
 
 export interface ContentPlayerScreenProps {
@@ -214,9 +215,15 @@ export function ContentPlayerScreen({
     if (!keepAudioFocusAlive) return;
     engine.startKeepAlive();
     startSwKeepAlive();
+    // Mirror the PlayerScreen pattern so story/meditation sessions show up
+    // in the lifecycle log alongside scene sessions. Without this, a story
+    // playback session is invisible to diagnostics — which is exactly what
+    // we hit when trying to read the Signal-interruption incident.
+    recordEvent('keepalive-start', 'content');
     return () => {
       engine.stopKeepAlive();
       stopSwKeepAlive();
+      recordEvent('keepalive-stop', 'content');
     };
   }, [keepAudioFocusAlive, engine]);
 
