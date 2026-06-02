@@ -27,6 +27,10 @@ ACR-photos/
 elevenlabs.txt
 anthropic.txt
 *.secret.txt
+# Scratch docs that may hold pasted keys (Google Drive "Untitled document"
+# exports, etc.) — never commit these.
+Untitled*.txt
+untitled*.txt
 
 # mkcert-generated dev certs — per-machine, regenerate via tools/gen-dev-cert
 certs/
