@@ -253,6 +253,13 @@ export function ContentPlayerScreen({
     }
   }, [state]);
 
+  /** Stop narration + bed scene immediately and return to Library. */
+  const handleStopAll = useCallback(() => {
+    howlRef.current?.stop();
+    coordinator.stopScene();
+    onBack();
+  }, [coordinator, onBack]);
+
   const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const h = howlRef.current;
     if (!h) return;
@@ -266,15 +273,26 @@ export function ContentPlayerScreen({
   return (
     <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-6 py-8 min-h-full">
       <header className="mb-8">
-        <button
-          onClick={onBack}
-          className="ui-label text-stone-400 hover:text-stone-200
-                     transition-colors duration-slow mb-6 block px-2 py-2"
-          style={{ minHeight: 44, minWidth: 44 }}
-          aria-label="Back to Library"
-        >
-          ← Library
-        </button>
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={onBack}
+            className="ui-label text-stone-400 hover:text-stone-200
+                       transition-colors duration-slow px-2 py-2"
+            style={{ minHeight: 44, minWidth: 44 }}
+            aria-label="Back to Library"
+          >
+            ← Library
+          </button>
+          <button
+            onClick={handleStopAll}
+            className="ui-label text-stone-400 hover:text-stone-100
+                       transition-colors duration-slow px-2 py-2"
+            style={{ minHeight: 44, minWidth: 44 }}
+            aria-label="Stop all audio"
+          >
+            ■ Stop
+          </button>
+        </div>
         <h1 className="font-serif text-stone-50 text-3xl leading-tight mb-2">
           {title}
         </h1>
