@@ -1,51 +1,45 @@
 # Session hand-off — 2026-06-03 (machine: desktop)
 
 ## STATE (read this first)
-- Branch: `main`, synced with `origin/main` at `d41f4ce`. Ahead/behind 0/0.
-- Working tree clean. No untracked project files (mkcert scripts + reviews/ are
-  now gitignored — cleaned up this session).
-- Tests 116/116 green; `npm run typecheck` clean.
-- **2 commits this session, pushed.** Both are diagnostic / housekeeping.
+- Branch: `main`, synced with `origin/main` at `0318e5f`. Ahead/behind 0/0.
+- Working tree clean. Tests 116/116 green; `npm run typecheck` clean.
+- **3 commits this session, pushed.** App is functionally complete for daily
+  personal use — all 8 scenes have card photos, story titles come from Claude,
+  stop-all is one tap.
 
 ## Done this session
-- **AudioContext state-change logging moved into the engine (`555270c`).** The
-  lifecycle log now captures every `running ↔ suspended` transition regardless
-  of which screen is mounted. Also added `keepalive-start/stop` logging to
-  ContentPlayerScreen, which was previously invisible in the log — so story and
-  meditation sessions will now appear. This was triggered by the Signal-text
-  interruption report (audio cut out, came back ~30 s, died again).
-- **Gitignored local mkcert scripts + reviews/ dir (this hand-off's commit).**
-  `go.js`, `go.vbs`, `mkcert-go.bat`, `run-mkcert.bat`, `setup-mkcert.bat`,
-  `reviews/` — were untracked personal files; now properly ignored so they stop
-  cluttering `git status`.
-
-## What we learned about the Signal bug
-Signal grabbed Android audio focus → bed continued ~30 s (one pre-buffered
-iteration in the FileLayer 3-deep pipeline) → then silence. The new
-audio-state logging will capture the `suspended`/`running` transitions so the
-next repro gives us a precise event sequence rather than a guess.
+- **Singing-bowl card photo (`424a091`).** Petr Sidorov photo from Unsplash
+  (photo-1627764627459-ba29d6051fe0). Downloaded at 1200×800, wired into
+  `sceneBackground.ts`. All 8 scenes now have curated card photos.
+- **Story title generation from Claude (`daaa2b2`).** `STORY_SYSTEM_PROMPT`
+  now asks Claude to prefix output with `<title>2–5 word title</title>`.
+  `callClaude()` parses and strips the tag; title goes to metadata, clean
+  script goes to ElevenLabs. Falls back to `deriveTitle(theme)` if tag is
+  absent. 52/52 tests still green.
+- **Stop-all button in ContentPlayerScreen (`0318e5f`).** Header now has
+  `← Library` (left) and `■ Stop` (right). `■ Stop` cuts narration + bed
+  scene immediately and returns to Library. `← Library` still leaves the
+  bed running as before.
+- **Signal interruption investigation dropped** (user decision — edge case
+  not worth pursuing for a personal app). Removed from next-up list.
 
 ## Next up
-1. **Reproduce the Signal interruption with v7 + new logging, then paste the
-   lifecycle log.** Clear the log first (Settings → Diagnostics → Clear). The
-   key sequence to look for: `audio-state suspended` when Signal lands,
-   `audio-state running` when Signal closes, then either another `suspended`
-   ~30 s later (context-side death) or nothing (pipeline-drain — buffer just
-   empties). That answer drives the fix.
-2. **Fix the FileLayer pipeline-drain / AudioContext-interrupt recovery** once
-   the log confirms which it is. Recovery fix (cheaper): subscribe to
-   `AudioContext.onstatechange`, rebuild the lookahead on return to `running`.
-3. **Coordinator-owned wake lock** (residual wake-lock gap — lower priority,
-   doesn't block the above).
-4. **Device-test all three bed/story items** (still pending from the 2026-06-01
-   hand-off — see PENDING-DECISIONS.md #1). The new logging helps here too.
+1. **Wire in the new story** the user generated today — once it finishes,
+   open Library → confirm title looks right (should be a short Claude title,
+   not the raw prompt). No code work needed unless something's wrong.
+2. **Device test** one overnight pass: story-gen sleep fix, content
+   backgrounds, background slider keep-alive. Smallest red flag is most
+   informative — just flag symptoms, don't self-diagnose.
+3. **Coordinator wake-lock gap** (low priority) — if you back out of
+   ContentPlayerScreen while a story-style bed is still running, the
+   Library/Tonight screens don't own a wake lock. Fix when convenient.
+4. **Phase 5** (PWA, iOS device test, perf) — explicitly deferred.
 
 ## Watch out for
-- The three commits above `555270c` (`547ce13`, `4cbfdc0`, `d41f4ce`) are from
-  a separate session earlier today (gitignore + CI voice IDs). All clean, all
-  pushed. Not related to the audio work.
-- **No CACHE_VERSION bump** — both commits this session are code/config only.
-  Vite content-hashes the bundle; cold online launch picks up new code
-  automatically.
-- Worktree / refs litter unchanged. `git worktree list` shows only `main`.
-  Drive permission-denied spam on commit is cosmetic — safe = pushed on main.
+- The story the user was generating mid-session used the **old code** (no
+  title tag). Its title will be the raw theme text. That's expected — only
+  stories generated after `daaa2b2` get a Claude title.
+- No CACHE_VERSION bump needed — both code commits are JS bundle changes;
+  Vite content-hashes those automatically.
+- Worktree / refs litter unchanged. GDrive permission-denied spam on commit
+  is cosmetic. Safe = pushed on main.
