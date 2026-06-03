@@ -94,7 +94,9 @@ Rules:
 - No alarms. No traffic. No urgent tasks. No emotional drama.
 - Use second person ("you walk through…") for grounding.
 
-Output ONLY the story text. No title, no preamble, no quotation marks.`;
+Output in this exact format — title tag first, story immediately after, nothing else:
+<title>2–5 word evocative title, title case</title>
+[story text, no blank line after the tag, no preamble, no quotation marks]`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -169,7 +171,10 @@ export function makeStoryId(now = Date.now(), rand = Math.random()): string {
 }
 
 /** Build the StoryMetadata object that will be persisted. Pulled out so
- *  tests can verify shape without running the full generation pipeline. */
+ *  tests can verify shape without running the full generation pipeline.
+ *
+ *  Pass `title` to use a caller-provided title (e.g. one returned by
+ *  Claude); omit it to fall back to `deriveTitle(theme)`. */
 export function buildStoryMetadata(args: {
   id: string;
   theme: string;
@@ -177,10 +182,12 @@ export function buildStoryMetadata(args: {
   script: string;
   sceneId?: string | null;
   createdAt?: string;
+  /** Optional explicit title. Overrides the deriveTitle(theme) fallback. */
+  title?: string;
 }): StoryMetadata {
   return {
     id: args.id,
-    title: deriveTitle(args.theme),
+    title: args.title ?? deriveTitle(args.theme),
     theme: args.theme,
     voiceId: args.voiceName,
     createdAt: args.createdAt ?? new Date().toISOString(),
@@ -298,7 +305,7 @@ export async function generateStory(
 
   // --- Step 1: Write the script with Claude ---
   onProgress?.({ stage: 'writing', message: 'Writing script with Claude…' });
-  const script = await callClaude(anthropicApiKey, theme, signal);
+  const { title: claudeTitle, script } = await callClaude(anthropicApiKey, theme, signal);
 
   // --- Step 2: Synthesize audio with ElevenLabs ---
   onProgress?.({
@@ -324,6 +331,9 @@ export async function generateStory(
     voiceName,
     script,
     sceneId: sceneId ?? null,
+    // Use Claude's title if it returned one; fall back to deriveTitle(theme)
+    // so the behaviour is unchanged if the tag is absent.
+    title: claudeTitle || undefined,
   });
 
   await saveStory(meta);
@@ -488,11 +498,23 @@ export async function fetchWithTimeout(
   }
 }
 
+/** Parse the `<title>…</title>` tag from Claude's response.
+ *  Returns the title string and the story script with the tag stripped.
+ *  Falls back gracefully: if no tag is present, title is empty and the
+ *  full text is returned as-is so the caller can use deriveTitle(theme). */
+function parseClaudeResponse(raw: string): { title: string; script: string } {
+  const match = raw.match(/^<title>([\s\S]*?)<\/title>\s*/);
+  if (match) {
+    return { title: match[1].trim(), script: raw.slice(match[0].length) };
+  }
+  return { title: '', script: raw };
+}
+
 async function callClaude(
   apiKey: string,
   theme: string,
   signal?: AbortSignal
-): Promise<string> {
+): Promise<{ title: string; script: string }> {
   const res = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     signal,
@@ -526,7 +548,7 @@ async function callClaude(
   };
   const text = data.content.find((b) => b.type === 'text')?.text ?? '';
   if (!text) throw new Error('Claude returned an empty response.');
-  return text;
+  return parseClaudeResponse(text);
 }
 
 async function callElevenLabs(
