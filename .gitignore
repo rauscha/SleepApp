@@ -51,3 +51,16 @@ USER_TODO.md
 # Diagnostic clip-scrubber page (audio QA tool, served by dev server only —
 # must never ship to the public build). Throwaway; regenerate as needed.
 public/scrub/
+
+# Local mkcert helper scripts — per-machine convenience scripts for
+# generating dev TLS certs. Not project code; regenerate as needed.
+go.js
+go.vbs
+go.bat
+mkcert-go.bat
+run-mkcert.bat
+setup-mkcert.bat
+
+# Local reviews/ directory — output from deep-review sessions, personal
+# audit notes, spectrogram dumps, etc. Not shipped code.
+reviews/

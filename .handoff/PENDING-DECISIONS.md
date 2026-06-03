@@ -1,63 +1,60 @@
 # Pending decisions
 
 Items waiting on your input or queued for the next session.
-Refreshed 2026-06-01.
+Refreshed 2026-06-03.
 
-## 1. Device-test EVERYTHING in one overnight pass on v7 — TOP PRIORITY
-This consolidates three queued device tests into a single overnight run,
-since each one only confirms its part of "audio survives the night":
+## 1. Read the lifecycle log after the next Signal interruption — TOP PRIORITY
+Clear the log first (Settings → Diagnostics → Clear), then reproduce the
+Signal-text audio-kill and paste the log here. The new logging (`555270c`)
+now captures AudioContext state changes from the engine regardless of screen,
+so the event sequence will look something like:
 
-- **Story-gen sleep fix** (`52ec0cc`, 2026-05-31). Generate a story, let
-  the screen sleep mid-run. Should stay awake and finish; if it ever
-  fails, you get a friendly retry message, not a 20-min silent hang.
-- **Content backgrounds + singing-bowl bed** (`cd48c24` + `b766f8b`,
-  2026-05-31). Tap a bundled story (seaside-village or night-train): bed
-  fades in under the narration, narration ends, **bed keeps playing with
-  no dead air**, backing out to Library leaves it running. Tap a
-  meditation: the singing-bowl bed plays underneath and stops with the
-  meditation (intentionally different from stories). PWA installs cleanly.
-- **NEW: Background slider + bed-keeps-alive fix** (`67eaabf`,
-  2026-06-01). The big one. Fall asleep to a story on the player screen;
-  bed should still be playing in the morning (not silent). Adjust the
-  Background slider during the story — does 50% feel right? Slide further
-  if not; the value persists.
-- Smallest red flag is most informative — flag the symptom, don't
-  self-diagnose.
+```
+keepalive-start  (content)        ← story starts
+audio-state      running
+visibility-hidden                 ← switch to Signal
+audio-state      suspended        ← Signal grabs focus  ← NEW
+audio-state      running          ← Signal closes
+audio-state      suspended        ← ~30s later?  ← NEW (or absent = pipeline-drain)
+```
 
-## 2. Residual wake-lock gap (follow-up commit, not blocking #1)
-If you back out of ContentPlayerScreen while a story-style continue-bed
-is still running, Library/Tonight don't own a wake lock, so the bed
-eventually suspends. Common case is "fell asleep on the player screen,"
-which `67eaabf` covers; this is the rarer "started a story, backed out
-to Library, fell asleep there." Proper fix is coordinator-owned
-keep-alive (engages whenever the coordinator has a current scene,
-independent of which screen is mounted). Queue for a quiet session.
+If the second `suspended` appears → fix is AudioContext recovery (rebuild
+pipeline on resume). If absent → fix is FileLayer pipeline-drain recovery
+(reschedule stale pre-buffered iterations after context resumes).
 
-## 3. ~~Singing-bowl bed for meditations~~ — DONE + pushed
-*(`b766f8b`, pushed 2026-05-31. Verification folded into #1.)*
+## 2. Device-test all three bed/story items (was #1, still pending)
+One overnight pass covers:
+- Story-gen sleep fix (`52ec0cc`): generate a story, screen sleeps mid-run —
+  should finish without hanging.
+- Content backgrounds + singing-bowl bed (`cd48c24` + `b766f8b`): bundled
+  story plays bed underneath; bed continues after narration ends; back-out
+  leaves bed running. Meditation bed stops with the meditation.
+- Background slider + bed-keeps-alive (`67eaabf`): fall asleep to a story —
+  bed should still be playing in the morning. Is 50% the right slider default?
+Smallest red flag is most informative — flag the symptom, don't self-diagnose.
 
-## 4. ~~Content backgrounds (stories)~~ — DONE
-*(`cd48c24`. Verification folded into #1.)*
+## 3. Residual wake-lock gap (follow-up commit, not blocking above)
+If you back out of ContentPlayerScreen while a story-style continue-bed is
+still running, Library/Tonight don't own a wake lock. Fix: coordinator-owned
+keep-alive that engages whenever the coordinator has a current scene,
+independent of which screen is mounted. Queue for a quiet session.
 
-## 5. ~~Secondary-button consolidation~~ — DONE
-*(`2048d9a`. Three-tier button system documented in DECISIONS.md.)*
+## 4. ~~Singing-bowl bed for meditations~~ — DONE
+## 5. ~~Content backgrounds (stories)~~ — DONE
+## 6. ~~Secondary-button consolidation~~ — DONE
 
-## 6. Litter to clear during "deferred clean-up work" (low priority)
-- **Worktree dirs**: `.git/worktrees/` + `.claude/worktrees/` can't be
-  deleted (Drive holds handles), so every git op prints ~16 "Permission
-  denied" lines. `git worktree list` shows only main — cosmetic.
-- **Remote-tracking refs bloated to ~1000** (mostly duplicate
-  `origin/main`) from the same Drive-handle chaos during fetches.
-  `git branch -a` floods. Cosmetic; doesn't affect push/pull of main.
+## 7. Litter to clear during "deferred clean-up work" (low priority)
+- **Worktree dirs**: `.git/worktrees/` can't be deleted (Drive holds handles)
+  — every git op prints ~16 "Permission denied" lines. Cosmetic.
+- **Remote-tracking refs bloated** to ~1000 duplicate `origin/main` entries.
+  `git branch -a` floods. Cosmetic; push/pull of main unaffected.
 - **3 stray local branches** (`claude/objective-kirch-e41ce1`,
   `claude/optimistic-khayyam-1e864b`, `backup/pre-rebase-2026-05-30`),
   all 0 commits ahead of main — safe to delete.
-- To clean (only when you say "deferred clean-up work"): pause Drive sync,
-  then `git worktree prune`, `rm -rf .claude/worktrees/* .git/worktrees/*`,
-  `git remote prune origin` / repack refs, delete the stray branches, and
-  confirm `git worktree list` + `git branch -a` are healthy.
+- To clean: only when you say "deferred clean-up work" — pause Drive sync,
+  `git worktree prune`, `rm -rf .claude/worktrees/* .git/worktrees/*`,
+  `git remote prune origin`, delete stray branches.
 
-## 7. Cleanup chore (whenever)
+## 8. Cleanup chore (whenever)
 - `rm public/meditations/*.pre-loudnorm.mp3 public/stories/*.pre-loudnorm.mp3`
-  — gitignored loudnorm backups, safe to delete now that loudness is
-  validated.
+  — gitignored loudnorm backups, safe to delete.
