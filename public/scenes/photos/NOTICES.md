@@ -10,6 +10,7 @@ license does not strictly require it.
 | monsoon          | monsoon.jpg           | Daniel Lerman       | Unsplash — Unsplash License (free use)    |
 | ocean-night      | ocean-night.jpg       | Joakim Honkasalo    | Unsplash — Unsplash License (free use)    |
 | fireplace        | fireplace.jpg         | Elisabeth Arnold    | Unsplash — Unsplash License (free use)    |
+| singing-bowl     | singing-bowl.jpg      | Petr Sidorov        | Unsplash — Unsplash License (free use) — photo-1627764627459-ba29d6051fe0 |
 
 Earlier photos (forest-day, forest-night, rain-on-window) predate this file;
 sources to be backfilled here when known. The original fireplace photo was a
