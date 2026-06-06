@@ -743,8 +743,15 @@ async function callElevenLabs(
   signal?: AbortSignal,
   outputFormat = 'mp3_44100_128'
 ): Promise<ArrayBuffer> {
+  // output_format is a QUERY parameter on this endpoint, not a body field.
+  // ElevenLabs silently ignores an unknown body key, so passing it in the
+  // JSON body returns the default (mp3_44100_128) regardless of what we
+  // asked for. The chunked path then reinterprets those MP3 bytes as raw
+  // PCM and the result is pure noise. It must go on the URL.
+  const url = new URL(`${ELEVENLABS_BASE}/v1/text-to-speech/${voiceId}`);
+  url.searchParams.set('output_format', outputFormat);
   const res = await fetchWithTimeout(
-    `${ELEVENLABS_BASE}/v1/text-to-speech/${voiceId}`,
+    url.toString(),
     {
       method: 'POST',
       signal,
@@ -755,7 +762,6 @@ async function callElevenLabs(
       body: JSON.stringify({
         text,
         model_id: 'eleven_multilingual_v2',
-        output_format: outputFormat,
         // Voice settings revised 2026-05-28. Mirrors tools/gen-story.ts.
         //   stability:0.70 — practitioner consensus for long-form
         //                    narration (0.6–0.8). Higher values
@@ -787,6 +793,20 @@ async function callElevenLabs(
     throw new Error(
       `ElevenLabs API error ${res.status} (script ${text.length} chars): ${body.slice(0, 200)}`
     );
+  }
+
+  // Guard against the silent-noise failure mode: if we asked for raw PCM
+  // but the server handed back MP3 (e.g. the param was dropped, or the plan
+  // tier doesn't support the format), the caller would wrap compressed
+  // bytes in a PCM/WAV header and produce noise. Fail loudly instead.
+  if (outputFormat.startsWith('pcm')) {
+    const ct = res.headers.get('content-type') ?? '';
+    if (/mpeg|mp3/i.test(ct)) {
+      throw new Error(
+        `ElevenLabs returned ${ct} when ${outputFormat} was requested — ` +
+          `cannot treat MP3 as raw PCM. Check the account's supported output formats.`
+      );
+    }
   }
 
   return res.arrayBuffer();

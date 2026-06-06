@@ -463,13 +463,28 @@ describe('callElevenLabsChunked', () => {
     expect(buf.byteLength).toBe(44 + 8 * 2);
 
     // Each request hits the standard TTS endpoint with correct params.
+    // output_format is a QUERY parameter — ElevenLabs ignores it in the body,
+    // so asserting it on the URL is what actually protects the PCM path.
     for (const [url, init] of fetchMock.mock.calls) {
       expect(url).toContain('/v1/text-to-speech/voice-1');
+      expect(url).toContain('output_format=pcm_22050');
       const body = JSON.parse((init as RequestInit).body as string);
       expect(body.model_id).toBe('eleven_multilingual_v2');
-      expect(body.output_format).toBe('pcm_22050');
+      // Must NOT be in the body — that's the silent-noise bug.
+      expect(body.output_format).toBeUndefined();
       expect(typeof body.text).toBe('string');
     }
+  });
+
+  it('throws instead of producing noise when PCM was requested but MP3 returned', async () => {
+    const p = 'x'.repeat(3000);
+    const script = `${p}\n\n${p}`;
+    // Server ignored the format and handed back MP3 — must fail loudly.
+    fetchMock.mockResolvedValue(mp3Response([0xff, 0xfb, 0x90, 0x00]));
+
+    await expect(
+      callElevenLabsChunked('key', 'voice-1', script)
+    ).rejects.toThrow(/cannot treat MP3 as raw PCM/);
   });
 
   it('WAV header encodes the correct sample rate', async () => {
@@ -660,7 +675,7 @@ describe('synthesizeStoryAudio dispatcher', () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect((fetchMock.mock.calls[0][0] as string)).toMatch(
-      /\/v1\/text-to-speech\/v$/
+      /\/v1\/text-to-speech\/v\?output_format=mp3_44100_128$/
     );
     // Short-script path is MP3 (no normalization needed for a single call)
     expect(result.mimeType).toBe('audio/mpeg');
@@ -705,7 +720,7 @@ describe('synthesizeStoryAudio dispatcher', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     for (const [url] of fetchMock.mock.calls) {
-      expect(url).toMatch(/\/v1\/text-to-speech\/v$/);
+      expect(url).toMatch(/\/v1\/text-to-speech\/v\?output_format=pcm_22050$/);
     }
     // Chunked path returns WAV
     expect(result.mimeType).toBe('audio/wav');
