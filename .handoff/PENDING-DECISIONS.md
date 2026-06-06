@@ -1,7 +1,12 @@
 # Pending decisions
 
 Items waiting on your input or queued for the next session.
-Refreshed 2026-06-03.
+Refreshed 2026-06-06.
+
+## 0. Regenerate "ancient library walk" (immediate — do this first)
+The story in IndexedDB was generated with the old code (raw MP3 concat, no
+normalization) and has a volume spike baked in at ~5-6 min. Delete it from
+Library and regenerate. The new version will be PCM-normalized WAV and safe.
 
 ## 1. Device-test all three bed/story items (still pending)
 One overnight pass covers:
