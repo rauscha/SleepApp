@@ -79,6 +79,35 @@ export const DOWNLOAD_TIMEOUT_MS = 5 * 60 * 1000;
 
 const ELEVENLABS_BASE = 'https://api.elevenlabs.io';
 
+/** ElevenLabs output_format for the chunked TTS path.
+ *
+ *  Requesting raw PCM instead of MP3 lets us do per-chunk RMS normalization
+ *  using only arithmetic — no decode/re-encode library required in the browser.
+ *  22050 Hz mono is more than adequate for voice (Nyquist at 11025 Hz covers
+ *  all intelligibility bands and ElevenLabs' actual voice bandwidth).
+ *
+ *  Storage overhead vs MP3: ~3× larger files (WAV is uncompressed). For a
+ *  personal library of a handful of generated stories in IndexedDB this is
+ *  acceptable — a 17-min story is ~45 MB vs ~15 MB for MP3.
+ *
+ *  Why this matters: without per-chunk normalization the raw byte-concat of
+ *  multiple TTS calls can have 10+ dB level jumps at paragraph seams — enough
+ *  to startle a listener awake. The CLI tool (gen-story.ts) avoids this by
+ *  running ffmpeg loudnorm on the finished file; the browser has no ffmpeg, so
+ *  PCM + RMS normalization is the equivalent. */
+export const CHUNK_OUTPUT_FORMAT = 'pcm_22050';
+export const CHUNK_SAMPLE_RATE = 22050;
+
+/** Target RMS (as fraction of Int16 full-scale) for per-chunk normalization.
+ *  0.08 ≈ −22 dBFS RMS — comfortable narration level. Loud chunks are pulled
+ *  down; quiet chunks are brought up (subject to MAX_CHUNK_GAIN). */
+export const NORM_TARGET_RMS = 0.08;
+
+/** Maximum linear gain applied to a quiet chunk.
+ *  4.0 ≈ +12 dB — high enough to raise soft drift sections without amplifying
+ *  noise floor from mostly-silent pause chunks into audible hiss. */
+export const NORM_MAX_GAIN = 4.0;
+
 // ---------------------------------------------------------------------------
 // Prompts
 
@@ -286,6 +315,145 @@ export function isProjectsEnabled(): boolean {
   return raw.toLowerCase() !== 'false';
 }
 
+/** Return type for synthesizeStoryAudio.
+ *  Chunked TTS produces WAV (PCM + RIFF header, normalized).
+ *  Projects / short-script paths produce MP3 (single ElevenLabs file). */
+export interface SynthesizedAudio {
+  data: ArrayBuffer;
+  mimeType: 'audio/mpeg' | 'audio/wav';
+}
+
+// ---------------------------------------------------------------------------
+// PCM normalization helpers (chunked TTS path)
+
+/** Build a minimal 44-byte RIFF/WAV header for mono 16-bit PCM.
+ *  Prepend this to raw Int16 sample bytes to produce a valid .wav file. */
+export function buildWavHeader(numSamples: number, sampleRate: number): ArrayBuffer {
+  const byteRate = sampleRate * 2; // mono, 16-bit = 2 bytes/sample
+  const dataSize = numSamples * 2;
+  const buf = new ArrayBuffer(44);
+  const view = new DataView(buf);
+  const u8 = new Uint8Array(buf);
+
+  const w = (offset: number, s: string) => {
+    for (let i = 0; i < s.length; i++) u8[offset + i] = s.charCodeAt(i);
+  };
+
+  w(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);   // file size - 8
+  w(8, 'WAVE');
+  w(12, 'fmt ');
+  view.setUint32(16, 16, true);             // PCM fmt chunk size
+  view.setUint16(20, 1, true);              // audio format: PCM
+  view.setUint16(22, 1, true);              // channels: mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, 2, true);              // block align
+  view.setUint16(34, 16, true);             // bits per sample
+  w(36, 'data');
+  view.setUint32(40, dataSize, true);
+
+  return buf;
+}
+
+/** Compute RMS of a 16-bit PCM chunk, normalized to [0, 1] range.
+ *  Returns 0 for an empty array. */
+export function computeRms(samples: Int16Array): number {
+  if (samples.length === 0) return 0;
+  let sumSq = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const s = (samples[i] as number) / 32768;
+    sumSq += s * s;
+  }
+  return Math.sqrt(sumSq / samples.length);
+}
+
+/** Per-chunk RMS normalization — the browser-side equivalent of ffmpeg loudnorm.
+ *
+ *  Each ElevenLabs TTS chunk can be rendered at a wildly different level.
+ *  Byte-concatenating raw chunks produces sudden 10+ dB jumps at paragraph
+ *  seams. This function:
+ *   1. Computes the RMS of each chunk.
+ *   2. Sets a target RMS = median of the voiced-chunk RMSes (median is robust
+ *      against one outlier paragraph skewing the target).
+ *   3. Applies a per-chunk gain = min(targetRms / chunkRms, maxGain) so every
+ *      chunk lands near the same loudness level.
+ *   4. Clamps samples to Int16 range after scaling.
+ *   5. Does a final peak-safety pass: if any sample exceeds 0.95 × full scale,
+ *      scales the whole buffer down to prevent clipping.
+ *   6. Returns the normalized samples concatenated into one Int16Array.
+ *
+ *  Chunks with RMS < 0.001 are treated as silence and left at unity gain to
+ *  avoid amplifying a near-zero noise floor into audible hiss. */
+export function normalizePcmChunks(
+  chunks: Int16Array[],
+  targetRmsFraction = NORM_TARGET_RMS,
+  maxGain = NORM_MAX_GAIN
+): Int16Array {
+  if (chunks.length === 0) return new Int16Array(0);
+
+  const SILENCE_THRESHOLD = 0.001;
+
+  // Step 1: RMS per chunk
+  const rmsValues = chunks.map(computeRms);
+
+  // Step 2: median of voiced chunks
+  const voiced = rmsValues.filter((r) => r > SILENCE_THRESHOLD).sort((a, b) => a - b);
+  let targetRms: number;
+  if (voiced.length === 0) {
+    // All silence — just concatenate as-is
+    const total = chunks.reduce((n, c) => n + c.length, 0);
+    const out = new Int16Array(total);
+    let off = 0;
+    for (const c of chunks) { out.set(c, off); off += c.length; }
+    return out;
+  }
+  const mid = Math.floor(voiced.length / 2);
+  targetRms =
+    voiced.length % 2 === 0
+      ? ((voiced[mid - 1] as number) + (voiced[mid] as number)) / 2
+      : (voiced[mid] as number);
+  // Cap the target at the caller-supplied fraction so we don't amplify
+  // an already-correct quiet narration up toward an arbitrary ceiling.
+  targetRms = Math.min(targetRms, targetRmsFraction);
+
+  // Step 3: per-chunk gain
+  const gains = rmsValues.map((rms) => {
+    if (rms < SILENCE_THRESHOLD) return 1.0;
+    return Math.min(targetRms / rms, maxGain);
+  });
+
+  // Steps 4 & 5: apply gain, clamp, concatenate
+  const totalSamples = chunks.reduce((n, c) => n + c.length, 0);
+  const out = new Int16Array(totalSamples);
+  let offset = 0;
+  for (let ci = 0; ci < chunks.length; ci++) {
+    const chunk = chunks[ci] as Int16Array;
+    const gain = gains[ci] as number;
+    for (let i = 0; i < chunk.length; i++) {
+      const scaled = Math.round((chunk[i] as number) * gain);
+      out[offset + i] = Math.max(-32768, Math.min(32767, scaled));
+    }
+    offset += chunk.length;
+  }
+
+  // Step 6: peak-safety pass (avoid clipping)
+  let maxAbs = 0;
+  for (let i = 0; i < out.length; i++) {
+    const abs = Math.abs(out[i] as number);
+    if (abs > maxAbs) maxAbs = abs;
+  }
+  const PEAK_CEILING = 31130; // ≈ 0.95 × 32767
+  if (maxAbs > PEAK_CEILING) {
+    const safeGain = PEAK_CEILING / maxAbs;
+    for (let i = 0; i < out.length; i++) {
+      out[i] = Math.round((out[i] as number) * safeGain);
+    }
+  }
+
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Entry point
 
@@ -314,7 +482,7 @@ export async function generateStory(
   });
   const voiceId = STORY_VOICE_IDS[voiceName] ?? STORY_VOICE_IDS['tide']!;
   const projectsFlag = useProjects ?? isProjectsEnabled();
-  const audioBuffer = await synthesizeStoryAudio({
+  const { data: audioBuffer, mimeType: audioMimeType } = await synthesizeStoryAudio({
     apiKey: elevenLabsApiKey,
     voiceId,
     text: script,
@@ -339,7 +507,7 @@ export async function generateStory(
   await saveStory(meta);
   await saveStoryAudio({
     id: meta.id,
-    mimeType: 'audio/mpeg',
+    mimeType: audioMimeType,
     data: audioBuffer,
     savedAt: new Date().toISOString(),
   });
@@ -366,10 +534,18 @@ interface SynthesizeArgs {
 /** Pick the right ElevenLabs path based on script length and the
  *  Projects flag. Short scripts always use the standard TTS endpoint
  *  (fastest, cheapest). Long scripts try Projects first when enabled,
- *  then fall back to chunked TTS if Projects errors. */
+ *  then fall back to chunked TTS if Projects errors.
+ *
+ *  Return value includes the MIME type because the two paths produce
+ *  different formats:
+ *   - Projects / short-script → 'audio/mpeg'  (single ElevenLabs MP3)
+ *   - Chunked TTS             → 'audio/wav'   (PCM normalized + RIFF header)
+ *
+ *  The caller stores the mimeType alongside the audio in IndexedDB so
+ *  LibraryScreen can create the correct Blob for playback. */
 export async function synthesizeStoryAudio(
   args: SynthesizeArgs
-): Promise<ArrayBuffer> {
+): Promise<SynthesizedAudio> {
   const {
     apiKey,
     voiceId,
@@ -390,7 +566,8 @@ export async function synthesizeStoryAudio(
   const cleaned = stripStoryMarkers(text);
 
   if (!isLongForm(cleaned)) {
-    return callElevenLabs(apiKey, voiceId, cleaned, signal);
+    const data = await callElevenLabs(apiKey, voiceId, cleaned, signal);
+    return { data, mimeType: 'audio/mpeg' };
   }
 
   if (useProjects) {
@@ -399,7 +576,7 @@ export async function synthesizeStoryAudio(
         stage: 'synthesizing',
         message: 'Long script — using ElevenLabs Projects…',
       });
-      return await callElevenLabsProjects(
+      const data = await callElevenLabsProjects(
         apiKey,
         voiceId,
         cleaned,
@@ -408,6 +585,7 @@ export async function synthesizeStoryAudio(
         projectsPollIntervalMs,
         projectsPollMaxMs
       );
+      return { data, mimeType: 'audio/mpeg' };
     } catch (err) {
       // Abort propagates as-is — the user pressed Cancel.
       if (err instanceof DOMException && err.name === 'AbortError') throw err;
@@ -419,7 +597,8 @@ export async function synthesizeStoryAudio(
     }
   }
 
-  return callElevenLabsChunked(apiKey, voiceId, cleaned, signal, onProgress);
+  const data = await callElevenLabsChunked(apiKey, voiceId, cleaned, signal, onProgress);
+  return { data, mimeType: 'audio/wav' };
 }
 
 /**
@@ -551,11 +730,18 @@ async function callClaude(
   return parseClaudeResponse(text);
 }
 
+/** Single-chunk ElevenLabs TTS call.
+ *
+ *  `outputFormat` defaults to MP3 for the short-script and Projects paths.
+ *  The chunked path passes `CHUNK_OUTPUT_FORMAT` ('pcm_22050') so each chunk
+ *  arrives as raw PCM, ready for arithmetic normalization without any decode
+ *  step. The Projects API ignores output_format (it always returns MP3). */
 async function callElevenLabs(
   apiKey: string,
   voiceId: string,
   text: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  outputFormat = 'mp3_44100_128'
 ): Promise<ArrayBuffer> {
   const res = await fetchWithTimeout(
     `${ELEVENLABS_BASE}/v1/text-to-speech/${voiceId}`,
@@ -569,6 +755,7 @@ async function callElevenLabs(
       body: JSON.stringify({
         text,
         model_id: 'eleven_multilingual_v2',
+        output_format: outputFormat,
         // Voice settings revised 2026-05-28. Mirrors tools/gen-story.ts.
         //   stability:0.70 — practitioner consensus for long-form
         //                    narration (0.6–0.8). Higher values
@@ -606,10 +793,23 @@ async function callElevenLabs(
 }
 
 /** Chunked-TTS path. Splits the script at paragraph boundaries, runs
- *  each piece through the standard TTS endpoint sequentially, and byte-
- *  concatenates the MP3 chunks. Sequential rather than parallel because
- *  ElevenLabs throttles concurrent requests on the Creator plan, and the
- *  user pays per character either way. */
+ *  each piece through the standard TTS endpoint sequentially, normalizes
+ *  per-chunk loudness, and returns a WAV-wrapped buffer.
+ *
+ *  Why PCM + WAV instead of MP3 + byte-concat:
+ *  The raw MP3 byte-concat approach worked structurally (decoders resync
+ *  at frame headers) but each ElevenLabs TTS call can render at a
+ *  different level — paragraph 1 quiet, paragraph 2 loud — producing
+ *  sudden volume spikes at seams. Fixing that requires modifying the
+ *  samples, which in turn requires either (a) a JS MP3 encoder library
+ *  or (b) storing uncompressed PCM. We choose (b): request pcm_22050
+ *  output from ElevenLabs, normalize per chunk with computeRms /
+ *  normalizePcmChunks, then wrap in a 44-byte RIFF header. The result
+ *  is stored as audio/wav; Howler plays WAV blobs fine with html5:true.
+ *
+ *  Sequential rather than parallel: ElevenLabs throttles concurrent
+ *  requests on the Creator plan, and the user pays per character either
+ *  way. */
 export async function callElevenLabsChunked(
   apiKey: string,
   voiceId: string,
@@ -620,16 +820,35 @@ export async function callElevenLabsChunked(
   const chunks = chunkScript(text);
   if (chunks.length === 0) throw new Error('Empty script — nothing to synthesize.');
 
-  const buffers: ArrayBuffer[] = [];
+  // Request raw PCM — each buffer is then a flat Int16Array of 22050 Hz
+  // mono samples, ready for arithmetic normalization.
+  const pcmChunks: Int16Array[] = [];
   for (let i = 0; i < chunks.length; i++) {
     onProgress?.({
       stage: 'synthesizing',
       message: `Synthesizing chunk ${i + 1} of ${chunks.length}…`,
     });
-    const buf = await callElevenLabs(apiKey, voiceId, chunks[i]!, signal);
-    buffers.push(buf);
+    const buf = await callElevenLabs(
+      apiKey, voiceId, chunks[i]!, signal, CHUNK_OUTPUT_FORMAT
+    );
+    // ElevenLabs pcm_22050 returns raw 16-bit signed little-endian samples.
+    pcmChunks.push(new Int16Array(buf));
   }
-  return concatArrayBuffers(buffers);
+
+  // Normalize per-chunk RMS so no seam has a jarring level jump, then
+  // concatenate into one Int16Array.
+  const normalized = normalizePcmChunks(pcmChunks);
+
+  // Wrap in a RIFF/WAV header so the browser's <audio> element can play it.
+  const header = buildWavHeader(normalized.length, CHUNK_SAMPLE_RATE);
+  const wavBuffer = new ArrayBuffer(header.byteLength + normalized.byteLength);
+  const wavView = new Uint8Array(wavBuffer);
+  wavView.set(new Uint8Array(header), 0);
+  wavView.set(
+    new Uint8Array(normalized.buffer, normalized.byteOffset, normalized.byteLength),
+    header.byteLength
+  );
+  return wavBuffer;
 }
 
 /** Projects API flow:

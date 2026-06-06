@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  CHUNK_SAMPLE_RATE,
   TTS_CHUNK_LIMIT,
   buildStoryMetadata,
+  buildWavHeader,
   callElevenLabsChunked,
   callElevenLabsProjects,
   chunkScript,
+  computeRms,
   concatArrayBuffers,
   countWords,
   deriveTitle,
@@ -13,6 +16,7 @@ import {
   isLongForm,
   isProjectsEnabled,
   makeStoryId,
+  normalizePcmChunks,
   synthesizeStoryAudio,
 } from './storyGenerator';
 
@@ -287,6 +291,105 @@ describe('isProjectsEnabled', () => {
 });
 
 // ---------------------------------------------------------------------------
+// PCM normalization helpers
+
+describe('buildWavHeader', () => {
+  it('produces a 44-byte buffer with RIFF/WAVE magic', () => {
+    const buf = buildWavHeader(1000, 22050);
+    expect(buf.byteLength).toBe(44);
+    const view = new DataView(buf);
+    // "RIFF"
+    expect(view.getUint32(0, false)).toBe(0x52494646);
+    // "WAVE"
+    expect(view.getUint32(8, false)).toBe(0x57415645);
+    // PCM format = 1
+    expect(view.getUint16(20, true)).toBe(1);
+    // mono
+    expect(view.getUint16(22, true)).toBe(1);
+    // sample rate
+    expect(view.getUint32(24, true)).toBe(22050);
+    // bits per sample
+    expect(view.getUint16(34, true)).toBe(16);
+    // data size = numSamples × 2
+    expect(view.getUint32(40, true)).toBe(1000 * 2);
+  });
+
+  it('encodes file size correctly', () => {
+    const numSamples = 500;
+    const buf = buildWavHeader(numSamples, 22050);
+    const view = new DataView(buf);
+    // ChunkSize = 36 + dataSize = 36 + 1000 = 1036
+    expect(view.getUint32(4, true)).toBe(36 + numSamples * 2);
+  });
+});
+
+describe('computeRms', () => {
+  it('returns 0 for empty array', () => {
+    expect(computeRms(new Int16Array(0))).toBe(0);
+  });
+
+  it('returns 0 for an all-zero array', () => {
+    expect(computeRms(new Int16Array([0, 0, 0, 0]))).toBe(0);
+  });
+
+  it('returns 1 for full-scale square wave', () => {
+    // All samples at 32767 → RMS = 32767/32768 ≈ 1
+    const samples = new Int16Array(100).fill(32767);
+    expect(computeRms(samples)).toBeCloseTo(1, 2);
+  });
+
+  it('is proportional to amplitude', () => {
+    const loud = new Int16Array([16000, -16000, 16000, -16000]);
+    const soft = new Int16Array([4000,  -4000,  4000,  -4000]);
+    const rmsLoud = computeRms(loud);
+    const rmsSoft = computeRms(soft);
+    expect(rmsLoud / rmsSoft).toBeCloseTo(4, 1);
+  });
+});
+
+describe('normalizePcmChunks', () => {
+  it('returns empty Int16Array for empty input', () => {
+    expect(normalizePcmChunks([]).length).toBe(0);
+  });
+
+  it('handles all-silent chunks without error', () => {
+    const silent = new Int16Array([0, 0, 0, 0]);
+    const out = normalizePcmChunks([silent, silent]);
+    expect(out.length).toBe(8);
+    for (let i = 0; i < out.length; i++) expect(out[i]).toBe(0);
+  });
+
+  it('concatenates samples from all chunks in order', () => {
+    // Use non-zero samples so normalization doesn't collapse them
+    const c1 = new Int16Array([1000, 2000]);
+    const c2 = new Int16Array([3000, 4000]);
+    const out = normalizePcmChunks([c1, c2]);
+    expect(out.length).toBe(4);
+  });
+
+  it('scales a loud chunk down toward a quiet one', () => {
+    // c1 is quiet, c2 is 8× louder. After normalization they should be closer.
+    const quiet = new Int16Array(100).fill(500);
+    const loud = new Int16Array(100).fill(4000);
+    const out = normalizePcmChunks([quiet, loud]);
+    const c1Rms = computeRms(new Int16Array(out.buffer, 0, 100));
+    const c2Rms = computeRms(new Int16Array(out.buffer, 200, 100));
+    // Ratio should be much less than the original 8:1
+    expect(c2Rms / c1Rms).toBeLessThan(5);
+  });
+
+  it('never produces samples outside Int16 range', () => {
+    const maxSamples = new Int16Array(100).fill(32000);
+    const minSamples = new Int16Array(100).fill(-32000);
+    const out = normalizePcmChunks([maxSamples, minSamples]);
+    for (let i = 0; i < out.length; i++) {
+      expect(out[i] as number).toBeGreaterThanOrEqual(-32768);
+      expect(out[i] as number).toBeLessThanOrEqual(32767);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Fetch-mocked API path tests
 
 type FetchMock = ReturnType<typeof vi.fn>;
@@ -296,6 +399,30 @@ function mp3Response(bytes: number[]): Response {
     status: 200,
     headers: { 'content-type': 'audio/mpeg' },
   });
+}
+
+/** Build a PCM response for chunked-TTS tests.
+ *  `samples` are Int16 values; the response carries raw little-endian bytes. */
+function pcmResponse(samples: number[]): Response {
+  const buf = new ArrayBuffer(samples.length * 2);
+  const view = new DataView(buf);
+  for (let i = 0; i < samples.length; i++) {
+    view.setInt16(i * 2, samples[i] as number, true);
+  }
+  return new Response(buf, {
+    status: 200,
+    headers: { 'content-type': 'audio/pcm' },
+  });
+}
+
+/** Return true if buf is a valid WAV file (has RIFF/WAVE magic + data). */
+function isValidWav(buf: ArrayBuffer): boolean {
+  if (buf.byteLength < 44) return false;
+  const view = new DataView(buf);
+  return (
+    view.getUint32(0, false) === 0x52494646 && // 'RIFF'
+    view.getUint32(8, false) === 0x57415645    // 'WAVE'
+  );
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -319,32 +446,48 @@ describe('callElevenLabsChunked', () => {
     vi.restoreAllMocks();
   });
 
-  it('runs one TTS call per chunk and concatenates the bytes', async () => {
+  it('runs one TTS call per chunk and returns a valid WAV buffer', async () => {
     // Build a script that fits in exactly two chunks.
     const p = 'x'.repeat(3000);
     const script = `${p}\n\n${p}`;
 
-    fetchMock.mockResolvedValueOnce(mp3Response([1, 2, 3]));
-    fetchMock.mockResolvedValueOnce(mp3Response([4, 5, 6]));
+    // Mock with PCM responses — 4 samples each (tiny but valid)
+    fetchMock.mockResolvedValueOnce(pcmResponse([1000, -1000, 2000, -2000]));
+    fetchMock.mockResolvedValueOnce(pcmResponse([3000, -3000, 4000, -4000]));
 
     const buf = await callElevenLabsChunked('key', 'voice-1', script);
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(Array.from(new Uint8Array(buf))).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(isValidWav(buf)).toBe(true);
+    // 4 + 4 = 8 samples total → data section = 16 bytes, total = 60 bytes
+    expect(buf.byteLength).toBe(44 + 8 * 2);
 
-    // Each request hits the standard TTS endpoint with the voice id.
+    // Each request hits the standard TTS endpoint with correct params.
     for (const [url, init] of fetchMock.mock.calls) {
       expect(url).toContain('/v1/text-to-speech/voice-1');
       const body = JSON.parse((init as RequestInit).body as string);
       expect(body.model_id).toBe('eleven_multilingual_v2');
+      expect(body.output_format).toBe('pcm_22050');
       expect(typeof body.text).toBe('string');
     }
+  });
+
+  it('WAV header encodes the correct sample rate', async () => {
+    const p = 'x'.repeat(3000);
+    const script = `${p}\n\n${p}`;
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(pcmResponse([100, -100]))
+    );
+
+    const buf = await callElevenLabsChunked('key', 'voice-1', script);
+    const view = new DataView(buf);
+    expect(view.getUint32(24, true)).toBe(CHUNK_SAMPLE_RATE);
   });
 
   it('surfaces a chunk failure with the script-length context', async () => {
     const p = 'x'.repeat(3000);
     const script = `${p}\n\n${p}`;
-    fetchMock.mockResolvedValueOnce(mp3Response([1, 2, 3]));
+    fetchMock.mockResolvedValueOnce(pcmResponse([100, -100]));
     fetchMock.mockResolvedValueOnce(
       new Response('quota exceeded', { status: 422 })
     );
@@ -360,7 +503,7 @@ describe('callElevenLabsChunked', () => {
     // Factory mock so each call gets a fresh Response body
     // (Response bodies can only be consumed once).
     fetchMock.mockImplementation(() =>
-      Promise.resolve(mp3Response([0]))
+      Promise.resolve(pcmResponse([0, 0]))
     );
 
     const steps: string[] = [];
@@ -509,7 +652,7 @@ describe('synthesizeStoryAudio dispatcher', () => {
 
   it('uses standard TTS for scripts at or under the threshold', async () => {
     fetchMock.mockResolvedValueOnce(mp3Response([1]));
-    await synthesizeStoryAudio({
+    const result = await synthesizeStoryAudio({
       apiKey: 'k',
       voiceId: 'v',
       text: 'short script',
@@ -519,6 +662,8 @@ describe('synthesizeStoryAudio dispatcher', () => {
     expect((fetchMock.mock.calls[0][0] as string)).toMatch(
       /\/v1\/text-to-speech\/v$/
     );
+    // Short-script path is MP3 (no normalization needed for a single call)
+    expect(result.mimeType).toBe('audio/mpeg');
   });
 
   it('uses Projects for long scripts when the flag is on', async () => {
@@ -530,7 +675,7 @@ describe('synthesizeStoryAudio dispatcher', () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ status: 'converted', chapters: [{ chapter_id: 'c' }] }));
     fetchMock.mockResolvedValueOnce(mp3Response([7]));
 
-    await synthesizeStoryAudio({
+    const result = await synthesizeStoryAudio({
       apiKey: 'k',
       voiceId: 'v',
       text: long,
@@ -540,16 +685,18 @@ describe('synthesizeStoryAudio dispatcher', () => {
 
     const urls = fetchMock.mock.calls.map((c) => c[0] as string);
     expect(urls[0]).toMatch(/\/v1\/projects$/);
+    // Projects path returns single MP3
+    expect(result.mimeType).toBe('audio/mpeg');
   });
 
   it('uses chunked TTS for long scripts when the flag is off', async () => {
     // Two chunks worth of text
     const p = 'x'.repeat(3000);
     const text = `${p}\n\n${p}`;
-    fetchMock.mockResolvedValueOnce(mp3Response([1]));
-    fetchMock.mockResolvedValueOnce(mp3Response([2]));
+    fetchMock.mockResolvedValueOnce(pcmResponse([100, -100, 200, -200]));
+    fetchMock.mockResolvedValueOnce(pcmResponse([300, -300, 400, -400]));
 
-    await synthesizeStoryAudio({
+    const result = await synthesizeStoryAudio({
       apiKey: 'k',
       voiceId: 'v',
       text,
@@ -560,25 +707,29 @@ describe('synthesizeStoryAudio dispatcher', () => {
     for (const [url] of fetchMock.mock.calls) {
       expect(url).toMatch(/\/v1\/text-to-speech\/v$/);
     }
+    // Chunked path returns WAV
+    expect(result.mimeType).toBe('audio/wav');
+    expect(isValidWav(result.data)).toBe(true);
   });
 
-  it('falls back to chunked TTS when Projects errors', async () => {
+  it('falls back to chunked TTS when Projects errors — returns WAV', async () => {
     const p = 'x'.repeat(3000);
     const text = `${p}\n\n${p}`;
     // Projects create fails
     fetchMock.mockResolvedValueOnce(new Response('nope', { status: 500 }));
-    // Fallback: two chunked TTS calls
-    fetchMock.mockResolvedValueOnce(mp3Response([1, 2]));
-    fetchMock.mockResolvedValueOnce(mp3Response([3, 4]));
+    // Fallback: two chunked TTS calls (PCM)
+    fetchMock.mockResolvedValueOnce(pcmResponse([1000, -1000]));
+    fetchMock.mockResolvedValueOnce(pcmResponse([2000, -2000]));
 
-    const buf = await synthesizeStoryAudio({
+    const result = await synthesizeStoryAudio({
       apiKey: 'k',
       voiceId: 'v',
       text,
       useProjects: true,
     });
 
-    expect(Array.from(new Uint8Array(buf))).toEqual([1, 2, 3, 4]);
+    expect(result.mimeType).toBe('audio/wav');
+    expect(isValidWav(result.data)).toBe(true);
     // 1 failed projects call + 2 chunked TTS calls
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });

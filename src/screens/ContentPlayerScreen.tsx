@@ -87,7 +87,11 @@ export function ContentPlayerScreen({
   useEffect(() => {
     const h = new Howl({
       src: [audioUrl],
-      format: ['mp3'],
+      // Both mp3 and wav: user-generated stories use chunked TTS which now
+      // stores normalized PCM as audio/wav; bundled content is still mp3.
+      // With html5:true the <audio> element detects format from the blob's
+      // MIME type, but listing both here keeps Howler's codec check honest.
+      format: ['mp3', 'wav'],
       html5: true, // Required for streaming large files + iOS background
       onload: () => {
         setDuration(h.duration());
