@@ -832,7 +832,10 @@ export async function callElevenLabsChunked(
       apiKey, voiceId, chunks[i]!, signal, CHUNK_OUTPUT_FORMAT
     );
     // ElevenLabs pcm_22050 returns raw 16-bit signed little-endian samples.
-    pcmChunks.push(new Int16Array(buf));
+    // Truncate to even byte length — a stray trailing byte (odd-length response)
+    // would cause "byte length of Int16Array should be a multiple of 2".
+    const evenBuf = buf.byteLength % 2 === 0 ? buf : buf.slice(0, buf.byteLength - 1);
+    pcmChunks.push(new Int16Array(evenBuf));
   }
 
   // Normalize per-chunk RMS so no seam has a jarring level jump, then
