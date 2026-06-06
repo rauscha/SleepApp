@@ -4,7 +4,13 @@
     <meta charset="UTF-8" />
     <!-- Keep pinch-zoom enabled (a11y: WCAG SC 1.4.4). Sleep audiences often
          include low-vision users — disabling zoom would push them away. -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- No viewport-fit=cover: in an Android standalone PWA, cover draws the
+         app edge-to-edge UNDER the system navigation bar, which hides the
+         bottom tab bar behind the gesture/nav bar (Chrome reports
+         safe-area-inset-bottom as 0, so padding can't rescue it). Without
+         cover, the webview is laid out above the nav bar and the tab bar is
+         visible. Player immersion comes from the Fullscreen API, not cover. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0B0D10" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
