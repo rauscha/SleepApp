@@ -1,12 +1,15 @@
 # Pending decisions
 
 Items waiting on your input or queued for the next session.
-Refreshed 2026-06-06.
+Refreshed 2026-06-06 (evening).
 
-## 0. Regenerate "ancient library walk" (immediate — do this first)
-The story in IndexedDB was generated with the old code (raw MP3 concat, no
-normalization) and has a volume spike baked in at ~5-6 min. Delete it from
-Library and regenerate. The new version will be PCM-normalized WAV and safe.
+## 0. ~~Regenerate stories on the chunked path~~ — DONE
+The chunked-TTS PCM normalization (this morning's `a2e0590`) turned out to
+have a deeper bug: `output_format` was sent in the request body instead of
+the URL query string, so stories came back as pure noise. Fixed in `ad46e7b`
+(query-param + a content-type guard). Regenerated a story after deploy →
+confirmed working. Any chunked-path story generated before `ad46e7b` is noise
+in IndexedDB — delete and regenerate if you still have one.
 
 ## 1. Device-test all three bed/story items (still pending)
 One overnight pass covers:
@@ -19,12 +22,9 @@ One overnight pass covers:
   bed should still be playing in the morning. Is 50% the right slider default?
 Smallest red flag is most informative — flag the symptom, don't self-diagnose.
 
-## 2. Check title on today's generated story
-The story generated this session used the old code (before `daaa2b2`) so
-its title will be the raw theme text. That's expected and fine — it's stored,
-not regenerable. If the title bothers you, you can hand-edit `stories/index.json`
-in IndexedDB via the browser dev tools (Application → IndexedDB → stories).
-Future stories will get short Claude-supplied titles automatically.
+## 2. ~~Check title on generated story~~ — RESOLVED
+Stories now get short Claude-supplied titles (the one regenerated this session,
+"The Last Light, Counted", is a proper title, not raw theme text). No action.
 
 ## 3. Residual wake-lock gap (follow-up commit, not blocking)
 If you back out of ContentPlayerScreen while a story-style continue-bed is
@@ -41,6 +41,8 @@ User decision: edge case, not worth pursuing for personal use.
 ## 8. ~~Singing-bowl card photo~~ — DONE
 ## 9. ~~Story title from Claude~~ — DONE
 ## 10. ~~Stop-all button in ContentPlayerScreen~~ — DONE
+## 13. ~~PWA bottom nav missing in Android standalone~~ — DONE (`7e1f3c2`)
+## 14. ~~Chunked-TTS stories play as noise~~ — DONE (`ad46e7b`)
 
 ## 11. Litter to clear during "deferred clean-up work" (low priority)
 - **Worktree dirs**: `.git/worktrees/` can't be deleted (Drive holds handles)
