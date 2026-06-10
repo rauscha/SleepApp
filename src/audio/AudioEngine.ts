@@ -12,10 +12,24 @@ import { recordEvent } from '../diagnostics/lifecycleLog';
 
 export type EngineEvent =
   | { kind: 'state'; state: AudioContextState }
+  | { kind: 'context-recreated' }
   | { kind: 'layer-added'; id: string }
   | { kind: 'layer-removed'; id: string };
 
 export type EngineListener = (e: EngineEvent) => void;
+
+/** How long to wait for ctx.resume() before declaring it wedged. iOS
+ *  Safari is known to leave the resume() promise pending forever after
+ *  an audio-session interruption. */
+const RESUME_TIMEOUT_MS = 1500;
+/** How long the foreground liveness probe waits to see currentTime
+ *  advance. A healthy running context advances every render quantum
+ *  (~2.7ms at 48kHz), so 400ms of stillness means the rendering thread
+ *  is gone even though state says 'running'. */
+const LIVENESS_PROBE_MS = 400;
+/** Floor between automatic context rebuilds so a hard platform failure
+ *  can't put us in a rebuild loop. User-gesture rebuilds bypass this. */
+const RECREATE_MIN_INTERVAL_MS = 30_000;
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -26,6 +40,8 @@ export class AudioEngine {
   private listeners = new Set<EngineListener>();
   private visibilityHandlerInstalled = false;
   private keepAlive: SilentKeepAlive | null = null;
+  private verifyInFlight = false;
+  private lastRecreateMs = 0;
 
   static readonly LAYER_SOFT_CAP = 6;
 
@@ -66,13 +82,27 @@ export class AudioEngine {
   }
 
   async unlock(): Promise<void> {
-    const ctx = this.ensureContext();
-    if (ctx.state === 'suspended') {
+    const hadContext = this.ctx !== null;
+    let ctx = this.ensureContext();
+    // 'suspended' is the standard not-running state; iOS Safari also has
+    // a non-standard 'interrupted' state after the OS takes the audio
+    // session. Compare against 'running' so both get a resume attempt.
+    if ((ctx.state as string) !== 'running') {
       try {
-        await ctx.resume();
+        await resumeWithTimeout(ctx, RESUME_TIMEOUT_MS);
       } catch (err) {
         console.warn('[AudioEngine] resume failed:', err);
       }
+    }
+    // A pre-existing context that still refuses to run after an
+    // in-gesture resume is dead at the platform level (overnight
+    // audio-session teardown, interrupted state that never clears).
+    // unlock() runs inside a user gesture — the one moment a brand-new
+    // context is guaranteed permission to start — so rebuild here rather
+    // than handing callers a context that will schedule into silence.
+    if (hadContext && this.ctx === ctx && (ctx.state as string) !== 'running') {
+      this.recreateContext();
+      ctx = this.ensureContext();
     }
     const primer = ctx.createBuffer(1, 1, ctx.sampleRate);
     const src = ctx.createBufferSource();
@@ -260,26 +290,148 @@ export class AudioEngine {
     for (const fn of this.listeners) fn(e);
   }
 
+  /**
+   * True when something is (or should be) producing audio: a registered
+   * layer (dev harness paths) or the silent keep-alive, which every
+   * scene/story session starts. This — NOT the layer registry alone — is
+   * the right guard for resume watchdogs: Scene deliberately bypasses
+   * the layer registry, so `layers.size` is 0 during normal playback.
+   */
+  private get hasActiveSession(): boolean {
+    return this.layers.size > 0 || (this.keepAlive?.isRunning ?? false);
+  }
+
+  /**
+   * Tear down the current AudioContext and build a fresh one. This is
+   * the recovery path for a context the platform has killed: state stuck
+   * in 'suspended'/'interrupted' with resume() failing, or the zombie
+   * case where state reads 'running' but the rendering thread is gone
+   * (currentTime frozen). Neither recovers without a new context —
+   * which is why the app historically needed a full restart.
+   *
+   * Registered layers hold nodes on the dead context and cannot be
+   * migrated; they are disposed and dropped. Scene playback is rebuilt
+   * by SceneCoordinator, which listens for the 'context-recreated' event.
+   */
+  recreateContext(): void {
+    const old = this.ctx;
+    if (!old) return;
+    recordEvent('audio-context-recreate', old.state);
+    this.lastRecreateMs = Date.now();
+    const keepAliveWasRunning = this.keepAlive?.isRunning ?? false;
+    this.keepAlive?.stop();
+    this.keepAlive = null;
+    for (const [id, layer] of Array.from(this.layers.entries())) {
+      this.layers.delete(id);
+      try {
+        layer.dispose();
+      } catch {
+        /* nodes belong to the dead context */
+      }
+      this.emit({ kind: 'layer-removed', id });
+    }
+    this.workletReady = false;
+    this.workletPromise = null;
+    this.masterBus = null;
+    this.ctx = null;
+    try {
+      void old.close().catch(() => undefined);
+    } catch {
+      /* already closed */
+    }
+    this.ensureContext();
+    if (keepAliveWasRunning) this.startKeepAlive();
+    this.emit({ kind: 'context-recreated' });
+  }
+
+  private maybeRecreate(): void {
+    if (Date.now() - this.lastRecreateMs < RECREATE_MIN_INTERVAL_MS) return;
+    this.recreateContext();
+  }
+
+  /**
+   * Foreground liveness check. Called when the page becomes visible
+   * during an active session: resume if not running, then verify the
+   * rendering thread is actually advancing currentTime. Recreates the
+   * context (rate-limited) if either check fails. This is what brings
+   * sound back when the user opens the app to a dead overnight session,
+   * without requiring them to kill and restart the app.
+   */
+  private async verifyContextAlive(): Promise<void> {
+    const ctx = this.ctx;
+    if (!ctx || this.verifyInFlight || !this.hasActiveSession) return;
+    this.verifyInFlight = true;
+    try {
+      if ((ctx.state as string) !== 'running') {
+        try {
+          await resumeWithTimeout(ctx, RESUME_TIMEOUT_MS);
+        } catch {
+          /* fall through to the checks below */
+        }
+      }
+      if (this.ctx !== ctx) return; // recreated elsewhere meanwhile
+      if ((ctx.state as string) !== 'running') {
+        this.maybeRecreate();
+        return;
+      }
+      const t0 = ctx.currentTime;
+      await wait(LIVENESS_PROBE_MS);
+      if (this.ctx !== ctx) return;
+      if (document.visibilityState !== 'visible') return;
+      if (ctx.currentTime === t0) this.maybeRecreate();
+    } finally {
+      this.verifyInFlight = false;
+    }
+  }
+
   private installVisibilityHandler(): void {
     if (this.visibilityHandlerInstalled) return;
     this.visibilityHandlerInstalled = true;
     const tryResume = () => {
       const ctx = this.ctx;
       if (!ctx) return;
-      if (ctx.state === 'suspended') {
+      // Anything other than 'running' gets a resume attempt — this
+      // covers iOS Safari's non-standard 'interrupted' state too.
+      if ((ctx.state as string) !== 'running') {
         ctx.resume().catch(() => {
           /* will retry on next event */
         });
       }
     };
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') tryResume();
+      if (document.visibilityState === 'visible') {
+        tryResume();
+        void this.verifyContextAlive();
+      }
     });
     window.addEventListener('focus', tryResume);
     setInterval(() => {
-      if (this.ctx && this.layers.size > 0) tryResume();
+      if (this.ctx && this.hasActiveSession) tryResume();
     }, 2000);
   }
+}
+
+function resumeWithTimeout(ctx: AudioContext, ms: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`resume() still pending after ${ms}ms`)),
+      ms
+    );
+    ctx.resume().then(
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export class LayerCapExceededError extends Error {

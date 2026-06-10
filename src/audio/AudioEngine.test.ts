@@ -11,7 +11,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AudioEngine, LayerCapExceededError } from './AudioEngine';
-import { installAudioContextMock, MockGainNode } from '../test/audioMock';
+import {
+  installAudioContextMock,
+  MockGainNode,
+  type MockAudioContext,
+} from '../test/audioMock';
 import type { Layer } from './types';
 
 function makeMockLayer(id: string): Layer & { startCalls: number; stopCalls: number; disposeCalls: number } {
@@ -52,6 +56,35 @@ describe('AudioEngine', () => {
     await engine.unlock();
     expect(engine.isInitialized).toBe(true);
     expect(engine.state).toBe('running');
+  });
+
+  // Regression test for the overnight "sound never comes back without
+  // killing the app" bug: a context the platform refuses to resume must
+  // be torn down and replaced inside the unlock() gesture, not handed
+  // back to callers to schedule silence into.
+  it('unlock() rebuilds a pre-existing context that refuses to resume', async () => {
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const first = engine.context as unknown as MockAudioContext;
+    await first.suspend();
+    first.resumeNoOp = true;
+
+    const kinds: string[] = [];
+    engine.addListener((e) => kinds.push(e.kind));
+
+    await engine.unlock();
+    expect(engine.context as unknown as MockAudioContext).not.toBe(first);
+    expect(engine.state).toBe('running');
+    expect(first.state).toBe('closed');
+    expect(kinds).toContain('context-recreated');
+  });
+
+  it('unlock() leaves a healthy running context alone', async () => {
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const first = engine.context;
+    await engine.unlock();
+    expect(engine.context).toBe(first);
   });
 
   it('emits a state event when the context state changes', async () => {
