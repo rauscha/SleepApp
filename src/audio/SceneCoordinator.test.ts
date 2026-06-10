@@ -243,6 +243,55 @@ describe('SceneCoordinator', () => {
     expect(fadeOut).toBeDefined();
   });
 
+  // Regression test for the overnight dead-context recovery: when the
+  // engine replaces its AudioContext, the coordinator must dispose the
+  // dead scene and rebuild the same definition on the new context —
+  // without ever letting getCurrentScene() flash null (UI polls it and
+  // bounces out of the player on null).
+  it('rebuilds the current scene when the engine recreates its context', async () => {
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    const original = await coord.startScene(basicScene('s-restart'));
+
+    engine.recreateContext();
+
+    // The dead scene is disposed synchronously but stays "current" while
+    // the replacement loads.
+    expect(original.isDisposed()).toBe(true);
+    expect(coord.getCurrentScene()).not.toBeNull();
+
+    await vi.waitFor(() => {
+      const current = coord.getCurrentScene();
+      expect(current).not.toBe(original);
+      expect(current?.isDisposed()).toBe(false);
+    });
+    expect(coord.getCurrentScene()?.definition.id).toBe('s-restart');
+    // The rebuilt scene must be wired to the NEW context's bus.
+    const out = coord.getCurrentScene()!.output as unknown as {
+      connections: unknown[];
+    };
+    expect(out.connections[0]).toBe(engine.bus.input);
+  });
+
+  it('drops the rebuilt scene if the user stopped playback during the rebuild', async () => {
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    await coord.startScene(basicScene('s-stopped'));
+
+    engine.recreateContext();
+    // User taps Stop while the rebuild's buffers are still loading.
+    coord.stopScene();
+    expect(coord.getCurrentScene()).toBeNull();
+
+    // Give the async rebuild time to settle; the user's stop must win.
+    await new Promise((r) => setTimeout(r, 20));
+    expect(coord.getCurrentScene()).toBeNull();
+  });
+
   // Sanity check the mock end-to-end: a real Scene loaded through this
   // path should produce a non-zero number of MockAudioBuffers (one per
   // variant). Catches the silent-no-decode failure mode.

@@ -24,6 +24,7 @@ import type { AudioVariant } from './FileLayer';
 import { NoiseGenerator } from './NoiseGenerator';
 import { TinnitusMaskLayer } from './TinnitusMaskLayer';
 import { Scene } from './Scene';
+import { recordEvent } from '../diagnostics/lifecycleLog';
 import { resolvePublicUrl } from '../lib/baseUrl';
 import { generateTestPadBuffer } from './synth/testPad';
 import type {
@@ -72,6 +73,14 @@ export class SceneCoordinator {
 
   constructor(engine: AudioEngine) {
     this.engine = engine;
+    // If the engine had to rebuild a dead AudioContext (overnight
+    // platform teardown — see AudioEngine.recreateContext), every node
+    // in the current scene died with the old context. Rebuild the same
+    // scene from its definition so the room fills back up without the
+    // user having to re-pick anything.
+    engine.addListener((e) => {
+      if (e.kind === 'context-recreated') void this.restartAfterContextLoss();
+    });
   }
 
   getCurrentScene(): Scene | null {
@@ -212,6 +221,47 @@ export class SceneCoordinator {
 
   // ---------------------------------------------------------------------
   // Internal helpers
+
+  /**
+   * Rebuild the current scene after the engine replaced its AudioContext.
+   * The old Scene's nodes all belong to the closed context, so it is
+   * disposed immediately — but `currentScene` keeps pointing at the
+   * corpse until the replacement is ready, so UI that polls
+   * getCurrentScene() doesn't see a "nothing playing" flash and bounce
+   * the user out of the player mid-rebuild.
+   */
+  private async restartAfterContextLoss(): Promise<void> {
+    const dead = this.currentScene;
+    if (!dead) return;
+    const definition = dead.definition;
+    try {
+      dead.dispose();
+    } catch {
+      /* nodes belong to the closed context */
+    }
+    recordEvent('scene-restart', definition.id);
+    try {
+      const scene = await this.loadScene(definition, {
+        fallbackToSynthetic: true,
+      });
+      if (this.currentScene !== dead) {
+        // The user started or stopped something while we were loading —
+        // their action wins; drop the rebuilt scene.
+        scene.dispose();
+        return;
+      }
+      scene.output.connect(this.engine.bus.input);
+      scene.start();
+      scene.fadeIn(DEFAULT_SCENE_FIRST_START_SECONDS, 1.0, 'ease-out');
+      this.currentScene = scene;
+    } catch (err) {
+      if (this.currentScene === dead) this.currentScene = null;
+      console.error(
+        '[SceneCoordinator] scene restart after context loss failed:',
+        err
+      );
+    }
+  }
 
   private async loadElementVariants(
     element: SceneElementDefinition,

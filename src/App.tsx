@@ -70,14 +70,16 @@ const SHOW_TINNITUS_HARNESS = false;
 
 export function App() {
   const engine = useMemo(() => getAudioEngine(), []);
-  // Track AudioContext unlock state without forcing re-renders — unlock
-  // happens on the first scene/play tap, which IS the user gesture the
-  // Web Audio API requires. No more separate "Begin" screen.
-  const unlockedRef = useRef(false);
+  // Run unlock() on EVERY audio gesture, not just the first. unlock() is
+  // idempotent and near-free when the context is already running, and the
+  // play tap IS the user gesture the Web Audio API requires. The previous
+  // latched version had a fatal flaw: if the context died overnight (OS
+  // suspended it, or killed the rendering thread), restarting playback
+  // never re-attempted an in-gesture resume — so the app stayed silent
+  // until a full kill-and-restart. unlock() also rebuilds a context the
+  // platform refuses to resume; see AudioEngine.recreateContext.
   const ensureUnlocked = useCallback(async () => {
-    if (unlockedRef.current) return;
     await engine.unlock();
-    unlockedRef.current = true;
   }, [engine]);
 
   // Initial screen: if a scene is already playing (HMR or reopened PWA

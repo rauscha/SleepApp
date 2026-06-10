@@ -231,6 +231,10 @@ export class MockAudioContext {
   workletStallNext = false;
   workletAddModuleCalls = 0;
   resumeCalls = 0;
+  /** When true, resume() resolves but leaves the state unchanged —
+   *  models a platform that refuses to restart the audio session
+   *  (the overnight dead-context case). */
+  resumeNoOp = false;
 
   private listeners = new Map<string, Set<StateChangeListener>>();
   private sources: MockAudioBufferSource[] = [];
@@ -309,6 +313,7 @@ export class MockAudioContext {
 
   async resume(): Promise<void> {
     this.resumeCalls++;
+    if (this.resumeNoOp) return;
     this.state = 'running';
     this.emit('statechange');
   }

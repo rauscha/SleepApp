@@ -115,6 +115,15 @@ export function ContentPlayerScreen({
         setErrorMsg(typeof err === 'string' ? err : 'Could not load audio.');
         stopTick();
       },
+      onplayerror: (_id: number, err: unknown) => {
+        // html5 audio can refuse to (re)start after an OS-level audio
+        // interruption. Surface as paused — the button then shows Play,
+        // and the next tap retries inside a fresh user gesture instead
+        // of the UI claiming "playing" over a silent element.
+        recordEvent('howl-playerror', typeof err === 'string' ? err : String(err));
+        setState('paused');
+        stopTick();
+      },
     });
     howlRef.current = h;
     return () => {
@@ -244,8 +253,15 @@ export function ContentPlayerScreen({
   useEffect(() => {
     if (state === 'playing') setMediaSessionPlaybackState('playing');
     else if (state === 'paused') setMediaSessionPlaybackState('paused');
-    else if (state === 'ended') setMediaSessionPlaybackState('none');
-  }, [state]);
+    else if (state === 'ended') {
+      // While the bed scene carries the room overnight, keep telling the
+      // OS that media is playing. Flipping to 'none' at narration end
+      // dropped the tab's media priority exactly when it still had hours
+      // of audio left — inviting Android to freeze the tab ("fell asleep
+      // to a story, woke up to silence").
+      setMediaSessionPlaybackState(bedKeepsScreenLive ? 'playing' : 'none');
+    }
+  }, [state, bedKeepsScreenLive]);
 
   const handlePlayPause = useCallback(() => {
     const h = howlRef.current;
