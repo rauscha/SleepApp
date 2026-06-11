@@ -86,9 +86,13 @@ export function clearLog(): void {
 
 /**
  * Render the log as plain text suitable for pasting into chat/email or
- * eyeballing on a phone. Each line: ISO timestamp, relative offset from
- * the first entry, kind, and optional detail. Header includes the device
- * userAgent and entry count.
+ * eyeballing on a phone. Each line: local timestamp with UTC offset,
+ * relative offset from the first entry, kind, and optional detail.
+ * Local time because the reader is the device's owner reconstructing
+ * their own night — "woke at 3am" should line up with the log without
+ * mental UTC math. The offset is printed per line (not once in the
+ * header) so a log spanning a DST transition stays unambiguous. Header
+ * includes the build id, device userAgent, and entry count.
  */
 export function formatAsText(): string {
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
@@ -97,17 +101,32 @@ export function formatAsText(): string {
     `Build: ${BUILD_ID}`,
     `Device: ${ua}`,
     `Entries: ${cache.length}`,
-    `Generated: ${new Date().toISOString()}`,
+    `Generated: ${formatLocalTimestamp(Date.now())}`,
+    `Times are local (UTC offset shown per line)`,
     ``,
   ];
   const start = cache[0]?.ts ?? Date.now();
   for (const e of cache) {
-    const iso = new Date(e.ts).toISOString();
+    const local = formatLocalTimestamp(e.ts);
     const relSec = ((e.ts - start) / 1000).toFixed(1);
     const detail = e.detail ? `  (${e.detail})` : '';
-    lines.push(`${iso}  +${relSec.padStart(8)}s  ${e.kind}${detail}`);
+    lines.push(`${local}  +${relSec.padStart(8)}s  ${e.kind}${detail}`);
   }
   return lines.join('\n');
+}
+
+/** `2026-06-11 07:50:30 -05:00` — local wall clock plus UTC offset. */
+function formatLocalTimestamp(ts: number): string {
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const offsetMin = -d.getTimezoneOffset();
+  const sign = offsetMin >= 0 ? '+' : '-';
+  const absMin = Math.abs(offsetMin);
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ` +
+    `${sign}${pad(Math.floor(absMin / 60))}:${pad(absMin % 60)}`
+  );
 }
 
 /**
