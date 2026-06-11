@@ -9,6 +9,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { getAudioEngine } from '../audio/AudioEngine';
+import { BUILD_ID } from '../lib/buildInfo';
 import {
   clearLog,
   formatAsText,
@@ -181,6 +182,10 @@ export function SettingsScreen(_props: SettingsScreenProps) {
       {/* ── About ─────────────────────────────────────────────────────── */}
       <footer className="px-1 ui-label text-stone-500 space-y-1">
         <p>Sleep App · v0.1.0</p>
+        {/* The running build, not the deployed one — the SW only adopts a
+            new deploy on cold start, so this is how you confirm the phone
+            actually picked up an update. */}
+        <p className="font-mono">Build {BUILD_ID}</p>
         <p>No accounts. No telemetry. No notifications. Ever.</p>
       </footer>
     </div>

@@ -1,8 +1,25 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import basicSsl from '@vitejs/plugin-basic-ssl';
+
+// Build identity, injected as __BUILD_ID__ (see src/lib/buildInfo.ts for
+// why). Git short SHA pins the exact commit; the UTC timestamp
+// disambiguates rebuilds of the same commit (manual workflow_dispatch
+// redeploys). Falls back to 'nogit' for tarball builds.
+function gitShortSha(): string {
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+  } catch {
+    return 'nogit';
+  }
+}
+const BUILD_ID = `${gitShortSha()} ${new Date()
+  .toISOString()
+  .slice(0, 16)
+  .replace('T', ' ')}Z`;
 
 // HTTPS toggle.
 //
@@ -87,6 +104,9 @@ function swPrecachePlugin(): Plugin {
 // the URL directly to AudioContext.audioWorklet.addModule(). Vite will serve
 // /public/* at the site root.
 export default defineConfig({
+  define: {
+    __BUILD_ID__: JSON.stringify(BUILD_ID),
+  },
   // Deploy target is GitHub Pages at andrewrausch.com/SleepApp/, so every
   // bundled asset URL needs the /SleepApp/ prefix. Vite rewrites <script>,
   // <link rel=stylesheet>, and image hrefs in index.html automatically; for
