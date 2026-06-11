@@ -1,11 +1,19 @@
 // Master bus: master gain -> soft limiter -> destination, with a parallel
 // AnalyserNode tap for diagnostics.
+//
+// The final hop is switchable: directly into ctx.destination (default), or
+// into a MediaStreamAudioDestinationNode whose stream an <audio> element
+// plays (see AudioEngine's element sink). The element route exists because
+// Android Chrome only grants "actively playing media" protection — no tab
+// freeze, no discard, media notification — to real media elements; pure
+// Web Audio output is fair game for the overnight tab killer.
 
 export class MasterBus {
   readonly input: GainNode;
   readonly limiter: DynamicsCompressorNode;
   readonly analyser: AnalyserNode;
   private readonly ctx: AudioContext;
+  private streamDest: MediaStreamAudioDestinationNode | null = null;
 
   constructor(ctx: AudioContext) {
     this.ctx = ctx;
@@ -26,6 +34,40 @@ export class MasterBus {
     this.input.connect(this.limiter);
     this.limiter.connect(this.analyser);
     this.analyser.connect(ctx.destination);
+  }
+
+  /**
+   * Reroute the bus tail into a MediaStream so an <audio> element can be
+   * the audible output. Returns null when the context can't produce one
+   * (no createMediaStreamDestination — old browser or test mock), in
+   * which case the direct ctx.destination wiring is left untouched.
+   * EXCLUSIVE routing: the analyser feeds either the stream or the
+   * hardware destination, never both — double-routing would double the
+   * output level.
+   */
+  attachElementSink(): MediaStream | null {
+    const ctx = this.ctx as AudioContext & {
+      createMediaStreamDestination?: () => MediaStreamAudioDestinationNode;
+    };
+    if (typeof ctx.createMediaStreamDestination !== 'function') return null;
+    if (!this.streamDest) this.streamDest = ctx.createMediaStreamDestination();
+    try {
+      this.analyser.disconnect();
+    } catch {
+      /* not connected */
+    }
+    this.analyser.connect(this.streamDest);
+    return this.streamDest.stream;
+  }
+
+  /** Restore direct hardware output (the constructor wiring). */
+  detachElementSink(): void {
+    try {
+      this.analyser.disconnect();
+    } catch {
+      /* not connected */
+    }
+    this.analyser.connect(this.ctx.destination);
   }
 
   setMasterVolume(value: number, rampSeconds = 0.05): void {
