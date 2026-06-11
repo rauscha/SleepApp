@@ -13,6 +13,8 @@
 // This module is intentionally tiny — it ships with the app and runs
 // from the very first paint so we don't miss early events.
 
+import { BUILD_ID } from '../lib/buildInfo';
+
 const STORAGE_KEY = 'sleep-app:lifecycle-log:v1';
 const MAX_ENTRIES = 500;
 
@@ -92,6 +94,7 @@ export function formatAsText(): string {
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
   const lines = [
     `Sleep app lifecycle log`,
+    `Build: ${BUILD_ID}`,
     `Device: ${ua}`,
     `Entries: ${cache.length}`,
     `Generated: ${new Date().toISOString()}`,
