@@ -148,6 +148,11 @@ export class MockAudioWorkletNode extends MockAudioNode {
   }
 }
 
+export class MockMediaStreamDestination extends MockAudioNode {
+  /** Opaque token standing in for a real MediaStream. */
+  readonly stream = { __mockMediaStream: true } as unknown as MediaStream;
+}
+
 export class MockBiquadFilter extends MockAudioNode {
   type: BiquadFilterType = 'lowpass';
   readonly frequency = new MockAudioParam(350);
@@ -303,6 +308,9 @@ export class MockAudioContext {
   }
   createBiquadFilter(): MockBiquadFilter {
     return new MockBiquadFilter();
+  }
+  createMediaStreamDestination(): MockMediaStreamDestination {
+    return new MockMediaStreamDestination();
   }
 
   async decodeAudioData(_data: ArrayBuffer): Promise<MockAudioBuffer> {

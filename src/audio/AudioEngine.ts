@@ -44,6 +44,8 @@ export class AudioEngine {
   private lastRecreateMs = 0;
   private lastWatchdogCurrentTime = -1;
   private stagnantTicks = 0;
+  private sinkElement: HTMLAudioElement | null = null;
+  private elementSinkEngaged = false;
 
   static readonly LAYER_SOFT_CAP = 6;
 
@@ -272,11 +274,76 @@ export class AudioEngine {
       this.keepAlive = new SilentKeepAlive(this.ctx, this.masterBus.input);
     }
     this.keepAlive.start();
+    // Session start is also when the bus output moves into a real <audio>
+    // element — Chrome's discard/freeze protection only covers tabs that
+    // are audibly playing a media element, not bare Web Audio.
+    void this.engageElementSink();
   }
 
   /** Stop the silent keep-alive loop. Safe to call when not started. */
   stopKeepAlive(): void {
     this.keepAlive?.stop();
+    this.disengageElementSink();
+  }
+
+  /**
+   * Move the audible output from ctx.destination into a singleton
+   * <audio> element fed by a MediaStreamAudioDestinationNode. This is
+   * the kill-mode-1 defence: a tab audibly playing a media element gets
+   * Chrome's "playing media" treatment (no freeze, no discard, media
+   * notification), which pure Web Audio output does not.
+   *
+   * Best-effort: if the stream can't be built or element.play() is
+   * refused, the bus is rewired back to direct hardware output and the
+   * session sounds exactly like before this feature existed. The element
+   * is reused across sessions AND across context recreations — an
+   * element that has played once keeps its autoplay trust.
+   */
+  private async engageElementSink(): Promise<void> {
+    if (!this.masterBus || this.elementSinkEngaged) return;
+    if (typeof document === 'undefined') return;
+    const bus = this.masterBus;
+    const stream = bus.attachElementSink();
+    if (!stream) return; // unsupported — direct output still wired
+    const el = this.sinkElement ?? document.createElement('audio');
+    if (!this.sinkElement) {
+      this.sinkElement = el;
+      el.addEventListener('pause', () => {
+        // Something other than disengage paused the sink (OS media
+        // controls without our handler, focus weirdness). One replay
+        // attempt; if that's refused, the pause stands and the log
+        // shows why the night went quiet.
+        if (!this.elementSinkEngaged) return;
+        recordEvent('media-sink-paused');
+        el.play().catch(() => undefined);
+      });
+    }
+    try {
+      el.srcObject = stream;
+      const p = el.play();
+      if (p) await p;
+      if (this.masterBus !== bus) return; // context recreated mid-play()
+      this.elementSinkEngaged = true;
+      recordEvent('media-sink', 'element');
+    } catch (err) {
+      // Autoplay refusal or transient element failure — fall back to the
+      // direct path rather than playing into an inaudible stream.
+      if (this.masterBus === bus) bus.detachElementSink();
+      recordEvent('media-sink', `fallback: ${String(err).slice(0, 120)}`);
+    }
+  }
+
+  private disengageElementSink(): void {
+    this.elementSinkEngaged = false;
+    if (this.sinkElement) {
+      try {
+        this.sinkElement.pause();
+        this.sinkElement.srcObject = null;
+      } catch {
+        /* noop */
+      }
+    }
+    this.masterBus?.detachElementSink();
   }
 
   get isKeepAliveRunning(): boolean {
@@ -323,6 +390,19 @@ export class AudioEngine {
     const keepAliveWasRunning = this.keepAlive?.isRunning ?? false;
     this.keepAlive?.stop();
     this.keepAlive = null;
+    // The element sink's stream belongs to the dead context. Clear the
+    // engaged flag so the startKeepAlive below re-attaches a fresh stream
+    // from the new bus; the element itself is reused (keeps its autoplay
+    // trust from the gesture that first played it).
+    this.elementSinkEngaged = false;
+    if (this.sinkElement) {
+      try {
+        this.sinkElement.pause();
+        this.sinkElement.srcObject = null;
+      } catch {
+        /* noop */
+      }
+    }
     for (const [id, layer] of Array.from(this.layers.entries())) {
       this.layers.delete(id);
       try {

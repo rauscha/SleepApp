@@ -14,6 +14,8 @@ import { AudioEngine, LayerCapExceededError } from './AudioEngine';
 import {
   installAudioContextMock,
   MockGainNode,
+  MockMediaStreamDestination,
+  type MockAnalyserNode,
   type MockAudioContext,
 } from '../test/audioMock';
 import type { Layer } from './types';
@@ -118,6 +120,77 @@ describe('AudioEngine', () => {
     // The silent keep-alive must migrate to the new context so the
     // session stays pinned for the platform's audio-focus heuristic.
     expect(engine.isKeepAliveRunning).toBe(true);
+  });
+
+  describe('media element sink (tab-discard protection)', () => {
+    beforeEach(() => {
+      // jsdom's HTMLMediaElement.play() is unimplemented; the engine only
+      // needs it to resolve (Chrome) or reject (autoplay refusal).
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+      vi.spyOn(HTMLMediaElement.prototype, 'pause').mockReturnValue(undefined);
+    });
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('routes the bus into a MediaStream sink during a session and back on stop', async () => {
+      const engine = new AudioEngine();
+      await engine.unlock();
+      engine.startKeepAlive();
+      // engage is async (awaits element.play()).
+      await vi.waitFor(() => {
+        const analyser = engine.bus.analyser as unknown as MockAnalyserNode;
+        expect(
+          analyser.connections.some(
+            (c) => c instanceof MockMediaStreamDestination
+          )
+        ).toBe(true);
+      });
+
+      engine.stopKeepAlive();
+      const analyser = engine.bus.analyser as unknown as MockAnalyserNode;
+      const ctx = engine.context as unknown as MockAudioContext;
+      expect(analyser.connections).toEqual([ctx.destination]);
+    });
+
+    it('falls back to direct output when element.play() is refused', async () => {
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(
+        new Error('autoplay refused')
+      );
+      const engine = new AudioEngine();
+      await engine.unlock();
+      engine.startKeepAlive();
+      await vi.waitFor(() => {
+        const analyser = engine.bus.analyser as unknown as MockAnalyserNode;
+        const ctx = engine.context as unknown as MockAudioContext;
+        expect(analyser.connections).toEqual([ctx.destination]);
+      });
+      // The session itself must survive the refusal.
+      expect(engine.isKeepAliveRunning).toBe(true);
+    });
+
+    it('re-engages the sink on the new context after recreateContext', async () => {
+      const engine = new AudioEngine();
+      await engine.unlock();
+      engine.startKeepAlive();
+      await vi.waitFor(() => {
+        expect(
+          (engine.bus.analyser as unknown as MockAnalyserNode).connections.some(
+            (c) => c instanceof MockMediaStreamDestination
+          )
+        ).toBe(true);
+      });
+
+      engine.recreateContext();
+      await vi.waitFor(() => {
+        const analyser = engine.bus.analyser as unknown as MockAnalyserNode;
+        expect(
+          analyser.connections.some(
+            (c) => c instanceof MockMediaStreamDestination
+          )
+        ).toBe(true);
+      });
+    });
   });
 
   it('watchdog does nothing without an active session', async () => {
