@@ -87,6 +87,53 @@ describe('AudioEngine', () => {
     expect(engine.context).toBe(first);
   });
 
+  // Regression test for the 2026-06-11 overnight incident: Android killed
+  // the audio rendering thread mid-night but left state === 'running', so
+  // the watchdog's resume() no-oped against a zombie until the user opened
+  // the app hours later. The watchdog must detect the frozen audio clock
+  // across ticks and rebuild the context on its own — no user, no
+  // visibilitychange.
+  it('watchdog rebuilds a zombie context (running state, frozen clock) mid-session', async () => {
+    vi.useFakeTimers();
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const first = engine.context as unknown as MockAudioContext;
+    engine.startKeepAlive(); // what every scene/story session does
+    const kinds: string[] = [];
+    engine.addListener((e) => kinds.push(e.kind));
+
+    // Healthy: clock advances between ticks — no recreation.
+    first.advanceTime(2);
+    vi.advanceTimersByTime(2000);
+    first.advanceTime(2);
+    vi.advanceTimersByTime(2000);
+    expect(kinds).not.toContain('context-recreated');
+
+    // Zombie: state stays 'running' but the clock freezes. Two stagnant
+    // ticks trip the detector.
+    vi.advanceTimersByTime(6000);
+    expect(kinds).toContain('context-recreated');
+    expect(engine.context as unknown as MockAudioContext).not.toBe(first);
+    expect(engine.state).toBe('running');
+    // The silent keep-alive must migrate to the new context so the
+    // session stays pinned for the platform's audio-focus heuristic.
+    expect(engine.isKeepAliveRunning).toBe(true);
+  });
+
+  it('watchdog does nothing without an active session', async () => {
+    vi.useFakeTimers();
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const first = engine.context;
+    const kinds: string[] = [];
+    engine.addListener((e) => kinds.push(e.kind));
+    // Clock frozen for many ticks, but no layers and no keep-alive — an
+    // idle app must never churn contexts.
+    vi.advanceTimersByTime(20_000);
+    expect(kinds).not.toContain('context-recreated');
+    expect(engine.context).toBe(first);
+  });
+
   it('emits a state event when the context state changes', async () => {
     const engine = new AudioEngine();
     await engine.unlock();

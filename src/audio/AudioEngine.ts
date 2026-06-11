@@ -42,6 +42,8 @@ export class AudioEngine {
   private keepAlive: SilentKeepAlive | null = null;
   private verifyInFlight = false;
   private lastRecreateMs = 0;
+  private lastWatchdogCurrentTime = -1;
+  private stagnantTicks = 0;
 
   static readonly LAYER_SOFT_CAP = 6;
 
@@ -405,9 +407,55 @@ export class AudioEngine {
       }
     });
     window.addEventListener('focus', tryResume);
-    setInterval(() => {
-      if (this.ctx && this.hasActiveSession) tryResume();
-    }, 2000);
+    setInterval(() => this.watchdogTick(), 2000);
+  }
+
+  /**
+   * Watchdog, every 2s during an active session (timers are throttled
+   * when hidden — that just stretches the tick interval, which is fine).
+   * Two jobs:
+   *  1. resume() a context that admits it isn't running;
+   *  2. catch the zombie that DOESN'T admit it — state 'running' with a
+   *     frozen currentTime — by comparing the clock across ticks, and
+   *     rebuild the context mid-night without waiting for the user.
+   *
+   * Job 2 exists because of the 2026-06-11 overnight incident: the log
+   * showed the page awake all night (no freeze), the context claiming
+   * 'running' the whole time, and the watchdog's resume() no-oping
+   * against a dead rendering thread until the user opened the app at
+   * 12:50 and the foreground probe finally caught it. Two consecutive
+   * stagnant ticks (≥4s of frozen clock while 'running') cannot happen
+   * on a healthy context — it advances every render quantum (~2.7ms).
+   */
+  private watchdogTick(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.hasActiveSession) {
+      this.stagnantTicks = 0;
+      this.lastWatchdogCurrentTime = -1;
+      return;
+    }
+    if ((ctx.state as string) !== 'running') {
+      // A suspended/interrupted context legitimately freezes its clock —
+      // that's resume()'s job, not the zombie detector's.
+      this.stagnantTicks = 0;
+      this.lastWatchdogCurrentTime = -1;
+      ctx.resume().catch(() => {
+        /* will retry on next tick */
+      });
+      return;
+    }
+    if (ctx.currentTime === this.lastWatchdogCurrentTime) {
+      this.stagnantTicks++;
+      if (this.stagnantTicks >= 2) {
+        this.stagnantTicks = 0;
+        this.lastWatchdogCurrentTime = -1;
+        this.maybeRecreate();
+        return;
+      }
+    } else {
+      this.stagnantTicks = 0;
+    }
+    this.lastWatchdogCurrentTime = ctx.currentTime;
   }
 }
 
