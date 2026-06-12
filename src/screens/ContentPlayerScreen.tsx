@@ -21,6 +21,7 @@ import {
 import { useWakeLock } from '../hooks/useWakeLock';
 import { startSwKeepAlive, stopSwKeepAlive } from '../serviceWorker/keepAlive';
 import { recordEvent } from '../diagnostics/lifecycleLog';
+import { narrationGain } from '../lib/narrationSundown';
 import { getSetting, setSetting } from '../storage';
 
 export interface ContentPlayerScreenProps {
@@ -79,9 +80,23 @@ export function ContentPlayerScreen({
       const h = howlRef.current;
       if (!h) return;
       const pos = h.seek() as number;
-      if (typeof pos === 'number') setPosition(pos);
+      if (typeof pos === 'number') {
+        setPosition(pos);
+        // Narration Sundown (roadmap 6.3): for a bed-paired story, ramp the
+        // voice down over its final third so it submerges under the bed
+        // (which plays on all night) instead of ending on a hard stop.
+        // Gated to stories with a bed — meditations stop with the content,
+        // so there's nothing to submerge under.
+        if (
+          bedBehavior === 'continue' &&
+          bedSceneId &&
+          getSetting('narrationSundown')
+        ) {
+          h.volume(narrationGain(pos, h.duration()));
+        }
+      }
     }, 500);
-  }, [stopTick]);
+  }, [stopTick, bedBehavior, bedSceneId]);
 
   // Build Howl on mount; tear it down on unmount.
   useEffect(() => {

@@ -47,7 +47,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
   const engine = useMemo(() => getAudioEngine(), []);
   const [settings, setSettings] = useState(() => getAllSettings());
 
-  function update<K extends 'masterVolume' | 'defaultTimerMinutes' | 'elevenLabsApiKey' | 'anthropicApiKey'>(
+  function update<K extends 'masterVolume' | 'defaultTimerMinutes' | 'elevenLabsApiKey' | 'anthropicApiKey' | 'narrationSundown'>(
     key: K,
     value: (typeof settings)[K]
   ) {
@@ -115,6 +115,28 @@ export function SettingsScreen(_props: SettingsScreenProps) {
               );
             })}
           </div>
+        </div>
+
+        <div className="mt-6">
+          <p className="body-text text-stone-300 mb-2">Narration sundown</p>
+          <p className="body-text text-stone-300 mb-3">
+            A story’s narration fades down over its final third so the voice
+            submerges under the scene bed instead of stopping — the room keeps
+            playing all night.
+          </p>
+          <button
+            onClick={() => update('narrationSundown', !settings.narrationSundown)}
+            aria-pressed={settings.narrationSundown}
+            className={[
+              'px-4 py-2 rounded-soft ui-label transition-colors duration-slow',
+              settings.narrationSundown
+                ? 'bg-moon-600 text-stone-50'
+                : 'bg-ink-700 text-stone-300 hover:bg-ink-600',
+            ].join(' ')}
+            style={{ minHeight: 44, minWidth: 44 }}
+          >
+            {settings.narrationSundown ? 'On' : 'Off'}
+          </button>
         </div>
       </section>
 
