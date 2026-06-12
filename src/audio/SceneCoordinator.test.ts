@@ -350,6 +350,43 @@ describe('SceneCoordinator', () => {
     expect(out.connections[0]).toBe(engine.bus.input);
   });
 
+  // Review bug M6 / roadmap 3.7: when re-fetching the scene fails after a
+  // mid-night context loss (offline, cold cache), the coordinator retries
+  // with backoff and then falls back to the synth bed alone — sound beats
+  // silence at 3am — instead of bouncing to Tonight.
+  it('falls back to the synth bed alone when re-fetch keeps failing (M6)', async () => {
+    vi.useFakeTimers();
+    stubFetch(['/audio/']); // first build succeeds
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    await coord.startScene(basicScene('rescue', { elementCount: 2 }));
+    expect(coord.getCurrentScene()?.getLayers().length).toBe(3); // synth + 2
+
+    // Now the network is gone — every fetch rejects.
+    (globalThis as { fetch: typeof fetch }).fetch = vi.fn(async () => {
+      throw new TypeError('Failed to fetch');
+    }) as unknown as typeof fetch;
+
+    engine.recreateContext(); // triggers restartAfterContextLoss
+    const newCtx = engine.context as unknown as MockAudioContext;
+
+    // Advance past the 0/1000/3000ms backoff while keeping the audio clock
+    // alive so the watchdog doesn't recreate the context underneath us.
+    for (let t = 0; t < 6000; t += 500) {
+      newCtx.advanceTime(0.5);
+      await vi.advanceTimersByTimeAsync(500);
+    }
+
+    const current = coord.getCurrentScene();
+    expect(current).not.toBeNull();
+    // Degraded to the synth bed alone — one layer, no FileLayers — but the
+    // session is alive and audible rather than silent.
+    expect(current!.getLayers().length).toBe(1);
+    expect(current!.definition.id).toBe('rescue');
+    expect(coord.isProtectionEngaged).toBe(true);
+  });
+
   it('drops the rebuilt scene if the user stopped playback during the rebuild', async () => {
     stubFetch(['/audio/']);
     const engine = new AudioEngine();

@@ -46,6 +46,22 @@ export const DEFAULT_SCENE_CROSSFADE_SECONDS = 8;
 /** Default first-start fade-in (no outgoing partner — gentler than 8s). */
 export const DEFAULT_SCENE_FIRST_START_SECONDS = 5;
 
+/**
+ * Backoff schedule for re-fetching a scene after a mid-night context rebuild
+ * (review bug M6). First attempt is immediate; the next two wait for a
+ * transient network drop to clear before we give up and drop to the synth
+ * bed. Kept short — the user is asleep and silence is the enemy.
+ */
+const RESTART_RETRY_DELAYS_MS = [0, 1000, 3000];
+
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shortErr(err: unknown): string {
+  return String(err instanceof Error ? err.message : err).slice(0, 80);
+}
+
 export interface LoadSceneOptions {
   /**
    * Override the user's tinnitus settings for this load. Useful when the
@@ -412,26 +428,54 @@ export class SceneCoordinator {
       /* nodes belong to the closed context */
     }
     recordEvent('scene-restart', definition.id);
+
+    // True while this rebuild is still the latest request and the user
+    // hasn't started/stopped something in the meantime.
+    const stillOurs = () =>
+      this.currentScene === dead && generation === this.startGeneration;
+
+    // Retry the full rebuild with backoff. A 3am context loss is often
+    // paired with a transient network drop (offline with a cold cache), and
+    // a couple of retries recovers the REAL scene rather than bouncing the
+    // user to Tonight or dropping to a bare synth bed (review bug M6).
+    for (let attempt = 0; attempt < RESTART_RETRY_DELAYS_MS.length; attempt++) {
+      if (!stillOurs()) return;
+      if (attempt > 0) await sleepMs(RESTART_RETRY_DELAYS_MS[attempt]!);
+      if (!stillOurs()) return;
+      try {
+        const scene = await this.loadScene(definition, {
+          fallbackToSynthetic: true,
+        });
+        if (!stillOurs()) {
+          scene.dispose();
+          return;
+        }
+        this.wireRebuiltScene(scene);
+        return;
+      } catch (err) {
+        recordEvent('scene-restart-retry', `${attempt}: ${shortErr(err)}`);
+      }
+    }
+
+    // Every retry failed — we're offline with a cold cache at 3am. Fall back
+    // to the scene's synth bed ALONE: it needs only the noise worklet (no
+    // variant fetches), and sound beats silence. This is the one legitimate
+    // production use of synthetic audio (CLAUDE.md).
+    if (!stillOurs()) return;
     try {
-      const scene = await this.loadScene(definition, {
-        fallbackToSynthetic: true,
-      });
-      if (this.currentScene !== dead || generation !== this.startGeneration) {
-        // The user started or stopped something while we were loading —
-        // their action wins; drop the rebuilt scene.
-        scene.dispose();
+      const bed = await this.loadSynthBedOnly(definition);
+      if (!stillOurs()) {
+        bed.dispose();
         return;
       }
-      scene.output.connect(this.engine.bus.input);
-      scene.start();
-      scene.fadeIn(DEFAULT_SCENE_FIRST_START_SECONDS, 1.0, 'ease-out');
-      this.currentScene = scene;
+      this.wireRebuiltScene(bed);
+      recordEvent('scene-restart-synthbed', definition.id);
     } catch (err) {
       if (this.currentScene === dead) {
         this.currentScene = null;
-        // The session is truly over — nothing is playing and nothing will
-        // rebuild it. Release the protections so we don't leave keep-alive
-        // and a stale media session running over silence.
+        // Truly nothing left to play (even the worklet is gone). Release the
+        // protections so we don't keep keep-alive and a stale media session
+        // running over silence.
         this.disengageSessionProtections();
       }
       console.error(
@@ -439,6 +483,35 @@ export class SceneCoordinator {
         err
       );
     }
+  }
+
+  /** Connect, start, and fade in a rebuilt scene, making it current. */
+  private wireRebuiltScene(scene: Scene): void {
+    scene.output.connect(this.engine.bus.input);
+    scene.start();
+    scene.fadeIn(DEFAULT_SCENE_FIRST_START_SECONDS, 1.0, 'ease-out');
+    this.currentScene = scene;
+  }
+
+  /**
+   * Build a degraded scene containing only the synth bed — no FileLayers, so
+   * no audio-file fetches. Used as the last-resort night rescue when the
+   * real variants can't be re-fetched (offline, cold cache). Every scene
+   * defines a synth bed, so this is always constructable.
+   */
+  private async loadSynthBedOnly(definition: SceneDefinition): Promise<Scene> {
+    await this.engine.loadNoiseWorklet();
+    const synth = new NoiseGenerator(this.engine, {
+      id: `${definition.id}:synth-bed`,
+      label: 'Synth bed',
+      color: definition.synth.color,
+      defaultVolume: definition.synth.defaultVolume,
+    });
+    return new Scene(this.engine, {
+      id: definition.id,
+      definition,
+      layers: [synth],
+    });
   }
 
   private async loadElementVariants(
