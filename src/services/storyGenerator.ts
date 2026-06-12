@@ -32,7 +32,7 @@
 // would need ffmpeg.wasm — heavy, slow, and unnecessary for the seam
 // quality we need on a sleep story where the listener is drifting off.
 
-import { saveStory, saveStoryAudio } from '../storage';
+import { deleteStory, saveStory, saveStoryAudio } from '../storage';
 import type { StoryMetadata } from '../storage/types';
 
 // ---------------------------------------------------------------------------
@@ -504,13 +504,27 @@ export async function generateStory(
     title: claudeTitle || undefined,
   });
 
+  // Metadata and audio commit in separate IndexedDB transactions. Persist
+  // metadata first, then the audio bytes — and if the audio write fails
+  // (most likely a QuotaExceededError on a ~45 MB WAV), delete the
+  // just-written metadata so the Library never lists a story whose audio
+  // never landed (review bug H2). withStore now resolves on transaction
+  // commit, so a quota abort surfaces here as a rejection rather than a
+  // false 'done'.
   await saveStory(meta);
-  await saveStoryAudio({
-    id: meta.id,
-    mimeType: audioMimeType,
-    data: audioBuffer,
-    savedAt: new Date().toISOString(),
-  });
+  try {
+    await saveStoryAudio({
+      id: meta.id,
+      mimeType: audioMimeType,
+      data: audioBuffer,
+      savedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    // Roll back the orphaned metadata row. A cleanup failure is swallowed —
+    // the audio-save error is what the caller needs to see.
+    await deleteStory(meta.id).catch(() => undefined);
+    throw err;
+  }
 
   onProgress?.({ stage: 'done', storyId: meta.id });
   return meta;
