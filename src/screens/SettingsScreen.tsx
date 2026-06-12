@@ -56,7 +56,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
   }
 
   return (
-    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-5 py-8 min-h-full">
+    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-6 py-8 min-h-full">
       <header className="mb-8 px-1">
         <h1 className="font-serif text-stone-50 text-4xl leading-tight">
           Settings
@@ -280,7 +280,7 @@ function OfflineDownloadPanel() {
       )}
 
       {statusError && (
-        <p className="body-text text-red-400" role="status">
+        <p className="body-text text-ember-400" role="status">
           {statusError}
         </p>
       )}
@@ -331,7 +331,7 @@ function OfflineDownloadPanel() {
       </div>
 
       {error && (
-        <p className="body-text text-red-400" role="status">
+        <p className="body-text text-ember-400" role="status">
           {error}
         </p>
       )}
@@ -510,7 +510,7 @@ function ApiKeyField({
               spellCheck={false}
               className="w-full bg-ink-800 text-stone-200 body-text rounded-soft
                          px-3 py-2.5 pr-16 border border-ink-600
-                         placeholder-ink-400 focus:outline-none
+                         placeholder-stone-500 focus:outline-none
                          focus:border-moon-600 transition-colors"
               aria-label={label}
             />

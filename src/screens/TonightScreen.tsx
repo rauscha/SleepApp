@@ -119,7 +119,7 @@ export function TonightScreen({
   const isLoading = index === null && indexError === null;
 
   return (
-    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-5 py-8 min-h-full">
+    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-6 py-8 min-h-full">
       <header className="mb-7 px-1">
         <h1 className="font-serif text-stone-50 text-4xl leading-tight">
           Tonight
@@ -174,17 +174,22 @@ export function TonightScreen({
         </p>
       )}
 
-      <footer className="mt-8 pt-4 px-1 flex justify-end">
-        <button
-          onClick={onDevToolsRequested}
-          className="text-xs text-stone-300 hover:text-stone-200
-                     active:text-moon-300 transition-colors duration-slow
-                     px-2 py-2"
-          style={{ minHeight: 44 }}
-        >
-          Dev tools
-        </button>
-      </footer>
+      {/* Dev tools are dev-only — the prod religion of this app is removing
+          everything that isn't sleep. Gated on import.meta.env.DEV so the
+          button never ships (roadmap 4.5). */}
+      {import.meta.env.DEV && (
+        <footer className="mt-8 pt-4 px-1 flex justify-end">
+          <button
+            onClick={onDevToolsRequested}
+            className="text-xs text-stone-300 hover:text-stone-200
+                       active:text-moon-300 transition-colors duration-slow
+                       px-2 py-2"
+            style={{ minHeight: 44 }}
+          >
+            Dev tools
+          </button>
+        </footer>
+      )}
     </div>
   );
 }
@@ -224,7 +229,7 @@ function SceneCard({
         className={[
           primary
             ? 'px-6 pt-10 pb-8 min-h-[200px] flex flex-col justify-end'
-            : 'px-5 pt-6 pb-5 min-h-[120px] flex flex-col justify-end',
+            : 'px-6 pt-6 pb-5 min-h-[120px] flex flex-col justify-end',
         ].join(' ')}
         style={{ background }}
       >
@@ -279,7 +284,7 @@ function SkeletonCards() {
       </div>
       {[0, 1].map((i) => (
         <div key={i} className="rounded-softer overflow-hidden animate-pulse">
-          <div className="bg-ink-800 px-5 pt-6 pb-5">
+          <div className="bg-ink-800 px-6 pt-6 pb-5">
             <div className="h-6 w-32 bg-ink-600 rounded mb-2" />
             <div className="h-3 w-52 bg-ink-700 rounded" />
           </div>

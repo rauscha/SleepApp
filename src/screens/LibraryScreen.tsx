@@ -12,17 +12,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isBedtime } from '../lib/bedtime';
+import { resolvePublicUrl } from '../lib/baseUrl';
 import { getStoryAudio, listStories, deleteStory } from '../storage';
 import type {
   BundledStoryMetadata,
   MeditationMetadata,
   StoryMetadata,
 } from '../storage/types';
-
-function resolvePublicUrl(path: string): string {
-  const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
-  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
-}
 
 async function fetchMeditationIndex(): Promise<MeditationMetadata[]> {
   const url = resolvePublicUrl('/meditations/index.json');
@@ -193,7 +189,7 @@ export function LibraryScreen({
   }
 
   return (
-    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-5 py-8 min-h-full">
+    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-6 py-8 min-h-full">
       <header className="mb-6 px-1">
         <h1 className="font-serif text-stone-50 text-4xl leading-tight mb-6">
           Library
@@ -229,8 +225,7 @@ export function LibraryScreen({
           {meditations.length === 0 && !meditationError && (
             <EmptyState
               heading="No meditations yet"
-              body="Run the gen-meditation CLI tool to generate your first meditation and bundle it with the app."
-              codeHint="npx tsx tools/gen-meditation.ts"
+              body="Generate one from the Stories tab."
             />
           )}
           <div className="space-y-3">
@@ -335,7 +330,7 @@ function ContentCard({
   onCancelDelete?: () => void;
 }) {
   return (
-    <div className="bg-ink-800 rounded-softer px-5 py-4">
+    <div className="bg-ink-800 rounded-softer px-6 py-4">
       <div className="flex items-start justify-between gap-3 mb-1">
         <h3 className="font-serif text-stone-50 text-lg leading-tight">{title}</h3>
         <div className="flex gap-3 shrink-0 mt-0.5">
@@ -402,24 +397,11 @@ function ContentCard({
   );
 }
 
-function EmptyState({
-  heading,
-  body,
-  codeHint,
-}: {
-  heading: string;
-  body: string;
-  codeHint?: string;
-}) {
+function EmptyState({ heading, body }: { heading: string; body: string }) {
   return (
     <div className="px-1 py-8 text-center">
       <p className="text-stone-300 body-text mb-2">{heading}</p>
-      <p className="text-stone-300 body-text max-w-xs mx-auto mb-3">{body}</p>
-      {codeHint && (
-        <code className="ui-label text-moon-300 bg-ink-800 px-2 py-1 rounded-soft">
-          {codeHint}
-        </code>
-      )}
+      <p className="text-stone-300 body-text max-w-xs mx-auto">{body}</p>
     </div>
   );
 }

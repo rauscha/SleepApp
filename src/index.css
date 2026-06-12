@@ -86,15 +86,34 @@ body {
   /* Honor portrait-only by ignoring landscape adjustments */
 }
 
-/* Sliders should look soft and substantial late at night */
+/* App-wide keyboard-focus ring. :focus-visible only fires for keyboard / AT
+ * navigation — never mouse or touch — so it never intrudes on the dark,
+ * pointer-driven sleepy UI. moon-400 (#7FA098) is the calm accent. */
+:focus-visible {
+  outline: 2px solid #7FA098;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Sliders should look soft and substantial late at night. The visible track
+ * stays a thin 4px line, but vertical padding (clipped out of the track via
+ * background-clip: content-box) grows the actual tappable box to 44px so it
+ * meets the brief's 44x44 touch-target floor. */
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 4px;
+  height: 44px;
+  padding: 20px 0;
+  box-sizing: border-box;
   background: rgba(207, 198, 182, 0.18);
+  background-clip: content-box;
   border-radius: 999px;
   outline: none;
+}
+input[type='range']:focus-visible {
+  outline: 2px solid #7FA098;
+  outline-offset: 4px;
 }
 input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
