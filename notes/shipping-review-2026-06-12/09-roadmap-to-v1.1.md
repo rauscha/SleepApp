@@ -86,41 +86,41 @@ These five bugs each break The One Thing. Nothing else lands before they do.
 
 ## Phase 3 — Fail loudly, not silently (reports `01`, `02`, `03` M3–M6)
 
-### ☐ 3.1 Gate `fallbackToSynthetic` on dev builds **[build-check]**
+### ☑ 3.1 Gate `fallbackToSynthetic` on dev builds **[build-check]**
 
 - **Files:** `src/audio/SceneCoordinator.ts:99` (default), `src/screens/TonightScreen.tsx:81`, `src/screens/ContentPlayerScreen.tsx:163`
 - A 404 from a bad deploy currently whispers a synthesized test pad all night. Default the option to `import.meta.env.DEV`; in production a missing-file load must fail visibly (Player error state), not impersonate the scene.
 - **Accept:** prod-mode test (or build + manual check) shows load failure surfaces an error; dev harness behavior unchanged.
 
-### ☐ 3.2 Make a key-bearing production bundle structurally impossible **[build-check]**
+### ☑ 3.2 Make a key-bearing production bundle structurally impossible **[build-check]**
 
 - **File:** `src/storage/apiKeys.ts:17–29`
 - Gate the `VITE_*` env-key fallback on `import.meta.env.DEV` so `npm run build` can never inline live keys (security report's one Medium-risk cluster; CI already refuses to pass keys — this closes the local-build hole). Consider `sourcemap` off for prod builds in `vite.config.ts` while there (Low finding).
 - **Accept:** grep the built `dist/` for any `VITE_`-sourced key path; localStorage key flow unchanged.
 
-### ☐ 3.3 Delete dead `src/audio/Analyser.ts`
+### ☑ 3.3 Delete dead `src/audio/Analyser.ts`
 
 - Zero references (harness uses `engine.bus.analyser` directly). Delete file + any type exports.
 - **Accept:** typecheck + tests green.
 
-### ☐ 3.4 Service worker: don't answer media Range requests with a cached 200 (bug M3) **[DEVICE]**
+### ☑ 3.4 Service worker: don't answer media Range requests with a cached 200 (bug M3) **[DEVICE]**
 
 - **File:** `public/sw.js:152–164` (`cacheFirst`)
 - iOS Safari's media stack chokes when a ranged `<audio>` request gets a full-body 200. If `req.headers.has('range')`: bypass to `fetch(req)`, or synthesize a 206 slice from the cached body (preferred for offline playback of meditations/stories — they're the `html5: true` Howler paths).
 - **Accept:** unit-level test of the handler logic; real validation on the iOS device pass.
 
-### ☐ 3.5 Route hardware-back through `leaveContentPlayer` + revoke stale blob URLs (bug M5)
+### ☑ 3.5 Route hardware-back through `leaveContentPlayer` + revoke stale blob URLs (bug M5)
 
 - **File:** `src/App.tsx:119–150`
 - popstate from `content-player` must run the same leave path as "← Library" (revoke `blobUrlRef`, clear `activeContent`); `playContent` must revoke any previous `blobUrlRef.current` before overwriting.
 - **Accept:** test or manual trace; no compounding 45 MB blob leaks.
 
-### ☐ 3.6 [ASK] Lock-screen pause semantics (bug M4)
+### ☑ 3.6 [ASK] Lock-screen pause semantics (bug M4)
 
 - **File:** `src/screens/PlayerScreen.tsx:289` (`onPause: handleStop`)
 - Today a stray headset bump / Bluetooth disconnect runs the full stop-and-exit — and after 1.1's fix the session is cleanly gone, unrecoverable from the lock screen. Review recommends soft-pause (`ctx.suspend()` + `playbackState='paused'`, resumable). The current mapping was a deliberate decision per the code comment — **Andrew must choose** before changing it.
 
-### ☐ 3.7 Night-rescue resilience when offline with a cold cache (bug M6)
+### ☑ 3.7 Night-rescue resilience when offline with a cold cache (bug M6)
 
 - **Files:** `src/audio/SceneCoordinator.ts:233–264`, `src/audio/FileLayer.ts:472–509`
 - `restartAfterContextLoss` currently fails closed (silence, bounce to Tonight) if re-fetch fails at 3am. Add retry-with-backoff, and on final failure fall back to the synth bed alone (this specific path is the one legitimate prod use of synthetic audio — sound beats silence at 3am).
