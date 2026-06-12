@@ -21,6 +21,7 @@ import {
 } from '../audio/sceneRegistry';
 import type { SceneIndex, SceneIndexEntry } from '../audio/sceneRegistry';
 import { sceneCardBackground } from '../lib/sceneBackground';
+import { tonightGreeting } from '../lib/bedtime';
 import { getSetting, setSetting } from '../storage';
 import { requestFullscreenSafe } from '../utils/fullscreen';
 
@@ -125,9 +126,7 @@ export function TonightScreen({
           Tonight
         </h1>
         <p className="text-stone-300 body-text mt-2">
-          {lastSceneId
-            ? 'Pick up where you left off, or try something new.'
-            : 'A place to land at the end of the day.'}
+          {tonightGreeting()}
         </p>
       </header>
 

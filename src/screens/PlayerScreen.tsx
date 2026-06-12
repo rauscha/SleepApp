@@ -386,6 +386,15 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         </label>
       </div>
 
+      {/* The app's deepest engineering, finally legible to the user (6.4):
+          the layers run on pairwise-coprime prime-length loops, so the
+          combined soundscape doesn't repeat for tens of hours. This is the
+          one line that turns the invisible Eno engine into a "show a friend"
+          moment. */}
+      <p className="body-text italic text-stone-300 mb-6 px-1 leading-relaxed">
+        Layered live on prime-length loops — tonight’s soundscape won’t repeat.
+      </p>
+
       <div>
         <button
           onClick={() => setMixerOpen((open) => !open)}
