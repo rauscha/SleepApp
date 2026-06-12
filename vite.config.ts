@@ -163,6 +163,9 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
-    sourcemap: true,
+    // Sourcemaps off for the production bundle (review Low finding): they
+    // ship the full readable source to anyone who opens devtools on the
+    // deploy. Dev keeps its own (esbuild) sourcemaps regardless.
+    sourcemap: false,
   },
 });
