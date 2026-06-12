@@ -74,6 +74,7 @@ function swPrecachePlugin(): Plugin {
           `${base}manifest.json`,
           `${base}icons/icon.svg`,
           `${base}fonts/InterVariable.woff2`,
+          `${base}fonts/EBGaramond-latin.woff2`,
         ];
         for (const key of Object.keys(bundle)) {
           if (key.startsWith('assets/') &&

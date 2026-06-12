@@ -40,6 +40,9 @@
          system fallback (FOUT). crossorigin is required even for same-origin
          font preloads — fonts are always fetched in CORS mode. -->
     <link rel="preload" href="%BASE_URL%fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Preload the editorial serif too: headings (the brand's voice) use it,
+         so a late @font-face discovery would flash Georgia/Noto on first paint. -->
+    <link rel="preload" href="%BASE_URL%fonts/EBGaramond-latin.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <div id="root"></div>

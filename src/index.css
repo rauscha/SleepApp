@@ -25,6 +25,21 @@
   src: url('/fonts/InterVariable.woff2') format('woff2');
 }
 
+/* EB Garamond, self-hosted — the editorial serif of Midnight Editorial
+ * Minimalism. The `font-serif` Tailwind stack declared it but no @font-face
+ * existed, so headings fell back to Georgia (iOS) / Noto Serif (Android) —
+ * a system-font lottery instead of the signature face. One latin variable
+ * woff2 (the exact subset Google Fonts serves) covers the 400 + 500 weights
+ * the UI uses; served from /fonts/ and SW-precached so the first offline
+ * launch is already styled. */
+@font-face {
+  font-family: 'EB Garamond';
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url('/fonts/EBGaramond-latin.woff2') format('woff2');
+}
+
 /* Globals tuned for the Midnight Editorial Minimalism design language.
  * Phase 1 only uses these for the dev harness; the real UI will lean on
  * Tailwind utilities and these tokens together. */
