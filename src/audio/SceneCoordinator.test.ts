@@ -277,6 +277,20 @@ describe('SceneCoordinator', () => {
     expect(sceneGain.gain.value).toBe(1);
   });
 
+  it('first-start honors firstFadeTarget (3 a.m. Door resumes quieter)', async () => {
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    const scene = await coord.startScene(basicScene('door'), {
+      firstFadeSeconds: 30,
+      firstFadeTarget: 0.6,
+    });
+    // The ease-out curve ends at the reduced target, not full gain.
+    const sceneGain = scene.output as unknown as { gain: { value: number } };
+    expect(sceneGain.gain.value).toBeCloseTo(0.6, 5);
+  });
+
   it('crossfadeTo disposes the outgoing scene and installs the incoming as current', async () => {
     stubFetch(['/audio/']);
     const engine = new AudioEngine();

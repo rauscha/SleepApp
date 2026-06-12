@@ -1,8 +1,12 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getAudioEngine } from './audio/AudioEngine';
 import { getSceneCoordinator } from './audio/SceneCoordinator';
+import { fetchSceneDefinition, fetchSceneIndex } from './audio/sceneRegistry';
+import { getSetting } from './storage';
+import { isDeepNight, deepNightResumeParams } from './lib/deepNight';
 import { TonightScreen } from './screens/TonightScreen';
 import { PlayerScreen } from './screens/PlayerScreen';
+import { DeepNightDoor } from './screens/DeepNightDoor';
 import type { ContentItem } from './screens/LibraryScreen';
 
 // Lazy-load post-Tonight screens. Together these pull in Howler (~30 kB),
@@ -44,12 +48,18 @@ type Screen =
   | 'content-player'
   | 'story-generator'
   | 'settings'
-  | 'harness';
+  | 'harness'
+  | 'deep-night-door';
 
 // Screens where the persistent bottom nav stays hidden — the immersive
 // player surfaces shouldn't have UI chrome under them while the user is
-// drifting off, and ContentPlayer is similarly task-focused.
-const IMMERSIVE_SCREENS = new Set<Screen>(['player', 'content-player']);
+// drifting off, ContentPlayer is similarly task-focused, and the 3 a.m.
+// Door is deliberately a single bare panel.
+const IMMERSIVE_SCREENS = new Set<Screen>([
+  'player',
+  'content-player',
+  'deep-night-door',
+]);
 
 
 export function App() {
@@ -72,13 +82,18 @@ export function App() {
   // the last-visited screen: reopening the app should put the scene picker
   // in front of someone who's about to sleep, not wherever they last
   // browsed (e.g. Library). No Begin interstitial.
+  const coordinator = useMemo(() => getSceneCoordinator(engine), [engine]);
   const [screen, setScreen] = useState<Screen>(() => {
-    if (engine.isInitialized) {
-      const coord = getSceneCoordinator(engine);
-      if (coord.getCurrentScene()) return 'player';
-    }
+    if (engine.isInitialized && coordinator.getCurrentScene()) return 'player';
+    // The 3 a.m. Door: opened in the deep-night window with nothing playing
+    // and a scene to resume → a single near-black "back to sleep" panel
+    // instead of the bright Tonight screen (roadmap 6.1).
+    if (isDeepNight() && getSetting('lastSceneId')) return 'deep-night-door';
     return 'tonight';
   });
+  // When a session is resumed via the Door, the Player opens straight into
+  // Nightstand (black) so the screen never brightens at 3am.
+  const [resumeDark, setResumeDark] = useState(false);
 
   const [activeContent, setActiveContent] = useState<ContentItem | null>(null);
   const blobUrlRef = useRef<string | null>(null);
@@ -150,6 +165,35 @@ export function App() {
     setScreen('library');
   }, []);
 
+  // 3 a.m. Door resume — fetch the last scene and start it gently (long fade,
+  // reduced gain), then open the Player straight into Nightstand so the
+  // screen stays dark. Any failure quietly drops to Tonight.
+  const handleDeepNightResume = useCallback(async () => {
+    const lastSceneId = getSetting('lastSceneId');
+    if (!lastSceneId) {
+      setScreen('tonight');
+      return;
+    }
+    try {
+      await ensureUnlocked();
+      const idx = await fetchSceneIndex();
+      const entry = idx.scenes.find((s) => s.id === lastSceneId);
+      if (!entry) {
+        setScreen('tonight');
+        return;
+      }
+      const def = await fetchSceneDefinition(entry);
+      await coordinator.startScene(def, {
+        ...deepNightResumeParams(),
+        sleepTimerMinutes: getSetting('defaultTimerMinutes'),
+      });
+      setResumeDark(true);
+      setScreen('player');
+    } catch {
+      setScreen('tonight');
+    }
+  }, [ensureUnlocked, coordinator]);
+
   const showNav = !IMMERSIVE_SCREENS.has(screen);
 
   return (
@@ -167,8 +211,20 @@ export function App() {
             ensureUnlocked={ensureUnlocked}
           />
         )}
+        {screen === 'deep-night-door' && (
+          <DeepNightDoor
+            onResume={() => void handleDeepNightResume()}
+            onOpenApp={() => setScreen('tonight')}
+          />
+        )}
         {screen === 'player' && (
-          <PlayerScreen onExit={() => setScreen('tonight')} />
+          <PlayerScreen
+            startInNightstand={resumeDark}
+            onExit={() => {
+              setResumeDark(false);
+              setScreen('tonight');
+            }}
+          />
         )}
         {screen === 'library' && (
           <Suspense fallback={<ScreenFallback />}>

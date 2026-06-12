@@ -136,9 +136,12 @@ function useWakeTimer(durationMs: number): [boolean, () => void] {
 
 export interface PlayerScreenProps {
   onExit: () => void;
+  /** Open straight into Nightstand (black) — used by the 3 a.m. Door resume
+   *  so the screen never brightens at that hour (roadmap 6.1). */
+  startInNightstand?: boolean;
 }
 
-export function PlayerScreen({ onExit }: PlayerScreenProps) {
+export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreenProps) {
   const engine = useMemo(() => getAudioEngine(), []);
   const coordinator = useMemo(() => getSceneCoordinator(engine), [engine]);
 
@@ -162,7 +165,9 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
   const [, setTick] = useState(0);
 
   // Display mode
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('lush');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(
+    startInNightstand ? 'nightstand' : 'lush'
+  );
   const [awake, wake] = useWakeTimer(WAKE_DURATION_MS);
   const isIdle = useIdleTimer(IDLE_TIMEOUT_MS, displayMode === 'lush');
 

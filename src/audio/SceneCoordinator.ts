@@ -226,6 +226,13 @@ export class SceneCoordinator {
       fadeSeconds?: number;
       firstFadeSeconds?: number;
       /**
+       * Scene-gain target for the first-start fade-in (default 1.0). The
+       * 3 a.m. Door passes a reduced value so the resume seeps in quietly
+       * (roadmap 6.1); applied to the scene's own gain, not master, so the
+       * Player's master-volume restore can't undo it.
+       */
+      firstFadeTarget?: number;
+      /**
        * Whether this session should own the OS media session (default
        * true). The content player passes false: it manages its own media
        * session for the narration (title + Howler transport), so the
@@ -261,7 +268,7 @@ export class SceneCoordinator {
     // keep the linear ramp, which pairs with the outgoing fade-out.
     scene.fadeIn(
       options.firstFadeSeconds ?? DEFAULT_SCENE_FIRST_START_SECONDS,
-      1.0,
+      options.firstFadeTarget ?? 1.0,
       'ease-out'
     );
     this.currentScene = scene;
