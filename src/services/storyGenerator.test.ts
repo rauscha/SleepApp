@@ -529,12 +529,20 @@ describe('callElevenLabsChunked', () => {
     );
 
     const steps: string[] = [];
-    await callElevenLabsChunked('key', 'voice-1', script, undefined, (s) => {
-      if (s.stage === 'synthesizing') steps.push(s.message);
-    });
+    await callElevenLabsChunked(
+      'key',
+      'voice-1',
+      script,
+      undefined,
+      (s) => {
+        if (s.stage === 'synthesizing') steps.push(s.message);
+      },
+      'Tide'
+    );
+    // In-world progress copy (roadmap 6.6) still conveys per-chunk progress.
     expect(steps).toEqual([
-      'Synthesizing chunk 1 of 2…',
-      'Synthesizing chunk 2 of 2…',
+      'Tide is reading your story… (part 1 of 2)',
+      'Tide is reading your story… (part 2 of 2)',
     ]);
   });
 });

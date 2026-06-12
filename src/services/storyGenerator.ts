@@ -476,15 +476,19 @@ export async function generateStory(
   const { title: claudeTitle, script } = await callClaude(anthropicApiKey, theme, signal);
 
   // --- Step 2: Synthesize audio with ElevenLabs ---
+  // In-world progress copy (roadmap 6.6): the listener-facing wait reads as
+  // the narrator reading the story, not a chunked TTS job.
+  const voiceLabel = voiceName.charAt(0).toUpperCase() + voiceName.slice(1);
   onProgress?.({
     stage: 'synthesizing',
-    message: 'Synthesizing audio with ElevenLabs…',
+    message: `${voiceLabel} is reading your story…`,
   });
   const voiceId = STORY_VOICE_IDS[voiceName] ?? STORY_VOICE_IDS['tide']!;
   const projectsFlag = useProjects ?? isProjectsEnabled();
   const { data: audioBuffer, mimeType: audioMimeType } = await synthesizeStoryAudio({
     apiKey: elevenLabsApiKey,
     voiceId,
+    voiceLabel,
     text: script,
     signal,
     useProjects: projectsFlag,
@@ -536,6 +540,8 @@ export async function generateStory(
 interface SynthesizeArgs {
   apiKey: string;
   voiceId: string;
+  /** Display name of the narrator for in-world progress copy (6.6). */
+  voiceLabel?: string;
   text: string;
   signal?: AbortSignal;
   useProjects: boolean;
@@ -563,6 +569,7 @@ export async function synthesizeStoryAudio(
   const {
     apiKey,
     voiceId,
+    voiceLabel = 'Your narrator',
     text,
     signal,
     useProjects,
@@ -611,7 +618,7 @@ export async function synthesizeStoryAudio(
     }
   }
 
-  const data = await callElevenLabsChunked(apiKey, voiceId, cleaned, signal, onProgress);
+  const data = await callElevenLabsChunked(apiKey, voiceId, cleaned, signal, onProgress, voiceLabel);
   return { data, mimeType: 'audio/wav' };
 }
 
@@ -849,7 +856,8 @@ export async function callElevenLabsChunked(
   voiceId: string,
   text: string,
   signal?: AbortSignal,
-  onProgress?: (step: GenerationStep) => void
+  onProgress?: (step: GenerationStep) => void,
+  voiceLabel = 'Your narrator'
 ): Promise<ArrayBuffer> {
   const chunks = chunkScript(text);
   if (chunks.length === 0) throw new Error('Empty script — nothing to synthesize.');
@@ -860,7 +868,7 @@ export async function callElevenLabsChunked(
   for (let i = 0; i < chunks.length; i++) {
     onProgress?.({
       stage: 'synthesizing',
-      message: `Synthesizing chunk ${i + 1} of ${chunks.length}…`,
+      message: `${voiceLabel} is reading your story… (part ${i + 1} of ${chunks.length})`,
     });
     const buf = await callElevenLabs(
       apiKey, voiceId, chunks[i]!, signal, CHUNK_OUTPUT_FORMAT

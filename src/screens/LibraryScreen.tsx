@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isBedtime } from '../lib/bedtime';
 import { resolvePublicUrl } from '../lib/baseUrl';
+import { storyExcerpt } from '../lib/storyExcerpt';
 import { getStoryAudio, listStories, deleteStory } from '../storage';
 import type {
   BundledStoryMetadata,
@@ -289,6 +290,7 @@ export function LibraryScreen({
                 key={s.id}
                 title={s.title}
                 description={s.theme}
+                excerpt={storyExcerpt(s.script)}
                 meta={fmtDuration(s.durationSeconds)}
                 busy={loadingId === s.id}
                 errorMessage={storyError?.id === s.id ? storyError.message : null}
@@ -309,6 +311,7 @@ export function LibraryScreen({
 function ContentCard({
   title,
   description,
+  excerpt = null,
   meta,
   busy = false,
   errorMessage = null,
@@ -320,6 +323,8 @@ function ContentCard({
 }: {
   title: string;
   description: string;
+  /** One italic line of the content's own prose (roadmap 6.6). */
+  excerpt?: string | null;
   meta: string;
   busy?: boolean;
   errorMessage?: string | null;
@@ -384,6 +389,11 @@ function ContentCard({
         </div>
       </div>
       <p className="text-stone-300 body-text mb-1">{description}</p>
+      {excerpt && (
+        <p className="text-stone-300 body-text italic mb-1 leading-relaxed">
+          “{excerpt}”
+        </p>
+      )}
       <p className="text-stone-300 ui-label">{meta}</p>
       {errorMessage && (
         <p
