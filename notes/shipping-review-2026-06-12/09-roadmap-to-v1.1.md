@@ -23,21 +23,21 @@
 
 These five bugs each break The One Thing. Nothing else lands before they do.
 
-### ☐ 1.1 Move keep-alive/media-session ownership from PlayerScreen to the playback session (bug C1)
+### ☑ 1.1 Move keep-alive/media-session ownership from PlayerScreen to the playback session (bug C1)
 
 - **Files:** `src/screens/PlayerScreen.tsx:150–160, 305–307`, `src/audio/SceneCoordinator.ts`, `src/audio/AudioEngine.ts`
 - **Bug:** PlayerScreen's unmount cleanup runs `engine.stopKeepAlive()` (which also disengages the `<audio>` element sink), `stopSwKeepAlive()`, and `clearMediaSession()` — but "← Scenes" and hardware-back deliberately leave the scene playing. One tap leaves overnight audio in a freely-discardable tab (~10-min Android kill).
 - **Fix:** `SceneCoordinator.startScene()` engages keep-alive + SW keep-alive + media-session; `stopScene()`/disposal stops them. PlayerScreen only renders state and keeps the screen-scoped wake lock (it is visibility-bound anyway). Audit every current call site of `startKeepAlive`/`stopKeepAlive`/`setMediaSession*`/`clearMediaSession` so nothing double-starts or double-stops; mind the content-player path, which has its own bed-scene usage.
 - **Accept:** Start a scene → leave Player → keep-alive, element sink, SW pings, and media session all still engaged (assert via the engine's state + lifecycle log entries). Stop the scene from anywhere → all torn down. Add a regression test at the coordinator level.
 
-### ☐ 1.2 Element-sink pause recovery — never leave the bus routed into a paused element (bug C2)
+### ☑ 1.2 Element-sink pause recovery — never leave the bus routed into a paused element (bug C2)
 
 - **Files:** `src/audio/AudioEngine.ts:308–319` (pause handler), `src/audio/MasterBus.ts:48–61`
 - **Bug:** After an OS-initiated element pause, exactly one `el.play()` retry; if refused, audio flows into a paused sink forever — AudioContext stays `running` with `currentTime` advancing, so the zombie watchdog and `verifyContextAlive()` are both blind to it.
 - **Fix (all three layers):** (a) if the replay attempt rejects, `bus.detachElementSink()` and set `elementSinkEngaged = false` so sound reaches hardware again (log `media-sink-fallback`); (b) retry `el.play()` from the visibilitychange path; (c) add `sinkElement.paused && elementSinkEngaged` as a third failure signal in `watchdogTick()` so the watchdog re-attempts play / falls back on its cadence.
 - **Accept:** Unit test: simulate pause + rejected play → bus is detached from the sink and audible routing restored; watchdog test covers the paused-sink signal. Lifecycle log records each transition.
 
-### ☐ 1.3 Hoist the sleep timer out of PlayerScreen (bugs H1 + H3 — same root cause)
+### ☑ 1.3 Hoist the sleep timer out of PlayerScreen (bugs H1 + H3 — same root cause)
 
 - **Files:** `src/screens/PlayerScreen.tsx:198–244` (timer state, countdown effect, `fadeExitTimer` ref)
 - **Bugs:** (H1) `fadeExitTimer` is never cleared on unmount — timer fires → user exits mid-fade → starts scene B → 90.6s later the stale timeout `stopScene()`s the new session. (H3) Timer state is component-local — leave the Player and a confirmed 60-min timer silently evaporates; the scene plays all night.
