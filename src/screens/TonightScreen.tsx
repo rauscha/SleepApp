@@ -258,14 +258,10 @@ function SceneCard({
           </div>
         </div>
         {entry.description && (
-          <p
-            className={[
-              'text-stone-300 leading-relaxed',
-              primary ? 'body-text' : 'ui-label',
-            ].join(' ')}
-          >
-            {entry.description}
-          </p>
+          // Scene-card descriptions are reading text — 16px (body-text) per
+          // the app's own >=16px floor, not the 14px ui-label they used to
+          // ride on for non-primary cards (roadmap 4.4).
+          <p className="text-stone-300 body-text">{entry.description}</p>
         )}
       </div>
     </button>

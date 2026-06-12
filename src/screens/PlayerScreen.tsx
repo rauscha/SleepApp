@@ -35,7 +35,8 @@ import { exitFullscreenSafe, requestFullscreenSafe } from '../utils/fullscreen';
 // Constants
 
 const IDLE_TIMEOUT_MS = 30_000;  // inactivity before auto-nightstand
-const WAKE_DURATION_MS = 3_000;  // how long a tap reveals controls
+const WAKE_DURATION_MS = 7_000;  // how long a tap reveals controls (a sleepy
+                                 // user needs more than 3s to focus + act)
 
 const TIMER_OPTIONS_MINUTES = [15, 30, 60, 90] as const;
 // MasterBus fade duration when the sleep timer fires — owned by SleepTimer;
@@ -341,15 +342,19 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
       </header>
 
       <div className="flex-1 flex flex-col justify-center items-center mb-8">
+        {/* Demoted from a 128px ember disc (the brightest thing on a screen
+            you close your eyes to) to a quiet warm-stone ghost-ring, so the
+            scene photo is the hero. Still a generous touch target. (4.4) */}
         <button
           onClick={handleStop}
-          className="w-32 h-32 rounded-full bg-ember-500 text-ink-950 font-serif text-xl
+          className="px-9 py-4 rounded-full border border-stone-400/50 bg-ink-950/25
+                     backdrop-blur-sm text-stone-200 font-serif text-lg
                      transition-all duration-slow ease-exhale
-                     active:scale-95 active:bg-ember-400 shadow-ambient"
+                     active:scale-95 active:border-stone-300 active:text-stone-100"
           style={{ minWidth: 44, minHeight: 44 }}
-          aria-label="Stop scene"
+          aria-label="End the night — stop the scene"
         >
-          Stop
+          End the night
         </button>
         <p className="text-stone-300 body-text mt-4 max-w-xs text-center">
           {timer.status === 'fading'
@@ -513,7 +518,7 @@ function NightstandOverlay({
         className={[
           'flex flex-col items-center gap-8 px-8 w-full max-w-xs',
           'transition-opacity duration-slow ease-exhale',
-          engaged && awake ? 'opacity-40 pointer-events-auto' : 'opacity-0 pointer-events-none',
+          engaged && awake ? 'opacity-60 pointer-events-auto' : 'opacity-0 pointer-events-none',
         ].join(' ')}
       >
         {/* Scene name + timer status. Text labels on the status line are
@@ -539,13 +544,13 @@ function NightstandOverlay({
         {/* Stop button */}
         <button
           onClick={(e) => { e.stopPropagation(); onStop(); }}
-          className="w-28 h-28 rounded-full bg-ember-500 text-ink-950
-                     font-serif text-xl transition-transform duration-slow
-                     active:scale-95"
+          className="px-8 py-4 rounded-full border border-stone-400/50
+                     text-stone-200 font-serif text-lg transition-transform duration-slow
+                     active:scale-95 active:border-stone-300"
           style={{ minWidth: 44, minHeight: 44 }}
-          aria-label="Stop scene"
+          aria-label="End the night — stop the scene"
         >
-          Stop
+          End the night
         </button>
 
         {/* Exit to Lush */}
