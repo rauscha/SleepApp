@@ -331,8 +331,9 @@ export class AudioEngine {
     }
     try {
       el.srcObject = stream;
-      const p = el.play();
-      if (p) await p;
+      // el.play() returns a Promise in real browsers and undefined in the
+      // jsdom test shim; awaiting it is safe either way.
+      await el.play();
       if (this.masterBus !== bus) return; // context recreated mid-play()
       this.elementSinkEngaged = true;
       recordEvent('media-sink', 'element');
@@ -370,8 +371,9 @@ export class AudioEngine {
     if (!el || !this.elementSinkEngaged) return;
     if (!el.paused) return; // already playing — nothing to recover
     try {
-      const p = el.play();
-      if (p) await p;
+      // el.play() returns a Promise in real browsers and undefined in the
+      // jsdom test shim; awaiting it is safe either way.
+      await el.play();
     } catch {
       // A disengage/recreate may have raced in while play() was pending;
       // only fall back if we're still the engaged sink.

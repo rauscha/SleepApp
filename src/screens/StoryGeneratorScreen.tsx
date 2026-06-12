@@ -311,7 +311,7 @@ export function StoryGeneratorScreen({
           </div>
         ) : (
           <button
-            onClick={handleGenerate}
+            onClick={() => void handleGenerate()}
             disabled={!theme.trim()}
             className="w-full py-3 rounded-soft bg-moon-600 text-stone-50
                        body-text font-medium transition-all duration-slow ease-exhale

@@ -99,7 +99,7 @@ export function LibraryScreen({
       .then(setMeditations)
       .catch((err) => setMeditationError(String(err)));
     // Bundled stories swallow their own errors — see fetchBundledStoryIndex.
-    fetchBundledStoryIndex().then(setBundledStories);
+    void fetchBundledStoryIndex().then(setBundledStories);
   }, []);
 
   const refreshStories = useCallback(() => {
@@ -293,9 +293,9 @@ export function LibraryScreen({
                 busy={loadingId === s.id}
                 errorMessage={storyError?.id === s.id ? storyError.message : null}
                 confirmingDelete={confirmDeleteId === s.id}
-                onPlay={() => handlePlayStory(s)}
+                onPlay={() => void handlePlayStory(s)}
                 onDelete={() => setConfirmDeleteId(s.id)}
-                onConfirmDelete={() => handleConfirmDelete(s.id)}
+                onConfirmDelete={() => void handleConfirmDelete(s.id)}
                 onCancelDelete={() => setConfirmDeleteId(null)}
               />
             ))}

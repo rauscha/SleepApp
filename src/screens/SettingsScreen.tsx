@@ -303,7 +303,7 @@ function OfflineDownloadPanel() {
         {!running && (
           <button
             type="button"
-            onClick={handleDownload}
+            onClick={() => void handleDownload()}
             disabled={status?.complete === true}
             className={[
               'px-3 py-2 rounded-soft ui-label transition-colors duration-slow',
@@ -376,7 +376,7 @@ function DiagnosticsPanel() {
         return;
       }
     }
-    handleCopy();
+    void handleCopy();
   };
 
   const handleDownload = () => {
@@ -412,9 +412,9 @@ function DiagnosticsPanel() {
       </p>
 
       <div className="flex flex-wrap gap-2">
-        <DiagButton onClick={handleShare}>Share…</DiagButton>
-        <DiagButton onClick={handleCopy}>Copy</DiagButton>
-        <DiagButton onClick={handleDownload}>Download</DiagButton>
+        <DiagButton onClick={() => void handleShare()}>Share…</DiagButton>
+        <DiagButton onClick={() => void handleCopy()}>Copy</DiagButton>
+        <DiagButton onClick={() => void handleDownload()}>Download</DiagButton>
         <DiagButton onClick={handleClear} variant="quiet">Clear</DiagButton>
         <DiagButton onClick={refresh} variant="quiet">Refresh</DiagButton>
       </div>

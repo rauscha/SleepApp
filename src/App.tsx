@@ -174,7 +174,7 @@ export function App() {
           <Suspense fallback={<ScreenFallback />}>
             <LibraryScreen
               onBack={() => setScreen('tonight')}
-              onPlay={playContent}
+              onPlay={(item) => void playContent(item)}
               onGenerateStory={() => setScreen('story-generator')}
             />
           </Suspense>

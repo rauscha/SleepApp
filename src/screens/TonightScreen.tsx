@@ -149,7 +149,7 @@ export function TonightScreen({
             busy={busySceneId === entry.id}
             disabled={busySceneId !== null && busySceneId !== entry.id}
             background={sceneCardBackground(entry.id)}
-            onClick={() => handlePick(entry)}
+            onClick={() => void handlePick(entry)}
           />
         ))}
 

@@ -138,7 +138,6 @@ export async function precacheOfflineAssets(
       if ((err as DOMException)?.name === 'AbortError') throw err;
       // A single failing URL shouldn't kill the batch — most likely a
       // 404 on a hand-edited scene def. Log and continue.
-      // eslint-disable-next-line no-console
       console.warn('Offline precache: failed for', url, err);
     }
     done++;
