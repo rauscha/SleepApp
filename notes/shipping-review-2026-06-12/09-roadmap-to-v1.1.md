@@ -44,14 +44,14 @@ These five bugs each break The One Thing. Nothing else lands before they do.
 - **Fix:** Move the timer state machine (set/running/`endsAt`/fade/exit) into a module-level service or onto `SceneCoordinator`, keyed to the playback session: starting a new scene cancels the previous session's timer + pending fade-exit; the Player only renders countdown state and issues commands. Wall-clock `Date.now()` basis is accepted as-is (L5).
 - **Accept:** Fake-timer vitest covering: timer runs while Player unmounted and still fades/stops on schedule; exit-during-fade + new scene start does NOT kill scene B; re-entering Player shows the live countdown, not a re-armed default. (This is also code-review item #10 — the riskiest untested state machine.)
 
-### ☐ 1.4 Make IndexedDB writes resolve on transaction commit (bug H2)
+### ☑ 1.4 Make IndexedDB writes resolve on transaction commit (bug H2)
 
 - **File:** `src/storage/assets.ts:51–69` (`withStore`)
 - **Bug:** Resolves on `request.onsuccess`, which fires before commit; a `QuotaExceededError` abort then silently loses a ~45 MB story WAV the user paid $1–3 to synthesize, while `generateStory` reports done.
 - **Fix:** For `readwrite` mode, capture `request.result` on success but resolve on `tx.oncomplete`; reject on `tx.onabort` (currently unwired) and `tx.onerror`. Mirror the already-correct pattern in `deleteStory` (same file, lines 86–99). Then make `generateStory` surface a save failure as a failed stage, not `done` — and since the metadata row commits separately, on audio-save failure delete the orphaned metadata so the Library never lists an unplayable story.
 - **Accept:** Test with a fake IDB that aborts after request success → caller rejects, no metadata orphan.
 
-### ☐ 1.5 Serialize SceneCoordinator scene starts (bug M1 — promoted: it doubles audio all night)
+### ☑ 1.5 Serialize SceneCoordinator scene starts (bug M1 — promoted: it doubles audio all night)
 
 - **File:** `src/audio/SceneCoordinator.ts:160–209`
 - **Bug:** Overlapping `startScene`/`crossfadeTo` calls both capture the same outgoing scene and both start an incoming scene; the loser is referenced by nothing and plays at full volume until reload.
@@ -62,20 +62,20 @@ These five bugs each break The One Thing. Nothing else lands before they do.
 
 ## Phase 2 — Scene contract enforcement (reports `03` M2/L3, `02` must-fix 1/2/7)
 
-### ☐ 2.1 Extend `pavement-2.mp3` past 526s, then fix 515 → 521
+### ☑ 2.1 Extend `pavement-2.mp3` past 526s, then fix 515 → 521
 
 - **Files:** `public/audio/rain-on-window/rain-pavement/pavement-2.mp3` (+ its `.json` sidecar), `public/scenes/rain-on-window.json:37`
 - **Trap (found in review):** the offset fix alone breaks the scene — `pavement-2.mp3` is 525s and FileLayer requires duration > offset + 5s crossfade = 526s; the constructor would throw and the whole scene fails to load.
 - **Fix, in one commit:** acrossfade-extend `pavement-2.mp3` to ≥ 535s (use the pattern in `tools/grow-out-scenes.sh`; requires ffmpeg — if unavailable, tag this step [ASK] and stop before touching the JSON), update its sidecar's `trimmedTo`, then change `"loopOffsetSeconds": 515` → `521` (521 is unused in this scene; offsets become 409/521/251 — distinct, on-list).
 - **Accept:** New duration verified (ffprobe or size ÷ bitrate); scene loads; 2.2's conformance test passes.
 
-### ☐ 2.2 Add the scene-JSON conformance test — make the contract enforce itself
+### ☑ 2.2 Add the scene-JSON conformance test — make the contract enforce itself
 
 - **New file:** e.g. `src/audio/sceneCatalogue.test.ts`, reading every `public/scenes/*.json` + `public/scenes/index.json` + variant sidecars.
 - **Assert, per CLAUDE.md hard rules:** ≥2 elements per scene; every `loopOffsetSeconds` ∈ `PRIME_ADJACENT_LOOP_OFFSETS_SECONDS`; offsets distinct within a scene; every variant duration (sidecar `trimmedTo`, fall back to size÷bitrate) > offset + crossfade, **warn under 10s margin** (review found four scenes with <10s margins that break if `crossfadeSeconds` is ever raised); element volumes within the voicing bands (primary ~0.55–0.60, support 0.25–0.35, synth 0.10–0.16, events ≤ ~0.20); every variant file referenced actually exists.
 - **Accept:** Test fails on current tree until 2.1 lands; green after.
 
-### ☐ 2.3 Small scene-catalogue fixes (one commit)
+### ☑ 2.3 Small scene-catalogue fixes (one commit)
 
 - `public/scenes/forest-day.json`: add the already-on-disk second creek variant `public/audio/forest-day/creek-trickle/creek-2.mp3` (540s — used by forest-night already) to the creek element.
 - `src/audio/sceneFormat.ts:52–55`: fix the stale doc comment still recommending the broken non-coprime 253/407/511 offsets the constant below it repudiates.
