@@ -40,6 +40,12 @@ function makeMockLayer(id: string): Layer & { startCalls: number; stopCalls: num
   return m;
 }
 
+/** Flush the microtask queue a few times — used to settle the async
+ *  element-sink engage/recover paths under fake timers. */
+async function flushMicrotasks(times = 5): Promise<void> {
+  for (let i = 0; i < times; i++) await Promise.resolve();
+}
+
 describe('AudioEngine', () => {
   let restore: () => void;
 
@@ -190,6 +196,80 @@ describe('AudioEngine', () => {
           )
         ).toBe(true);
       });
+    });
+
+    // Review bug C2 / roadmap 1.2: after the OS pauses the sink element, a
+    // single refused replay used to leave the bus routed into a paused
+    // element forever — silence the zombie watchdog can't see. The refused
+    // replay must now detach the sink and restore audible direct output.
+    it('a refused replay after a sink pause falls back to direct output', async () => {
+      let sinkEl: HTMLAudioElement | undefined;
+      const realCreate = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation(((tag: string) => {
+        const el = realCreate(tag);
+        if (tag === 'audio') sinkEl = el as HTMLAudioElement;
+        return el;
+      }) as typeof document.createElement);
+
+      const engine = new AudioEngine();
+      await engine.unlock();
+      engine.startKeepAlive();
+      await vi.waitFor(() => {
+        const analyser = engine.bus.analyser as unknown as MockAnalyserNode;
+        expect(
+          analyser.connections.some(
+            (c) => c instanceof MockMediaStreamDestination
+          )
+        ).toBe(true);
+      });
+      expect(sinkEl).toBeDefined();
+
+      // The OS pauses our element and then refuses the replay.
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(
+        new Error('autoplay refused')
+      );
+      sinkEl!.dispatchEvent(new Event('pause'));
+
+      await vi.waitFor(() => {
+        const analyser = engine.bus.analyser as unknown as MockAnalyserNode;
+        const ctx = engine.context as unknown as MockAudioContext;
+        // Detached: the analyser feeds hardware directly again, not the
+        // stream destination.
+        expect(analyser.connections).toEqual([ctx.destination]);
+      });
+      // The session itself survives — sound just took the direct path.
+      expect(engine.isKeepAliveRunning).toBe(true);
+    });
+
+    // Review bug C2, layer c: even with no 'pause' event delivered, the
+    // watchdog must notice a paused-but-engaged sink (ctx 'running', clock
+    // advancing) and recover it on its own cadence.
+    it('the watchdog recovers a paused-but-engaged sink', async () => {
+      vi.useFakeTimers();
+      const engine = new AudioEngine();
+      await engine.unlock();
+      engine.startKeepAlive();
+      // Flush the async engage (await element.play()).
+      await flushMicrotasks();
+      const analyser = engine.bus.analyser as unknown as MockAnalyserNode;
+      expect(
+        analyser.connections.some((c) => c instanceof MockMediaStreamDestination)
+      ).toBe(true);
+
+      // The sink is paused out from under us and the replay stays refused.
+      vi.spyOn(HTMLMediaElement.prototype, 'paused', 'get').mockReturnValue(true);
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(
+        new Error('autoplay refused')
+      );
+
+      // One watchdog tick, keeping the audio clock advancing so the zombie
+      // path stays out of it — we're isolating the paused-sink signal.
+      const ctx = engine.context as unknown as MockAudioContext;
+      ctx.advanceTime(2);
+      vi.advanceTimersByTime(2000);
+      await flushMicrotasks();
+
+      expect(analyser.connections).toEqual([ctx.destination]);
     });
   });
 

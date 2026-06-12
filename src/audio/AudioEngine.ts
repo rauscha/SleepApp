@@ -310,12 +310,15 @@ export class AudioEngine {
       this.sinkElement = el;
       el.addEventListener('pause', () => {
         // Something other than disengage paused the sink (OS media
-        // controls without our handler, focus weirdness). One replay
-        // attempt; if that's refused, the pause stands and the log
-        // shows why the night went quiet.
+        // controls without our handler, focus weirdness). Try to resume;
+        // if the replay is refused, the bus would otherwise pour audio
+        // into a paused element forever — total silence the zombie
+        // watchdog can't see, because the context stays 'running' with
+        // currentTime advancing (review bug C2). So a refused replay falls
+        // back to direct hardware output: sound beats a trapped stream.
         if (!this.elementSinkEngaged) return;
-        recordEvent('media-sink-paused');
-        el.play().catch(() => undefined);
+        recordEvent('media-sink-paused', 'pause-event');
+        void this.retrySinkPlayOrFallback();
       });
     }
     try {
@@ -344,6 +347,39 @@ export class AudioEngine {
       }
     }
     this.masterBus?.detachElementSink();
+  }
+
+  /**
+   * Recover a sink element that was paused out from under us (review bug
+   * C2). One replay attempt; if it's refused, detach the sink so the bus
+   * reaches hardware directly — sound beats trapping the audio in a paused
+   * element the watchdog can't see. No-op when the sink isn't engaged or
+   * is already playing. Driven from three places: the element's own
+   * 'pause' event, the visibilitychange path, and the watchdog tick.
+   */
+  private async retrySinkPlayOrFallback(): Promise<void> {
+    const el = this.sinkElement;
+    if (!el || !this.elementSinkEngaged) return;
+    if (!el.paused) return; // already playing — nothing to recover
+    try {
+      const p = el.play();
+      if (p) await p;
+    } catch {
+      // A disengage/recreate may have raced in while play() was pending;
+      // only fall back if we're still the engaged sink.
+      if (this.elementSinkEngaged) this.fallbackFromElementSink();
+    }
+  }
+
+  /**
+   * Detach the element sink and restore direct hardware output, leaving
+   * the silent keep-alive and the rest of the session intact. The element
+   * can be re-engaged later (a recreateContext or a fresh startKeepAlive).
+   */
+  private fallbackFromElementSink(): void {
+    this.elementSinkEngaged = false;
+    this.masterBus?.detachElementSink();
+    recordEvent('media-sink-fallback');
   }
 
   get isKeepAliveRunning(): boolean {
@@ -484,6 +520,9 @@ export class AudioEngine {
       if (document.visibilityState === 'visible') {
         tryResume();
         void this.verifyContextAlive();
+        // A return-to-foreground is a fresh chance to re-arm a sink the OS
+        // paused while we were hidden (bug C2, layer b).
+        void this.retrySinkPlayOrFallback();
       }
     });
     window.addEventListener('focus', tryResume);
@@ -536,6 +575,15 @@ export class AudioEngine {
       this.stagnantTicks = 0;
     }
     this.lastWatchdogCurrentTime = ctx.currentTime;
+
+    // Third failure signal (review bug C2, layer c): the context is
+    // 'running' and its clock advances, yet the element sink is paused —
+    // audio flows into a paused element and reaches no speaker, invisible
+    // to the clock-based zombie check above. Re-attempt play on the
+    // watchdog's cadence; fall back to direct output if it stays refused.
+    if (this.elementSinkEngaged && this.sinkElement?.paused) {
+      void this.retrySinkPlayOrFallback();
+    }
   }
 }
 
