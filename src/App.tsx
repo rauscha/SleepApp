@@ -118,6 +118,16 @@ export function App() {
     }
     const onPopState = () => {
       // User pressed back — return to Tonight rather than leaving the app.
+      // Run the same content-leave cleanup as "← Library" (bug M5): if a
+      // content blob URL is live, revoke it and clear the active content,
+      // or hardware-back from the content player leaks a story's ~45 MB
+      // blob for the page's lifetime. blobUrlRef is a ref so this closure
+      // (empty-deps effect) always sees the current value.
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+      setActiveContent(null);
       setScreen('tonight');
       try {
         window.history.pushState({ screen: 'tonight', sentinel: true }, '');
@@ -133,6 +143,13 @@ export function App() {
   const playContent = useCallback(
     async (item: ContentItem) => {
       await ensureUnlocked();
+      // Revoke any previous content blob before overwriting the ref — a
+      // back-to-back play of two stories would otherwise strand the first
+      // one's ~45 MB object URL for the page's lifetime (bug M5).
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
       if (item.audioUrl.startsWith('blob:')) blobUrlRef.current = item.audioUrl;
       setActiveContent(item);
       setScreen('content-player');
