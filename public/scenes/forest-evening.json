@@ -91,5 +91,10 @@
         }
       ]
     }
-  ]
+  ],
+  "driftsTo": {
+    "sceneId": "forest-night",
+    "afterMinutes": 40,
+    "crossfadeSeconds": 60
+  }
 }

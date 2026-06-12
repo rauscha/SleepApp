@@ -602,6 +602,56 @@ describe('SceneCoordinator', () => {
   });
 
   // -------------------------------------------------------------------
+  // Night Drift (roadmap 6.2).
+
+  it('drifts to the target scene after afterMinutes', async () => {
+    vi.useFakeTimers();
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    const target = basicScene('night', { elementCount: 2 });
+    coord.setSceneResolver((id) =>
+      Promise.resolve(id === 'drift-target' ? target : null)
+    );
+
+    const evening = {
+      ...basicScene('evening', { elementCount: 2 }),
+      driftsTo: { sceneId: 'drift-target', afterMinutes: 0.02, crossfadeSeconds: 1 },
+    };
+    await coord.startScene(evening);
+    expect(coord.isDriftScheduled).toBe(true);
+    expect(coord.getCurrentScene()?.definition.id).toBe('evening');
+
+    // Past afterMinutes (1200ms) + flush the async resolve/crossfade. Stay
+    // under one watchdog tick (2s) so the context isn't touched.
+    await vi.advanceTimersByTimeAsync(1300);
+    expect(coord.getCurrentScene()?.definition.id).toBe('night');
+  });
+
+  it('cancels a pending drift on scene stop', async () => {
+    vi.useFakeTimers();
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    coord.setSceneResolver(() =>
+      Promise.resolve(basicScene('night', { elementCount: 2 }))
+    );
+
+    await coord.startScene({
+      ...basicScene('evening', { elementCount: 2 }),
+      driftsTo: { sceneId: 'drift-target', afterMinutes: 0.02 },
+    });
+    expect(coord.isDriftScheduled).toBe(true);
+
+    coord.stopScene(1);
+    expect(coord.isDriftScheduled).toBe(false);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(coord.getCurrentScene()).toBeNull();
+  });
+
+  // -------------------------------------------------------------------
   // Lock-screen soft-pause (review M4 / roadmap 3.6).
 
   it('lock-screen pause soft-pauses and keeps the session, play resumes', async () => {

@@ -38,6 +38,22 @@ export interface SceneDefinition {
 
   /** Ambient element layers. 3–5 per the brief; we do not enforce a count. */
   elements: SceneElementDefinition[];
+
+  /**
+   * Optional Night Drift target (roadmap 6.2): after `afterMinutes` of this
+   * scene playing, the session crossfades — over a very long
+   * `crossfadeSeconds` — into the scene with id `sceneId`, so the night
+   * composes itself (forest-evening → forest-night) rather than holding one
+   * static loop. The drift is scheduled at the session level and cancelled
+   * by any scene stop/switch. The target id must exist in the catalogue
+   * (enforced by the conformance test).
+   */
+  driftsTo?: {
+    sceneId: string;
+    afterMinutes: number;
+    /** Defaults to DEFAULT_DRIFT_CROSSFADE_SECONDS if omitted. */
+    crossfadeSeconds?: number;
+  };
 }
 
 export interface SceneElementDefinition {

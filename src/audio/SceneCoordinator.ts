@@ -45,6 +45,9 @@ import type { Layer } from './types';
 export const DEFAULT_SCENE_CROSSFADE_SECONDS = 8;
 /** Default first-start fade-in (no outgoing partner — gentler than 8s). */
 export const DEFAULT_SCENE_FIRST_START_SECONDS = 5;
+/** Default Night Drift crossfade — very long so the scene change is felt,
+ *  not noticed (roadmap 6.2). */
+export const DEFAULT_DRIFT_CROSSFADE_SECONDS = 60;
 
 /**
  * Backoff schedule for re-fetching a scene after a mid-night context rebuild
@@ -119,6 +122,16 @@ export class SceneCoordinator {
    * at call time, so they survive a mid-night context rebuild.
    */
   readonly sleepTimer: SleepTimer;
+  /**
+   * Night Drift (roadmap 6.2): a session-level timer that crossfades the
+   * scene into its `driftsTo` target after N minutes. Owned here, not by a
+   * screen, so it survives a Player unmount and is cancelled by any scene
+   * stop/switch. The resolver turns a target id into a definition.
+   */
+  private driftTimer: ReturnType<typeof setTimeout> | null = null;
+  private sceneResolver:
+    | ((id: string) => Promise<SceneDefinition | null>)
+    | null = null;
 
   constructor(engine: AudioEngine) {
     this.engine = engine;
@@ -275,6 +288,7 @@ export class SceneCoordinator {
     recordEvent('scene-start', scene.definition.id);
     this.engageSessionProtections(scene, options.manageMediaSession ?? true);
     this.applySessionTimer(options.sleepTimerMinutes);
+    this.scheduleDrift(scene.definition);
     return scene;
   }
 
@@ -320,6 +334,8 @@ export class SceneCoordinator {
     // outgoing scene's countdown AND any pending fade-exit, so a stale
     // timeout can never stop the new scene (review bug H1).
     this.applySessionTimer(options.sleepTimerMinutes);
+    // Re-key Night Drift to the incoming scene (its own driftsTo, or none).
+    this.scheduleDrift(incoming.definition);
     return incoming;
   }
 
@@ -342,6 +358,7 @@ export class SceneCoordinator {
     // fade above owns the gain ramp. reset() is a no-op if the stop was
     // itself the timer's fade-exit firing.
     this.sleepTimer.reset();
+    this.cancelDrift();
     recordEvent('scene-stop', stoppedId);
     this.disengageSessionProtections();
   }
@@ -350,6 +367,61 @@ export class SceneCoordinator {
   private applySessionTimer(minutes: number | null | undefined): void {
     if (minutes != null && minutes > 0) this.sleepTimer.start(minutes);
     else this.sleepTimer.reset();
+  }
+
+  // ---------------------------------------------------------------------
+  // Night Drift (roadmap 6.2)
+
+  /** Wire the catalogue lookup the drift uses to resolve a target id into a
+   *  definition. Set once by the app shell. */
+  setSceneResolver(fn: (id: string) => Promise<SceneDefinition | null>): void {
+    this.sceneResolver = fn;
+  }
+
+  /** True while a drift is pending — for diagnostics/tests. */
+  get isDriftScheduled(): boolean {
+    return this.driftTimer !== null;
+  }
+
+  /** Arm (or clear) the drift for the given scene. Idempotent re-key. */
+  private scheduleDrift(definition: SceneDefinition): void {
+    this.cancelDrift();
+    const drift = definition.driftsTo;
+    if (!drift) return;
+    this.driftTimer = setTimeout(() => {
+      this.driftTimer = null;
+      void this.performDrift(drift);
+    }, drift.afterMinutes * 60_000);
+  }
+
+  private cancelDrift(): void {
+    if (this.driftTimer) {
+      clearTimeout(this.driftTimer);
+      this.driftTimer = null;
+    }
+  }
+
+  private async performDrift(
+    drift: NonNullable<SceneDefinition['driftsTo']>
+  ): Promise<void> {
+    if (!this.sceneResolver || !this.currentScene) return;
+    // Stamp the session so a user start/stop during the async resolve wins.
+    const gen = this.startGeneration;
+    let targetDef: SceneDefinition | null;
+    try {
+      targetDef = await this.sceneResolver(drift.sceneId);
+    } catch (err) {
+      console.error('[SceneCoordinator] Night Drift resolve failed:', err);
+      return;
+    }
+    if (!targetDef || gen !== this.startGeneration || !this.currentScene) return;
+    recordEvent(
+      'scene-drift',
+      `${this.currentScene.definition.id}->${drift.sceneId}`
+    );
+    await this.crossfadeTo(targetDef, {
+      fadeSeconds: drift.crossfadeSeconds ?? DEFAULT_DRIFT_CROSSFADE_SECONDS,
+    });
   }
 
   // ---------------------------------------------------------------------

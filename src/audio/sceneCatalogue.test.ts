@@ -64,6 +64,20 @@ describe('scene catalogue conformance', () => {
     expect(sceneEntries.length).toBeGreaterThanOrEqual(8);
   });
 
+  it('every driftsTo target exists in the catalogue (Night Drift)', () => {
+    const ids = new Set(sceneEntries.map((e) => e.scene.id));
+    for (const { scene } of sceneEntries) {
+      const drift = scene.driftsTo;
+      if (!drift) continue;
+      expect(
+        ids.has(drift.sceneId),
+        `${scene.id}: driftsTo target "${drift.sceneId}" is not a scene`
+      ).toBe(true);
+      expect(drift.afterMinutes, `${scene.id}: driftsTo.afterMinutes`).toBeGreaterThan(0);
+      expect(drift.sceneId).not.toBe(scene.id); // don't drift to yourself
+    }
+  });
+
   it('index.json and the scene files agree', () => {
     const index = Object.values(indexModules)[0]!.default;
     const indexIds = index.scenes.map((s) => s.id).sort();

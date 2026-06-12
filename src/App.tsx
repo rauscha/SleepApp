@@ -95,6 +95,17 @@ export function App() {
   // Nightstand (black) so the screen never brightens at 3am.
   const [resumeDark, setResumeDark] = useState(false);
 
+  // Wire the Night Drift catalogue lookup once (roadmap 6.2): the coordinator
+  // schedules the drift, but resolving a driftsTo target id into a definition
+  // needs the scene registry, which lives up here.
+  useEffect(() => {
+    coordinator.setSceneResolver(async (id) => {
+      const idx = await fetchSceneIndex();
+      const entry = idx.scenes.find((s) => s.id === id);
+      return entry ? fetchSceneDefinition(entry) : null;
+    });
+  }, [coordinator]);
+
   const [activeContent, setActiveContent] = useState<ContentItem | null>(null);
   const blobUrlRef = useRef<string | null>(null);
 
