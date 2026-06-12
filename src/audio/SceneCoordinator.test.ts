@@ -17,7 +17,45 @@ import { AudioEngine } from './AudioEngine';
 import { AudioLoadError } from './FileLayer';
 import { SceneCoordinator } from './SceneCoordinator';
 import { installAudioContextMock, MockAudioBuffer } from '../test/audioMock';
+import { isSwKeepAliveRunning, stopSwKeepAlive } from '../serviceWorker/keepAlive';
+import { __resetForTests, getAllEntries } from '../diagnostics/lifecycleLog';
 import type { SceneDefinition } from './sceneFormat';
+
+/**
+ * Install a minimal MediaSession surface so we can assert the coordinator
+ * stamps / clears the OS media session. jsdom provides neither
+ * navigator.mediaSession nor MediaMetadata.
+ */
+function installMediaSessionMock(): {
+  session: { metadata: unknown; playbackState: string };
+  handlers: Record<string, unknown>;
+  restore: () => void;
+} {
+  const handlers: Record<string, unknown> = {};
+  const session = {
+    metadata: null as unknown,
+    playbackState: 'none',
+    setActionHandler: (action: string, h: unknown) => {
+      handlers[action] = h;
+    },
+  };
+  const g = globalThis as unknown as { MediaMetadata?: unknown };
+  const priorMeta = g.MediaMetadata;
+  g.MediaMetadata = class {
+    constructor(init: Record<string, unknown>) {
+      Object.assign(this, init);
+    }
+  };
+  (navigator as unknown as { mediaSession?: unknown }).mediaSession = session;
+  return {
+    session,
+    handlers,
+    restore() {
+      delete (navigator as unknown as { mediaSession?: unknown }).mediaSession;
+      g.MediaMetadata = priorMeta;
+    },
+  };
+}
 
 const SAMPLE_RATE = 48_000;
 
@@ -78,6 +116,9 @@ describe('SceneCoordinator', () => {
     ({ restore } = installAudioContextMock());
   });
   afterEach(() => {
+    // startScene now engages the module-global SW keep-alive timer; stop it
+    // so it can't leak across tests.
+    stopSwKeepAlive();
     restore();
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -313,5 +354,120 @@ describe('SceneCoordinator', () => {
     const probe = new MockAudioBuffer(2, SAMPLE_RATE * 30, SAMPLE_RATE);
     expect(probe.duration).toBeCloseTo(30, 5);
     expect(probe.numberOfChannels).toBe(2);
+  });
+
+  // -------------------------------------------------------------------
+  // Session-owned overnight protections (review bug C1 / roadmap 1.1).
+  // The keep-alive, SW pings, and media session must follow the *audio*,
+  // not whatever screen is mounted: starting a scene engages them, and
+  // they survive a Player exit (which at this level is simply "nobody
+  // called stopScene"). Only stopScene tears them down.
+
+  it('startScene engages the session protections and stamps the media session', async () => {
+    stubFetch(['/audio/']);
+    __resetForTests();
+    const media = installMediaSessionMock();
+    try {
+      const engine = new AudioEngine();
+      await engine.unlock();
+      const coord = new SceneCoordinator(engine);
+
+      const scene = await coord.startScene(basicScene('protected'));
+
+      // Engine keep-alive (silent loop + element sink) and SW pings up.
+      expect(engine.isKeepAliveRunning).toBe(true);
+      expect(isSwKeepAliveRunning()).toBe(true);
+      expect(coord.isProtectionEngaged).toBe(true);
+      // Media session stamped with the scene label + a stop handler.
+      expect(media.session.metadata).not.toBeNull();
+      expect(media.session.playbackState).toBe('playing');
+      expect(typeof media.handlers.stop).toBe('function');
+
+      // "Leave the Player": at the coordinator level nobody calls
+      // stopScene, so the scene stays current and every protection stays
+      // engaged. This is the heart of the C1 fix.
+      expect(coord.getCurrentScene()).toBe(scene);
+      expect(engine.isKeepAliveRunning).toBe(true);
+      expect(isSwKeepAliveRunning()).toBe(true);
+
+      const kinds = getAllEntries().map((e) => e.kind);
+      expect(kinds).toContain('scene-start');
+      expect(kinds).toContain('keepalive-start');
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('stopScene tears down every session protection', async () => {
+    stubFetch(['/audio/']);
+    __resetForTests();
+    const media = installMediaSessionMock();
+    try {
+      const engine = new AudioEngine();
+      await engine.unlock();
+      const coord = new SceneCoordinator(engine);
+      await coord.startScene(basicScene('teardown'));
+
+      coord.stopScene(2);
+
+      expect(coord.getCurrentScene()).toBeNull();
+      expect(engine.isKeepAliveRunning).toBe(false);
+      expect(isSwKeepAliveRunning()).toBe(false);
+      expect(coord.isProtectionEngaged).toBe(false);
+      expect(media.session.metadata).toBeNull();
+      expect(media.session.playbackState).toBe('none');
+
+      const kinds = getAllEntries().map((e) => e.kind);
+      expect(kinds).toContain('scene-stop');
+      expect(kinds).toContain('keepalive-stop');
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('keeps protections engaged across a crossfade, refreshing the label', async () => {
+    stubFetch(['/audio/']);
+    const media = installMediaSessionMock();
+    try {
+      const engine = new AudioEngine();
+      await engine.unlock();
+      const coord = new SceneCoordinator(engine);
+      await coord.startScene(basicScene('first'));
+      await coord.startScene(basicScene('second')); // crossfade
+
+      expect(engine.isKeepAliveRunning).toBe(true);
+      expect(isSwKeepAliveRunning()).toBe(true);
+      expect(coord.isProtectionEngaged).toBe(true);
+      // Label refreshed to the incoming scene.
+      expect(media.session.metadata).toMatchObject({ title: 'Scene second' });
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('does not touch the media session when manageMediaSession is false (content bed)', async () => {
+    stubFetch(['/audio/']);
+    const media = installMediaSessionMock();
+    try {
+      const engine = new AudioEngine();
+      await engine.unlock();
+      const coord = new SceneCoordinator(engine);
+
+      await coord.startScene(basicScene('bed'), { manageMediaSession: false });
+
+      // Keep-alive + SW pings still engage (the bed must survive overnight)…
+      expect(engine.isKeepAliveRunning).toBe(true);
+      expect(isSwKeepAliveRunning()).toBe(true);
+      // …but the coordinator left the media session alone for the content
+      // player to own.
+      expect(media.session.metadata).toBeNull();
+
+      // And tearing the bed down must not clear a media session the
+      // coordinator never set (no throw, still 'none').
+      coord.stopScene(1);
+      expect(media.session.playbackState).toBe('none');
+    } finally {
+      media.restore();
+    }
   });
 });

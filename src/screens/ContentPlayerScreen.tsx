@@ -160,7 +160,13 @@ export function ContentPlayerScreen({
           }
           const def = await fetchSceneDefinition(entry);
           if (cancelled) return;
-          await coordinator.startScene(def, { fallbackToSynthetic: true });
+          // manageMediaSession: false — this screen owns the OS media
+          // session for the narration (title + Howler transport); the
+          // coordinator must not stamp the bed scene's label over it.
+          await coordinator.startScene(def, {
+            fallbackToSynthetic: true,
+            manageMediaSession: false,
+          });
           startedHere = true;
         }
         setSetting('lastSceneId', bedSceneId);
@@ -218,20 +224,18 @@ export function ContentPlayerScreen({
     };
   }, [bedSceneId, engine]);
 
-  // Keep both Android-focus signals alive whenever this screen is responsible
-  // for audio (narration playing OR a bed that's still going). Same condition
-  // as the wake lock above — fixes the overnight-silence case where narration
-  // ended at minute 30 and the bed limped along without an audio focus signal
-  // until the OS finally pulled the tab.
-  const keepAudioFocusAlive = state === 'playing' || bedKeepsScreenLive;
+  // Keep the Android-focus signals alive for bare, unpaired narration.
+  // For *bed-paired* content the SceneCoordinator owns the keep-alive + SW
+  // pings — they follow the bed scene, not this screen (review bug C1), so
+  // they survive the user leaving while the bed plays on (stories) and tear
+  // down with the bed (meditations). Managing them here too would double-
+  // stop the coordinator's keep-alive on unmount while a story bed is still
+  // playing, so we only run this for content with no bed.
+  const keepAudioFocusAlive = !bedSceneId && state === 'playing';
   useEffect(() => {
     if (!keepAudioFocusAlive) return;
     engine.startKeepAlive();
     startSwKeepAlive();
-    // Mirror the PlayerScreen pattern so story/meditation sessions show up
-    // in the lifecycle log alongside scene sessions. Without this, a story
-    // playback session is invisible to diagnostics — which is exactly what
-    // we hit when trying to read the Signal-interruption incident.
     recordEvent('keepalive-start', 'content');
     return () => {
       engine.stopKeepAlive();

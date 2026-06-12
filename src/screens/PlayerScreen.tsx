@@ -18,14 +18,8 @@ import {
   getSceneCoordinator,
 } from '../audio/SceneCoordinator';
 import type { Scene } from '../audio/Scene';
-import {
-  clearMediaSession,
-  setMediaSessionForScene,
-} from '../audio/mediaSession';
-import { recordEvent } from '../diagnostics/lifecycleLog';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { scenePlayerBackground } from '../lib/sceneBackground';
-import { startSwKeepAlive, stopSwKeepAlive } from '../serviceWorker/keepAlive';
 import { getSetting, setSetting } from '../storage';
 import { exitFullscreenSafe, requestFullscreenSafe } from '../utils/fullscreen';
 
@@ -141,23 +135,15 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     coordinator.getCurrentScene()
   );
 
-  // Background keep-alive: silent loop through the AudioContext + screen
-  // wake lock. Both engage as soon as a scene is live and disengage when
-  // it ends. Wake Lock is no-op on browsers that don't support it; the
-  // silent loop is the load-bearing piece for Android's audio focus
-  // heuristic.
+  // Screen-scoped wake lock only. The overnight-survival protections
+  // (silent keep-alive + element sink, SW keep-alive, media session) are
+  // owned by the playback session in SceneCoordinator, not this screen —
+  // see review bug C1. Leaving the Player ("← Scenes", hardware-back) must
+  // strip nothing while the scene keeps playing, so the keep-alive and
+  // media session deliberately do NOT live in this component's lifecycle.
+  // The wake lock is visibility-bound by nature and correctly belongs to
+  // the on-screen experience, so it stays here.
   useWakeLock(scene !== null);
-  useEffect(() => {
-    if (!scene) return;
-    engine.startKeepAlive();
-    startSwKeepAlive();
-    recordEvent('keepalive-start');
-    return () => {
-      engine.stopKeepAlive();
-      stopSwKeepAlive();
-      recordEvent('keepalive-stop');
-    };
-  }, [scene, engine]);
   const [mixerOpen, setMixerOpen] = useState(false);
   const [masterVolume, setMasterVolume] = useState<number>(
     () => getSetting('masterVolume')
@@ -268,43 +254,9 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     setTimer({ status: 'off' });
   }, [timer, engine, masterVolume]);
 
-  // MediaSession + scene-event logging. Tracking the last-seen scene id
-  // in a ref lets us distinguish start/switch/stop transitions cleanly
-  // from the polled `scene` state.
-  const lastSceneIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    const prev = lastSceneIdRef.current;
-    const currentId = scene?.definition.id ?? null;
-    if (prev === currentId) return;
-    if (currentId && scene) {
-      recordEvent(prev ? 'scene-switch' : 'scene-start', currentId);
-      setMediaSessionForScene(scene.definition.label, {
-        onStop: handleStop,
-        // Ambient scenes have no real pause/resume semantics — pause is
-        // the same intent as stop ("end this scene now"). We wire play so
-        // the lock-screen control surface always has both buttons visible
-        // (some Android launchers hide the controls entirely if only stop
-        // is registered). Play attempts to resume a suspended context;
-        // engine.context throws if uninitialized, which it can't be here.
-        onPause: handleStop,
-        onPlay: () => {
-          const ctx = engine.context;
-          if (ctx.state === 'suspended') void ctx.resume();
-        },
-      });
-    } else {
-      recordEvent('scene-stop', prev ?? '?');
-      clearMediaSession();
-    }
-    lastSceneIdRef.current = currentId;
-  }, [scene, handleStop, engine]);
-
-  // Belt-and-suspenders: clear the MediaSession when the Player unmounts
-  // for any reason. The effect above already clears on stop, but a hard
-  // unmount path (route change, error boundary recovery) skips that.
-  useEffect(() => {
-    return () => clearMediaSession();
-  }, []);
+  // MediaSession and scene-event logging now live in SceneCoordinator
+  // (review bug C1) so they follow the audio across screen changes. The
+  // Player just renders the polled scene state below.
 
   // No scene loaded — skip the interstitial "nothing playing" screen
   // entirely and send the user straight back to Tonight where they

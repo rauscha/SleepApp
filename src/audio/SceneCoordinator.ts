@@ -25,6 +25,8 @@ import { NoiseGenerator } from './NoiseGenerator';
 import { TinnitusMaskLayer } from './TinnitusMaskLayer';
 import { Scene } from './Scene';
 import { recordEvent } from '../diagnostics/lifecycleLog';
+import { startSwKeepAlive, stopSwKeepAlive } from '../serviceWorker/keepAlive';
+import { clearMediaSession, setMediaSessionForScene } from './mediaSession';
 import { resolvePublicUrl } from '../lib/baseUrl';
 import { generateTestPadBuffer } from './synth/testPad';
 import type {
@@ -70,6 +72,13 @@ export interface VariantLoadOutcome {
 export class SceneCoordinator {
   private readonly engine: AudioEngine;
   private currentScene: Scene | null = null;
+  // The overnight-survival protections (silent keep-alive + element sink,
+  // SW keep-alive pings, OS media session) must live and die with the
+  // *audio*, not with whatever screen happens to be mounted — review bug
+  // C1. They are engaged on scene start and torn down on stopScene, so a
+  // "← Scenes" exit while audio plays strips nothing.
+  private protectionsEngaged = false;
+  private mediaSessionManaged = false;
 
   constructor(engine: AudioEngine) {
     this.engine = engine;
@@ -162,6 +171,13 @@ export class SceneCoordinator {
     options: LoadSceneOptions & {
       fadeSeconds?: number;
       firstFadeSeconds?: number;
+      /**
+       * Whether this session should own the OS media session (default
+       * true). The content player passes false: it manages its own media
+       * session for the narration (title + Howler transport), so the
+       * coordinator must not stamp the bed scene's label over it.
+       */
+      manageMediaSession?: boolean;
     } = {}
   ): Promise<Scene> {
     if (this.currentScene && !this.currentScene.isDisposed()) {
@@ -179,6 +195,8 @@ export class SceneCoordinator {
       'ease-out'
     );
     this.currentScene = scene;
+    recordEvent('scene-start', scene.definition.id);
+    this.engageSessionProtections(scene, options.manageMediaSession ?? true);
     return scene;
   }
 
@@ -190,7 +208,10 @@ export class SceneCoordinator {
    */
   async crossfadeTo(
     definition: SceneDefinition,
-    options: LoadSceneOptions & { fadeSeconds?: number } = {}
+    options: LoadSceneOptions & {
+      fadeSeconds?: number;
+      manageMediaSession?: boolean;
+    } = {}
   ): Promise<Scene> {
     const fade = options.fadeSeconds ?? DEFAULT_SCENE_CROSSFADE_SECONDS;
     const outgoing = this.currentScene;
@@ -205,6 +226,10 @@ export class SceneCoordinator {
     }
 
     this.currentScene = incoming;
+    recordEvent('scene-switch', incoming.definition.id);
+    // The session protections are already engaged (a scene was playing);
+    // this just refreshes the media-session label to the new scene.
+    this.engageSessionProtections(incoming, options.manageMediaSession ?? true);
     return incoming;
   }
 
@@ -215,8 +240,64 @@ export class SceneCoordinator {
    */
   stopScene(fadeSeconds = DEFAULT_SCENE_FIRST_START_SECONDS): void {
     if (!this.currentScene) return;
+    const stoppedId = this.currentScene.definition.id;
     this.currentScene.fadeAndDispose(fadeSeconds);
     this.currentScene = null;
+    recordEvent('scene-stop', stoppedId);
+    this.disengageSessionProtections();
+  }
+
+  // ---------------------------------------------------------------------
+  // Session protections (review bug C1)
+
+  /**
+   * Engage the protections that keep an overnight session alive: the
+   * engine's silent keep-alive + <audio> element sink, the service-worker
+   * keep-alive pings, and (when this session owns it) the OS media
+   * session. Idempotent — keep-alive and SW pings are no-ops if already
+   * running, and a crossfade just refreshes the media-session label.
+   */
+  private engageSessionProtections(
+    scene: Scene,
+    manageMediaSession: boolean
+  ): void {
+    this.engine.startKeepAlive();
+    startSwKeepAlive();
+    if (manageMediaSession) {
+      this.mediaSessionManaged = true;
+      setMediaSessionForScene(scene.definition.label, {
+        onStop: () => this.stopScene(),
+        // Ambient scenes have no real pause/resume — a pause from the OS
+        // controls means "end this scene now", same as stop. (Roadmap
+        // step 3.6 revisits this as a resumable soft-pause.) Play attempts
+        // to resume a context the OS suspended.
+        onPause: () => this.stopScene(),
+        onPlay: () => {
+          const ctx = this.engine.context;
+          if (ctx.state === 'suspended') void ctx.resume();
+        },
+      });
+    }
+    if (!this.protectionsEngaged) {
+      this.protectionsEngaged = true;
+      recordEvent('keepalive-start', 'session');
+    }
+  }
+
+  /** Tear down everything engageSessionProtections started. */
+  private disengageSessionProtections(): void {
+    if (!this.protectionsEngaged) return;
+    this.engine.stopKeepAlive();
+    stopSwKeepAlive();
+    if (this.mediaSessionManaged) clearMediaSession();
+    this.mediaSessionManaged = false;
+    this.protectionsEngaged = false;
+    recordEvent('keepalive-stop', 'session');
+  }
+
+  /** True while the current session's overnight protections are engaged. */
+  get isProtectionEngaged(): boolean {
+    return this.protectionsEngaged;
   }
 
   // ---------------------------------------------------------------------
@@ -255,7 +336,13 @@ export class SceneCoordinator {
       scene.fadeIn(DEFAULT_SCENE_FIRST_START_SECONDS, 1.0, 'ease-out');
       this.currentScene = scene;
     } catch (err) {
-      if (this.currentScene === dead) this.currentScene = null;
+      if (this.currentScene === dead) {
+        this.currentScene = null;
+        // The session is truly over — nothing is playing and nothing will
+        // rebuild it. Release the protections so we don't leave keep-alive
+        // and a stale media session running over silence.
+        this.disengageSessionProtections();
+      }
       console.error(
         '[SceneCoordinator] scene restart after context loss failed:',
         err
