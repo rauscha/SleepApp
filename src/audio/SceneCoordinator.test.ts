@@ -184,6 +184,21 @@ describe('SceneCoordinator', () => {
     expect(outcomes.length).toBeGreaterThan(0);
   });
 
+  // 3.1: the option now defaults to import.meta.env.DEV. In the dev/test
+  // environment that is true, so an omitted option still falls back on a
+  // 404 (authoring convenience). In a production build the same omission
+  // throws — surfacing a load failure instead of a synth-pad impostor.
+  it('defaults fallbackToSynthetic to import.meta.env.DEV (falls back in dev on 404)', async () => {
+    stubFetch([]); // every fetch 404s
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    // No fallbackToSynthetic passed — relies on the DEV-gated default.
+    const scene = await coord.loadScene(basicScene('default-fallback'));
+    expect(scene.getLayers().length).toBe(3); // synth + 2 synthesized els
+    expect(import.meta.env.DEV).toBe(true); // sanity: the default is on here
+  });
+
   it('rethrows when a variant fetch fails and fallbackToSynthetic=false', async () => {
     stubFetch([]); // nothing succeeds
     const engine = new AudioEngine();

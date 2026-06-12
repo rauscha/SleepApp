@@ -50,10 +50,14 @@ export interface LoadSceneOptions {
    */
   tinnitus?: { centerHz: number; bandwidthHz: number };
   /**
-   * If a variant URL fails to fetch/decode, generate a synthesized
-   * placeholder buffer instead of throwing. Default: true (Phase 2 dev
-   * convenience — author scenes before sourcing audio). Set false in
-   * production builds once recordings exist.
+   * If a variant URL fails to fetch/decode (404 only — see loadVariant),
+   * generate a synthesized placeholder buffer instead of throwing. This is
+   * a DEV affordance for authoring scenes before their audio lands.
+   * Default: `import.meta.env.DEV` — in production a missing file must fail
+   * loudly (the Player surfaces an error) rather than impersonate the scene
+   * with a synth pad all night after a bad deploy (review M5/security).
+   * The one legitimate prod override is restartAfterContextLoss, where
+   * sound at 3am beats silence.
    */
   fallbackToSynthetic?: boolean;
   /**
@@ -126,7 +130,7 @@ export class SceneCoordinator {
     definition: SceneDefinition,
     options: LoadSceneOptions = {}
   ): Promise<Scene> {
-    const fallback = options.fallbackToSynthetic ?? true;
+    const fallback = options.fallbackToSynthetic ?? import.meta.env.DEV;
 
     // The synth bed and tinnitus mask need the noise-processor worklet.
     if (definition.synth || definition.tinnitus) {

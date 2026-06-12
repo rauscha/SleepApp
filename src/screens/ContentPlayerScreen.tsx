@@ -163,8 +163,9 @@ export function ContentPlayerScreen({
           // manageMediaSession: false — this screen owns the OS media
           // session for the narration (title + Howler transport); the
           // coordinator must not stamp the bed scene's label over it.
+          // fallbackToSynthetic inherits import.meta.env.DEV (3.1): a bed
+          // that 404s in prod must not become a synth pad under narration.
           await coordinator.startScene(def, {
-            fallbackToSynthetic: true,
             manageMediaSession: false,
           });
           startedHere = true;

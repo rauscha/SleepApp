@@ -77,7 +77,9 @@ export function TonightScreen({
         await ensureUnlocked();
         const def = await fetchSceneDefinition(entry);
         await coordinator.startScene(def, {
-          fallbackToSynthetic: true,
+          // fallbackToSynthetic defaults to import.meta.env.DEV: in prod a
+          // missing variant must fail loudly (caught below → startError),
+          // not play a synth pad impersonating the scene all night (3.1).
           fadeSeconds: DEFAULT_SCENE_CROSSFADE_SECONDS,
           firstFadeSeconds: DEFAULT_SCENE_FIRST_START_SECONDS,
           // Arm the sleep timer on the session, not the Player (bug H3):
