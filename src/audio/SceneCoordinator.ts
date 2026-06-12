@@ -81,6 +81,15 @@ export class SceneCoordinator {
   private protectionsEngaged = false;
   private mediaSessionManaged = false;
   /**
+   * Monotonic stamp for scene-start requests (review bug M1). Each
+   * startScene/crossfadeTo/stop/context-rebuild bumps it; a request that
+   * finds its stamp stale after the async load disposes its scene instead
+   * of wiring it into the graph, where it would otherwise play at full
+   * volume forever with nothing referencing it. Serializes overlapping
+   * starts down to exactly one winner.
+   */
+  private startGeneration = 0;
+  /**
    * The sleep timer, owned by the session rather than the Player (review
    * bugs H1 + H3). Its fade/stop hooks read engine.bus and stopScene fresh
    * at call time, so they survive a mid-night context rebuild.
@@ -203,7 +212,15 @@ export class SceneCoordinator {
     if (this.currentScene && !this.currentScene.isDisposed()) {
       return this.crossfadeTo(definition, options);
     }
+    const generation = ++this.startGeneration;
     const scene = await this.loadScene(definition, options);
+    if (generation !== this.startGeneration) {
+      // A newer start/crossfade/stop superseded us while we were loading.
+      // Nothing references this scene; dispose it rather than wire it into
+      // the bus, where it would play unmixed forever (bug M1).
+      scene.dispose();
+      return scene;
+    }
     scene.output.connect(this.engine.bus.input);
     scene.start();
     // First start from silence uses the front-loaded 'ease-out' curve so
@@ -236,8 +253,15 @@ export class SceneCoordinator {
     } = {}
   ): Promise<Scene> {
     const fade = options.fadeSeconds ?? DEFAULT_SCENE_CROSSFADE_SECONDS;
+    const generation = ++this.startGeneration;
     const outgoing = this.currentScene;
     const incoming = await this.loadScene(definition, options);
+    if (generation !== this.startGeneration) {
+      // Superseded mid-load by a newer request (bug M1). Dispose rather
+      // than start — and leave `outgoing` for the winner to crossfade from.
+      incoming.dispose();
+      return incoming;
+    }
 
     incoming.output.connect(this.engine.bus.input);
     incoming.start();
@@ -265,6 +289,11 @@ export class SceneCoordinator {
    * to fully complete, await `waitForDisposal(fadeSeconds)`.
    */
   stopScene(fadeSeconds = DEFAULT_SCENE_FIRST_START_SECONDS): void {
+    // Supersede any in-flight start so a scene still loading when the user
+    // stops disposes itself on resolve instead of starting over the silence
+    // (bug M1). Bump before the early return so a stop during a first-start
+    // load — when currentScene is still null — also cancels it.
+    this.startGeneration++;
     if (!this.currentScene) return;
     const stoppedId = this.currentScene.definition.id;
     this.currentScene.fadeAndDispose(fadeSeconds);
@@ -350,6 +379,10 @@ export class SceneCoordinator {
   private async restartAfterContextLoss(): Promise<void> {
     const dead = this.currentScene;
     if (!dead) return;
+    // Supersede any user start that was in flight on the now-dead context:
+    // its nodes belong to the closed context, so wiring them into the new
+    // bus would be broken (bug M1). The rebuild becomes the latest request.
+    const generation = ++this.startGeneration;
     const definition = dead.definition;
     try {
       dead.dispose();
@@ -361,7 +394,7 @@ export class SceneCoordinator {
       const scene = await this.loadScene(definition, {
         fallbackToSynthetic: true,
       });
-      if (this.currentScene !== dead) {
+      if (this.currentScene !== dead || generation !== this.startGeneration) {
         // The user started or stopped something while we were loading —
         // their action wins; drop the rebuilt scene.
         scene.dispose();

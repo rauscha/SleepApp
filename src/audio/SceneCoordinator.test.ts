@@ -534,4 +534,57 @@ describe('SceneCoordinator', () => {
     expect(stopSpy).not.toHaveBeenCalled();
     expect(coord.getCurrentScene()?.definition.id).toBe('B');
   });
+
+  // -------------------------------------------------------------------
+  // Serialized scene starts (review bug M1 / roadmap 1.5).
+
+  it('two racing first-starts leave exactly one playing scene, loser disposed', async () => {
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+
+    // Fire both before either resolves — both take the first-start branch
+    // because neither has set currentScene yet.
+    const scenes = await Promise.all([
+      coord.startScene(basicScene('race-A')),
+      coord.startScene(basicScene('race-B')),
+    ]);
+
+    const current = coord.getCurrentScene();
+    expect(current).not.toBeNull();
+    const losers = scenes.filter((s) => s !== current);
+    expect(losers).toHaveLength(1);
+    expect(current!.isDisposed()).toBe(false);
+    expect(losers[0]!.isDisposed()).toBe(true);
+
+    // Exactly one scene is wired into the bus; the loser is connected to
+    // nothing (dispose disconnected it before it could start).
+    const curConn = (current!.output as unknown as { connections: unknown[] }).connections;
+    const loseConn = (losers[0]!.output as unknown as { connections: unknown[] }).connections;
+    expect(curConn).toContain(engine.bus.input);
+    expect(loseConn).toHaveLength(0);
+  });
+
+  it('racing starts over an existing scene crossfade to one winner', async () => {
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    await coord.startScene(basicScene('base'));
+
+    const scenes = await Promise.all([
+      coord.startScene(basicScene('xf-A')),
+      coord.startScene(basicScene('xf-B')),
+    ]);
+
+    const current = coord.getCurrentScene();
+    const losers = scenes.filter((s) => s !== current);
+    expect(losers).toHaveLength(1);
+    expect(current!.isDisposed()).toBe(false);
+    expect(losers[0]!.isDisposed()).toBe(true);
+    expect(
+      (losers[0]!.output as unknown as { connections: unknown[] }).connections
+    ).toHaveLength(0);
+  });
 });
