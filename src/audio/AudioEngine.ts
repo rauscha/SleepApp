@@ -14,7 +14,9 @@ export type EngineEvent =
   | { kind: 'state'; state: AudioContextState }
   | { kind: 'context-recreated' }
   | { kind: 'layer-added'; id: string }
-  | { kind: 'layer-removed'; id: string };
+  | { kind: 'layer-removed'; id: string }
+  | { kind: 'user-paused' }
+  | { kind: 'user-resumed' };
 
 export type EngineListener = (e: EngineEvent) => void;
 
@@ -46,6 +48,12 @@ export class AudioEngine {
   private stagnantTicks = 0;
   private sinkElement: HTMLAudioElement | null = null;
   private elementSinkEngaged = false;
+  // True while the user (lock-screen / headset pause) has deliberately
+  // suspended playback. The whole survival stack exists to KEEP the context
+  // running, so a soft-pause has to suppress the auto-resume machinery
+  // (watchdog, visibilitychange/focus resume, liveness probe) until the user
+  // resumes — otherwise we'd wake the context right back up. (Review M4.)
+  private userPaused = false;
 
   static readonly LAYER_SOFT_CAP = 6;
 
@@ -386,6 +394,49 @@ export class AudioEngine {
     return this.keepAlive?.isRunning ?? false;
   }
 
+  /**
+   * Soft-pause from a user/OS action (lock-screen or headset pause). Suspend
+   * the context and set the userPaused flag so the auto-resume machinery
+   * leaves it alone until resumeForUser(). The session itself stays intact
+   * (scene, keep-alive, element sink), so this is fully recoverable — the
+   * lock-screen Play button or bringing the app to the foreground resumes it
+   * (review M4: Andrew chose resumable soft-pause over stop-and-exit).
+   */
+  async pauseForUser(): Promise<void> {
+    if (this.userPaused) return;
+    this.userPaused = true;
+    recordEvent('user-pause');
+    this.emit({ kind: 'user-paused' });
+    const ctx = this.ctx;
+    if (ctx && (ctx.state as string) === 'running') {
+      try {
+        await ctx.suspend();
+      } catch {
+        /* best-effort */
+      }
+    }
+  }
+
+  /** Resume from a soft-pause. Clears the flag and resumes the context. */
+  async resumeForUser(): Promise<void> {
+    if (!this.userPaused) return;
+    this.userPaused = false;
+    recordEvent('user-resume');
+    this.emit({ kind: 'user-resumed' });
+    const ctx = this.ctx;
+    if (ctx && (ctx.state as string) !== 'running') {
+      try {
+        await ctx.resume();
+      } catch {
+        /* will retry on the next foreground/gesture */
+      }
+    }
+  }
+
+  get isUserPaused(): boolean {
+    return this.userPaused;
+  }
+
   addListener(fn: EngineListener): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
@@ -477,7 +528,8 @@ export class AudioEngine {
    */
   private async verifyContextAlive(): Promise<void> {
     const ctx = this.ctx;
-    if (!ctx || this.verifyInFlight || !this.hasActiveSession) return;
+    if (!ctx || this.verifyInFlight || !this.hasActiveSession || this.userPaused)
+      return;
     this.verifyInFlight = true;
     try {
       if ((ctx.state as string) !== 'running') {
@@ -507,7 +559,7 @@ export class AudioEngine {
     this.visibilityHandlerInstalled = true;
     const tryResume = () => {
       const ctx = this.ctx;
-      if (!ctx) return;
+      if (!ctx || this.userPaused) return;
       // Anything other than 'running' gets a resume attempt — this
       // covers iOS Safari's non-standard 'interrupted' state too.
       if ((ctx.state as string) !== 'running') {
@@ -518,6 +570,12 @@ export class AudioEngine {
     };
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
+        // Bringing the app to the foreground is a resume intent: undo a
+        // soft-pause rather than leaving the user staring at a silent scene.
+        if (this.userPaused) {
+          void this.resumeForUser();
+          return;
+        }
         tryResume();
         void this.verifyContextAlive();
         // A return-to-foreground is a fresh chance to re-arm a sink the OS
@@ -525,7 +583,13 @@ export class AudioEngine {
         void this.retrySinkPlayOrFallback();
       }
     });
-    window.addEventListener('focus', tryResume);
+    window.addEventListener('focus', () => {
+      if (this.userPaused) {
+        void this.resumeForUser();
+        return;
+      }
+      tryResume();
+    });
     setInterval(() => this.watchdogTick(), 2000);
   }
 
@@ -548,7 +612,10 @@ export class AudioEngine {
    */
   private watchdogTick(): void {
     const ctx = this.ctx;
-    if (!ctx || !this.hasActiveSession) {
+    // While the user has soft-paused, the context is intentionally suspended
+    // — the watchdog must not resume it or trip the zombie detector on the
+    // (legitimately) frozen clock (review M4).
+    if (!ctx || !this.hasActiveSession || this.userPaused) {
       this.stagnantTicks = 0;
       this.lastWatchdogCurrentTime = -1;
       return;

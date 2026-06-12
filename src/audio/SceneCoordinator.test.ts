@@ -551,6 +551,36 @@ describe('SceneCoordinator', () => {
   });
 
   // -------------------------------------------------------------------
+  // Lock-screen soft-pause (review M4 / roadmap 3.6).
+
+  it('lock-screen pause soft-pauses and keeps the session, play resumes', async () => {
+    stubFetch(['/audio/']);
+    const media = installMediaSessionMock();
+    try {
+      const engine = new AudioEngine();
+      await engine.unlock();
+      const coord = new SceneCoordinator(engine);
+      await coord.startScene(basicScene('m4'));
+      expect(typeof media.handlers.pause).toBe('function');
+
+      (media.handlers.pause as () => void)();
+      expect(engine.isUserPaused).toBe(true);
+      expect(media.session.playbackState).toBe('paused');
+      // The session is NOT torn down — scene still current, keep-alive up.
+      expect(coord.getCurrentScene()).not.toBeNull();
+      expect(engine.isKeepAliveRunning).toBe(true);
+
+      (media.handlers.play as () => void)();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(engine.isUserPaused).toBe(false);
+      expect(media.session.playbackState).toBe('playing');
+    } finally {
+      media.restore();
+    }
+  });
+
+  // -------------------------------------------------------------------
   // Serialized scene starts (review bug M1 / roadmap 1.5).
 
   it('two racing first-starts leave exactly one playing scene, loser disposed', async () => {

@@ -273,6 +273,36 @@ describe('AudioEngine', () => {
     });
   });
 
+  // Review M4 / roadmap 3.6: a lock-screen/headset pause soft-pauses (the
+  // context suspends) and the auto-resume machinery must leave it suspended
+  // until the user resumes — otherwise the watchdog wakes it right back up.
+  it('soft-pause suspends and the watchdog leaves it suspended until resume', async () => {
+    vi.useFakeTimers();
+    const engine = new AudioEngine();
+    await engine.unlock();
+    engine.startKeepAlive(); // active session → watchdog runs
+    const ctx = engine.context as unknown as MockAudioContext;
+    const kinds: string[] = [];
+    engine.addListener((e) => kinds.push(e.kind));
+
+    await engine.pauseForUser();
+    expect(engine.isUserPaused).toBe(true);
+    expect(ctx.state).toBe('suspended');
+    expect(kinds).toContain('user-paused');
+
+    // Several watchdog ticks must NOT resume the user-paused context.
+    const resumesBefore = ctx.resumeCalls;
+    vi.advanceTimersByTime(8000);
+    expect(ctx.state).toBe('suspended');
+    expect(ctx.resumeCalls).toBe(resumesBefore);
+    expect(kinds).not.toContain('context-recreated');
+
+    await engine.resumeForUser();
+    expect(engine.isUserPaused).toBe(false);
+    expect(ctx.state).toBe('running');
+    expect(kinds).toContain('user-resumed');
+  });
+
   it('watchdog does nothing without an active session', async () => {
     vi.useFakeTimers();
     const engine = new AudioEngine();

@@ -27,7 +27,11 @@ import { Scene } from './Scene';
 import { SleepTimer } from './SleepTimer';
 import { recordEvent } from '../diagnostics/lifecycleLog';
 import { startSwKeepAlive, stopSwKeepAlive } from '../serviceWorker/keepAlive';
-import { clearMediaSession, setMediaSessionForScene } from './mediaSession';
+import {
+  clearMediaSession,
+  setMediaSessionForScene,
+  setMediaSessionPlaybackState,
+} from './mediaSession';
 import { resolvePublicUrl } from '../lib/baseUrl';
 import { generateTestPadBuffer } from './synth/testPad';
 import type {
@@ -114,6 +118,15 @@ export class SceneCoordinator {
     // user having to re-pick anything.
     engine.addListener((e) => {
       if (e.kind === 'context-recreated') void this.restartAfterContextLoss();
+      // Keep the OS media session's play/pause icon in sync with a
+      // soft-pause, including the auto-resume that fires when the app
+      // returns to the foreground (review M4). Only when we own the
+      // session (not the content player's narration).
+      else if (e.kind === 'user-paused' && this.mediaSessionManaged) {
+        setMediaSessionPlaybackState('paused');
+      } else if (e.kind === 'user-resumed' && this.mediaSessionManaged) {
+        setMediaSessionPlaybackState('playing');
+      }
     });
   }
 
@@ -336,14 +349,19 @@ export class SceneCoordinator {
       this.mediaSessionManaged = true;
       setMediaSessionForScene(scene.definition.label, {
         onStop: () => this.stopScene(),
-        // Ambient scenes have no real pause/resume — a pause from the OS
-        // controls means "end this scene now", same as stop. (Roadmap
-        // step 3.6 revisits this as a resumable soft-pause.) Play attempts
-        // to resume a context the OS suspended.
-        onPause: () => this.stopScene(),
+        // Soft-pause, resumable (review M4 / roadmap 3.6): a stray headset
+        // bump or Bluetooth disconnect suspends the context but leaves the
+        // session intact, so lock-screen Play (or foregrounding the app)
+        // resumes it — rather than ending the night unrecoverably.
+        onPause: () => void this.engine.pauseForUser(),
         onPlay: () => {
-          const ctx = this.engine.context;
-          if (ctx.state === 'suspended') void ctx.resume();
+          if (this.engine.isUserPaused) {
+            void this.engine.resumeForUser();
+          } else {
+            // OS suspended the context without a soft-pause — just resume.
+            const ctx = this.engine.context;
+            if (ctx.state !== 'running') void ctx.resume();
+          }
         },
       });
     }
