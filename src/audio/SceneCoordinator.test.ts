@@ -17,9 +17,28 @@ import { AudioEngine } from './AudioEngine';
 import { AudioLoadError } from './FileLayer';
 import { SceneCoordinator } from './SceneCoordinator';
 import { installAudioContextMock, MockAudioBuffer } from '../test/audioMock';
+import type { MockAudioContext } from '../test/audioMock';
 import { isSwKeepAliveRunning, stopSwKeepAlive } from '../serviceWorker/keepAlive';
 import { __resetForTests, getAllEntries } from '../diagnostics/lifecycleLog';
+import { SLEEP_TIMER_FADE_SECONDS } from './SleepTimer';
 import type { SceneDefinition } from './sceneFormat';
+
+const FADE_EXIT_MS = SLEEP_TIMER_FADE_SECONDS * 1000 + 600;
+
+/**
+ * Advance fake timers AND the mock audio clock in lockstep, so the engine
+ * watchdog never mistakes a frozen ctx.currentTime for a zombie context
+ * and recreates it mid-test.
+ */
+function advanceBoth(ctx: MockAudioContext, ms: number, stepMs = 500): void {
+  let elapsed = 0;
+  while (elapsed < ms) {
+    const step = Math.min(stepMs, ms - elapsed);
+    ctx.advanceTime(step / 1000);
+    vi.advanceTimersByTime(step);
+    elapsed += step;
+  }
+}
 
 /**
  * Install a minimal MediaSession surface so we can assert the coordinator
@@ -469,5 +488,50 @@ describe('SceneCoordinator', () => {
     } finally {
       media.restore();
     }
+  });
+
+  // -------------------------------------------------------------------
+  // Session-owned sleep timer (review bugs H1 + H3 / roadmap 1.3).
+
+  it('arms the sleep timer from sleepTimerMinutes and clears it on stop', async () => {
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+
+    await coord.startScene(basicScene('timed'), { sleepTimerMinutes: 30 });
+    expect(coord.sleepTimer.getState().status).toBe('running');
+    expect(coord.sleepTimer.isArmed).toBe(true);
+
+    coord.stopScene(1);
+    expect(coord.sleepTimer.getState().status).toBe('off');
+    expect(coord.sleepTimer.isArmed).toBe(false);
+  });
+
+  it('a new scene start does not let a stale fade-exit stop the new scene (H1)', async () => {
+    vi.useFakeTimers();
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    const ctx = engine.context as unknown as MockAudioContext;
+    const stopSpy = vi.spyOn(coord, 'stopScene');
+
+    // Scene A with a very short sleep timer that fires almost immediately.
+    await coord.startScene(basicScene('A'), { sleepTimerMinutes: 0.02 });
+    advanceBoth(ctx, 1500); // first tick past the deadline → fading
+    expect(coord.sleepTimer.getState().status).toBe('fading');
+
+    // User exits mid-fade and starts a fresh scene B (crossfade). The stale
+    // fade-exit must be cancelled, not left to stop B 90s later.
+    await coord.startScene(basicScene('B'));
+    expect(coord.sleepTimer.getState().status).toBe('off');
+    expect(coord.sleepTimer.isArmed).toBe(false);
+    stopSpy.mockClear();
+
+    // Well past the old fade-exit deadline — B must still be playing.
+    advanceBoth(ctx, FADE_EXIT_MS * 2);
+    expect(stopSpy).not.toHaveBeenCalled();
+    expect(coord.getCurrentScene()?.definition.id).toBe('B');
   });
 });

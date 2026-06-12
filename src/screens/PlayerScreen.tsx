@@ -11,12 +11,20 @@
 // When countdown hits zero, MasterBus.fadeToSilence(90s) runs, then scene
 // stops and the app returns to Tonight. Manual Stop cancels the fade.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 import { getAudioEngine } from '../audio/AudioEngine';
 import {
   DEFAULT_SCENE_FIRST_START_SECONDS,
   getSceneCoordinator,
 } from '../audio/SceneCoordinator';
+import { SLEEP_TIMER_FADE_SECONDS } from '../audio/SleepTimer';
 import type { Scene } from '../audio/Scene';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { scenePlayerBackground } from '../lib/sceneBackground';
@@ -30,7 +38,9 @@ const IDLE_TIMEOUT_MS = 30_000;  // inactivity before auto-nightstand
 const WAKE_DURATION_MS = 3_000;  // how long a tap reveals controls
 
 const TIMER_OPTIONS_MINUTES = [15, 30, 60, 90] as const;
-const TIMER_FADE_SECONDS = 90;   // MasterBus fade duration when timer fires
+// MasterBus fade duration when the sleep timer fires — owned by SleepTimer;
+// re-exported here only for the on-screen "90s fade" copy.
+const TIMER_FADE_SECONDS = SLEEP_TIMER_FADE_SECONDS;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -180,18 +190,29 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
   // where the screen-level listener used to be a blind spot). See
   // AudioEngine.ensureContext.
 
-  // Sleep timer — auto-start from the user's default if one is set.
-  const [timer, setTimer] = useState<TimerMode>(() => {
-    const def = getSetting('defaultTimerMinutes');
-    return def !== null
-      ? { status: 'running', endsAt: Date.now() + def * 60_000 }
-      : { status: 'off' };
-  });
-  const [remaining, setRemaining] = useState(() => {
-    const def = getSetting('defaultTimerMinutes');
-    return def !== null ? def * 60_000 : 0;
-  });
-  const fadeExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Sleep timer — the state machine lives on the playback session
+  // (coordinator.sleepTimer), not here, so a confirmed countdown survives
+  // leaving the Player and a stale fade-exit can never stop a later scene
+  // (review bugs H1 + H3). The default-from-settings auto-arm happens at
+  // scene start (Tonight passes it to startScene), so re-entering the
+  // Player shows the live countdown rather than re-arming a fresh default.
+  // This screen only renders the timer's state and issues commands.
+  const sleepTimer = coordinator.sleepTimer;
+  const [picking, setPicking] = useState(false);
+  const [, bumpTimer] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => sleepTimer.subscribe(bumpTimer), [sleepTimer]);
+
+  const timerState = sleepTimer.getState();
+  const remaining = sleepTimer.getRemainingMs();
+  // View model the sub-components render. `picking` is pure local UI; the
+  // running/fading/off states come from the session timer.
+  const timer: TimerMode = picking
+    ? { status: 'picking' }
+    : timerState.status === 'running'
+      ? { status: 'running', endsAt: timerState.endsAt ?? Date.now() }
+      : timerState.status === 'fading'
+        ? { status: 'fading' }
+        : { status: 'off' };
 
   useEffect(() => {
     engine.bus.setMasterVolume(masterVolume);
@@ -207,52 +228,39 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     return () => clearInterval(id);
   }, [coordinator]);
 
-  // Countdown tick
+  // Surface the Nightstand controls when the timer begins its fade, so a
+  // sleeping user who half-wakes sees "fading…" rather than a black screen
+  // going quiet. Watches the session timer's status across renders.
+  const prevTimerStatus = useRef(timerState.status);
   useEffect(() => {
-    if (timer.status !== 'running') return;
-    setRemaining(timer.endsAt - Date.now());
-    const id = setInterval(() => {
-      const ms = timer.endsAt - Date.now();
-      if (ms <= 0) {
-        setTimer({ status: 'fading' });
-        wake(); // surface controls in Nightstand so user sees "Fading…"
-        engine.bus.fadeToSilence(TIMER_FADE_SECONDS);
-        fadeExitTimer.current = setTimeout(() => {
-          fadeExitTimer.current = null;
-          coordinator.stopScene(DEFAULT_SCENE_FIRST_START_SECONDS);
-          onExit();
-        }, (TIMER_FADE_SECONDS + 0.6) * 1000);
-      } else {
-        setRemaining(ms);
-      }
-    }, 500);
-    return () => clearInterval(id);
-  }, [timer, engine, coordinator, wake, onExit]);
+    if (prevTimerStatus.current !== 'fading' && timerState.status === 'fading') {
+      wake();
+    }
+    prevTimerStatus.current = timerState.status;
+  }, [timerState.status, wake]);
 
   const handleStop = useCallback(() => {
-    if (fadeExitTimer.current) {
-      clearTimeout(fadeExitTimer.current);
-      fadeExitTimer.current = null;
-    }
-    if (timer.status === 'fading') engine.bus.cancelFade(masterVolume, 0.1);
-    setTimer({ status: 'off' });
+    // If a sleep-timer fade is mid-flight, cancel it first so the master
+    // bus gain is restored before we tear the scene down — otherwise the
+    // next session would start at zero master volume. cancel() is a no-op
+    // on the gain when the timer isn't fading.
+    sleepTimer.cancel(masterVolume);
     coordinator.stopScene(DEFAULT_SCENE_FIRST_START_SECONDS);
     setScene(null);
     onExit();
-  }, [coordinator, engine, timer, masterVolume, onExit]);
+  }, [coordinator, sleepTimer, masterVolume, onExit]);
 
-  const startTimer = useCallback((minutes: number) => {
-    setTimer({ status: 'running', endsAt: Date.now() + minutes * 60_000 });
-  }, []);
+  const startTimer = useCallback(
+    (minutes: number) => {
+      sleepTimer.start(minutes);
+      setPicking(false);
+    },
+    [sleepTimer]
+  );
 
   const cancelTimer = useCallback(() => {
-    if (fadeExitTimer.current) {
-      clearTimeout(fadeExitTimer.current);
-      fadeExitTimer.current = null;
-    }
-    if (timer.status === 'fading') engine.bus.cancelFade(masterVolume, 1);
-    setTimer({ status: 'off' });
-  }, [timer, engine, masterVolume]);
+    sleepTimer.cancel(masterVolume);
+  }, [sleepTimer, masterVolume]);
 
   // MediaSession and scene-event logging now live in SceneCoordinator
   // (review bug C1) so they follow the audio across screen changes. The
@@ -296,8 +304,8 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
             timer={timer}
             remaining={remaining}
             onTap={() => {
-              if (timer.status === 'off') setTimer({ status: 'picking' });
-              else if (timer.status === 'picking') setTimer({ status: 'off' });
+              if (timer.status === 'off') setPicking(true);
+              else if (timer.status === 'picking') setPicking(false);
               else cancelTimer();
             }}
           />

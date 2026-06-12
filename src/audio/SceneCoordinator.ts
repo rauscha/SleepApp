@@ -24,6 +24,7 @@ import type { AudioVariant } from './FileLayer';
 import { NoiseGenerator } from './NoiseGenerator';
 import { TinnitusMaskLayer } from './TinnitusMaskLayer';
 import { Scene } from './Scene';
+import { SleepTimer } from './SleepTimer';
 import { recordEvent } from '../diagnostics/lifecycleLog';
 import { startSwKeepAlive, stopSwKeepAlive } from '../serviceWorker/keepAlive';
 import { clearMediaSession, setMediaSessionForScene } from './mediaSession';
@@ -79,9 +80,20 @@ export class SceneCoordinator {
   // "← Scenes" exit while audio plays strips nothing.
   private protectionsEngaged = false;
   private mediaSessionManaged = false;
+  /**
+   * The sleep timer, owned by the session rather than the Player (review
+   * bugs H1 + H3). Its fade/stop hooks read engine.bus and stopScene fresh
+   * at call time, so they survive a mid-night context rebuild.
+   */
+  readonly sleepTimer: SleepTimer;
 
   constructor(engine: AudioEngine) {
     this.engine = engine;
+    this.sleepTimer = new SleepTimer({
+      fade: (seconds) => this.engine.bus.fadeToSilence(seconds),
+      stop: () => this.stopScene(),
+      cancelFade: (volume) => this.engine.bus.cancelFade(volume, 1),
+    });
     // If the engine had to rebuild a dead AudioContext (overnight
     // platform teardown — see AudioEngine.recreateContext), every node
     // in the current scene died with the old context. Rebuild the same
@@ -178,6 +190,14 @@ export class SceneCoordinator {
        * coordinator must not stamp the bed scene's label over it.
        */
       manageMediaSession?: boolean;
+      /**
+       * Arm the session's sleep timer to this many minutes. Tonight passes
+       * the user's `defaultTimerMinutes` so the countdown belongs to the
+       * playback session, not the Player (review bug H3). `null`/omitted
+       * resets the timer to off — and either way a fresh start cancels any
+       * pending fade-exit from the previous session (bug H1).
+       */
+      sleepTimerMinutes?: number | null;
     } = {}
   ): Promise<Scene> {
     if (this.currentScene && !this.currentScene.isDisposed()) {
@@ -197,6 +217,7 @@ export class SceneCoordinator {
     this.currentScene = scene;
     recordEvent('scene-start', scene.definition.id);
     this.engageSessionProtections(scene, options.manageMediaSession ?? true);
+    this.applySessionTimer(options.sleepTimerMinutes);
     return scene;
   }
 
@@ -211,6 +232,7 @@ export class SceneCoordinator {
     options: LoadSceneOptions & {
       fadeSeconds?: number;
       manageMediaSession?: boolean;
+      sleepTimerMinutes?: number | null;
     } = {}
   ): Promise<Scene> {
     const fade = options.fadeSeconds ?? DEFAULT_SCENE_CROSSFADE_SECONDS;
@@ -230,6 +252,10 @@ export class SceneCoordinator {
     // The session protections are already engaged (a scene was playing);
     // this just refreshes the media-session label to the new scene.
     this.engageSessionProtections(incoming, options.manageMediaSession ?? true);
+    // Re-key the sleep timer to the incoming session: this cancels the
+    // outgoing scene's countdown AND any pending fade-exit, so a stale
+    // timeout can never stop the new scene (review bug H1).
+    this.applySessionTimer(options.sleepTimerMinutes);
     return incoming;
   }
 
@@ -243,8 +269,18 @@ export class SceneCoordinator {
     const stoppedId = this.currentScene.definition.id;
     this.currentScene.fadeAndDispose(fadeSeconds);
     this.currentScene = null;
+    // Drop the sleep timer with no audio side effect — this scene's own
+    // fade above owns the gain ramp. reset() is a no-op if the stop was
+    // itself the timer's fade-exit firing.
+    this.sleepTimer.reset();
     recordEvent('scene-stop', stoppedId);
     this.disengageSessionProtections();
+  }
+
+  /** Arm or clear the session sleep timer per a start/crossfade option. */
+  private applySessionTimer(minutes: number | null | undefined): void {
+    if (minutes != null && minutes > 0) this.sleepTimer.start(minutes);
+    else this.sleepTimer.reset();
   }
 
   // ---------------------------------------------------------------------

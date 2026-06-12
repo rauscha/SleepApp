@@ -80,6 +80,10 @@ export function TonightScreen({
           fallbackToSynthetic: true,
           fadeSeconds: DEFAULT_SCENE_CROSSFADE_SECONDS,
           firstFadeSeconds: DEFAULT_SCENE_FIRST_START_SECONDS,
+          // Arm the sleep timer on the session, not the Player (bug H3):
+          // the countdown then survives leaving the Player, and re-entering
+          // shows the live remaining time instead of re-arming the default.
+          sleepTimerMinutes: getSetting('defaultTimerMinutes'),
         });
         setSetting('lastSceneId', entry.id);
         onPlaybackStarted();
