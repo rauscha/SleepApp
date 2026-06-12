@@ -164,7 +164,7 @@ These five bugs each break The One Thing. Nothing else lands before they do.
 
 ## Phase 5 — Call it v1.0
 
-### ☐ 5.1 Tooling guard: add ESLint (`typescript-eslint` + `react-hooks`)
+### ☑ 5.1 Tooling guard: add ESLint (`typescript-eslint` + `react-hooks`)
 
 The codebase's failure mode is an unawaited promise or stale effect dep; nothing currently enforces the rules its `eslint-disable` comments imply. Fix or explicitly annotate what it flags. **Accept:** `npx eslint src` clean; wire into `package.json` scripts.
 
