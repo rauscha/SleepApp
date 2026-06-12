@@ -293,7 +293,7 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         <div className="flex items-center justify-between mb-7">
           <button
             onClick={onExit}
-            className="ui-label text-stone-400 hover:text-stone-200
+            className="ui-label text-stone-300 hover:text-stone-200
                        transition-colors duration-slow px-2 py-2"
             style={{ minHeight: 44, minWidth: 44 }}
             aria-label="Back to scenes"
@@ -331,7 +331,7 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         <h1 className="font-serif text-stone-50 text-3xl leading-tight">
           {scene.definition.label}
         </h1>
-        <p className="text-stone-400 body-text mt-1">
+        <p className="text-stone-300 body-text mt-1">
           {timer.status === 'fading'
             ? 'Fading out…'
             : timer.status === 'running'
@@ -351,7 +351,7 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         >
           Stop
         </button>
-        <p className="text-stone-400 body-text mt-4 max-w-xs text-center">
+        <p className="text-stone-300 body-text mt-4 max-w-xs text-center">
           {timer.status === 'fading'
             ? `${TIMER_FADE_SECONDS}s fade. Walk away.`
             : '8-second fade. Tap Stop and walk away.'}
@@ -418,7 +418,7 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
             requestFullscreenSafe();
             setDisplayMode('nightstand');
           }}
-          className="ui-label text-stone-400 hover:text-stone-200
+          className="ui-label text-stone-300 hover:text-stone-200
                      active:text-moon-300 transition-colors duration-slow
                      px-3 py-3"
           style={{ minHeight: 44 }}
@@ -551,7 +551,7 @@ function NightstandOverlay({
         {/* Exit to Lush */}
         <button
           onClick={(e) => { e.stopPropagation(); onExitNightstand(); }}
-          className="ui-label text-stone-400 hover:text-stone-200
+          className="ui-label text-stone-300 hover:text-stone-200
                      transition-colors duration-slow px-4 py-3"
           style={{ minHeight: 44 }}
           aria-label="Exit Nightstand mode"
@@ -593,7 +593,7 @@ function TimerChip({
     accent = 'text-stone-200';
   } else {
     label = 'set timer';
-    accent = 'text-stone-400';
+    accent = 'text-stone-300';
   }
 
   return (

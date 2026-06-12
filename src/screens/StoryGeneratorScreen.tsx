@@ -199,7 +199,7 @@ export function StoryGeneratorScreen({
         <button
           onClick={onBack}
           disabled={busy}
-          className="ui-label text-stone-400 hover:text-stone-200
+          className="ui-label text-stone-300 hover:text-stone-200
                      transition-colors duration-slow mb-6 block
                      disabled:opacity-40 px-2 py-2"
           style={{ minHeight: 44 }}
@@ -210,7 +210,7 @@ export function StoryGeneratorScreen({
         <h1 className="font-serif text-stone-50 text-3xl leading-tight mb-2">
           New story
         </h1>
-        <p className="text-stone-400 body-text">
+        <p className="text-stone-300 body-text">
           Claude writes the script · ElevenLabs narrates it · takes 2–5 min
         </p>
       </header>
@@ -255,7 +255,7 @@ export function StoryGeneratorScreen({
                 style={{ minHeight: 44 }}
               >
                 <span className="capitalize font-medium">{v}</span>
-                <span className="text-stone-400 ml-2 ui-label">
+                <span className="text-stone-300 ml-2 ui-label">
                   — {VOICE_DESCRIPTIONS[v]}
                 </span>
               </button>
@@ -285,13 +285,13 @@ export function StoryGeneratorScreen({
               </option>
             ))}
           </select>
-          <p className="ui-label text-stone-400 mt-2">
+          <p className="ui-label text-stone-300 mt-2">
             Plays underneath the narration, then keeps going all night.
           </p>
         </div>
 
         {/* Cost note */}
-        <p className="body-text text-stone-400 px-1">
+        <p className="body-text text-stone-300 px-1">
           Estimated cost: ~$0.05–0.10 (Claude) + ~$1–3 (ElevenLabs) per
           story. Stories are saved permanently — no regeneration needed.
         </p>
@@ -325,7 +325,7 @@ export function StoryGeneratorScreen({
         {/* Keep-awake hint while running. Belt-and-suspenders to the wake
             lock, which a browser can refuse (low battery / unsupported). */}
         {busy && (
-          <p className="ui-label text-stone-400 px-1">
+          <p className="ui-label text-stone-300 px-1">
             Keep your screen on while this runs — if the phone sleeps,
             generation may stop.
           </p>
@@ -335,7 +335,7 @@ export function StoryGeneratorScreen({
         {steps.length > 0 && (
           <div className="space-y-2">
             {steps.map((s, i) => (
-              <div key={i} className="flex items-center gap-2 body-text text-stone-400">
+              <div key={i} className="flex items-center gap-2 body-text text-stone-300">
                 <span className="text-moon-400">✓</span>
                 <span>{s}</span>
               </div>

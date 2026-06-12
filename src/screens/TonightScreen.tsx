@@ -124,7 +124,7 @@ export function TonightScreen({
         <h1 className="font-serif text-stone-50 text-4xl leading-tight">
           Tonight
         </h1>
-        <p className="text-stone-400 body-text mt-2">
+        <p className="text-stone-300 body-text mt-2">
           {lastSceneId
             ? 'Pick up where you left off, or try something new.'
             : 'A place to land at the end of the day.'}
@@ -158,7 +158,7 @@ export function TonightScreen({
             <button
               onClick={handleSurpriseMe}
               disabled={busySceneId !== null}
-              className="body-text text-stone-400 hover:text-stone-200 active:text-moon-300
+              className="body-text text-stone-300 hover:text-stone-200 active:text-moon-300
                          transition-colors duration-slow disabled:opacity-40
                          px-4 py-2"
             >
@@ -177,7 +177,7 @@ export function TonightScreen({
       <footer className="mt-8 pt-4 px-1 flex justify-end">
         <button
           onClick={onDevToolsRequested}
-          className="text-xs text-stone-400 hover:text-stone-200
+          className="text-xs text-stone-300 hover:text-stone-200
                      active:text-moon-300 transition-colors duration-slow
                      px-2 py-2"
           style={{ minHeight: 44 }}
@@ -239,7 +239,7 @@ function SceneCard({
           </h2>
           <div className="flex flex-col items-end gap-1 shrink-0 mt-0.5">
             {isLastPlayed && (
-              <span className="text-xs uppercase tracking-widest text-stone-400">
+              <span className="text-xs uppercase tracking-widest text-stone-300">
                 last played
               </span>
             )}
@@ -249,7 +249,7 @@ function SceneCard({
               <span
                 className={[
                   'ui-label',
-                  primary ? 'text-moon-300' : 'text-stone-400',
+                  primary ? 'text-moon-300' : 'text-stone-300',
                 ].join(' ')}
               >
                 {primary ? 'Begin →' : '→'}
@@ -260,7 +260,7 @@ function SceneCard({
         {entry.description && (
           <p
             className={[
-              'text-stone-400 leading-relaxed',
+              'text-stone-300 leading-relaxed',
               primary ? 'body-text' : 'ui-label',
             ].join(' ')}
           >

@@ -290,7 +290,7 @@ function NavButton({
       className={[
         'flex-1 flex flex-col items-center justify-center gap-1',
         'py-2 transition-colors duration-slow',
-        active ? 'text-moon-300' : 'text-stone-500 hover:text-stone-300',
+        active ? 'text-moon-300' : 'text-stone-400 hover:text-stone-300',
       ].join(' ')}
       style={{ minHeight: 56 }}
     >
@@ -381,7 +381,7 @@ function Harness({ onBackToTonight }: { onBackToTonight: () => void }) {
       <header className="mb-8 flex justify-between items-start gap-4">
         <button
           onClick={onBackToTonight}
-          className="text-xs text-stone-400 hover:text-stone-200 transition-colors duration-slow shrink-0 mt-2"
+          className="text-xs text-stone-300 hover:text-stone-200 transition-colors duration-slow shrink-0 mt-2"
           aria-label="Back to Tonight"
         >
           ← Tonight
@@ -916,7 +916,7 @@ function ScenesSection({
       </div>
 
       {variantOutcomes.length > 0 && (
-        <p className="text-xs text-stone-400 mb-3">
+        <p className="text-xs text-stone-300 mb-3">
           Variants loaded: {variantOutcomes.length - fallbackCount - failedCount}
           {fallbackCount > 0 && (
             <span className="text-moon-300">

@@ -301,7 +301,7 @@ export function ContentPlayerScreen({
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={onBack}
-            className="ui-label text-stone-400 hover:text-stone-200
+            className="ui-label text-stone-300 hover:text-stone-200
                        transition-colors duration-slow px-2 py-2"
             style={{ minHeight: 44, minWidth: 44 }}
             aria-label="Back to Library"
@@ -310,7 +310,7 @@ export function ContentPlayerScreen({
           </button>
           <button
             onClick={handleStopAll}
-            className="ui-label text-stone-400 hover:text-stone-100
+            className="ui-label text-stone-300 hover:text-stone-100
                        transition-colors duration-slow px-2 py-2"
             style={{ minHeight: 44, minWidth: 44 }}
             aria-label="Stop all audio"
@@ -321,7 +321,7 @@ export function ContentPlayerScreen({
         <h1 className="font-serif text-stone-50 text-3xl leading-tight mb-2">
           {title}
         </h1>
-        <p className="text-stone-400 body-text">{description}</p>
+        <p className="text-stone-300 body-text">{description}</p>
       </header>
 
       {state === 'error' && (
@@ -344,7 +344,7 @@ export function ContentPlayerScreen({
           disabled={state === 'loading' || state === 'error'}
           className="w-full disabled:opacity-40"
         />
-        <div className="flex justify-between ui-label text-stone-400 mt-1 font-mono">
+        <div className="flex justify-between ui-label text-stone-300 mt-1 font-mono">
           <span>{formatSeconds(position)}</span>
           <span>{duration > 0 ? formatSeconds(duration) : '--:--'}</span>
         </div>
@@ -376,7 +376,7 @@ export function ContentPlayerScreen({
       </div>
 
       {/* Status line */}
-      <p className="text-center body-text text-stone-400">
+      <p className="text-center body-text text-stone-300">
         {state === 'loading'
           ? 'Loading…'
           : state === 'playing'

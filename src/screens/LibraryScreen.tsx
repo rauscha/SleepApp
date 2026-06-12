@@ -208,7 +208,7 @@ export function LibraryScreen({
                 'flex-1 py-2 ui-label rounded capitalize transition-colors duration-slow',
                 tab === t
                   ? 'bg-ink-600 text-stone-100'
-                  : 'text-stone-400 hover:text-stone-200',
+                  : 'text-stone-300 hover:text-stone-200',
               ].join(' ')}
               style={{ minHeight: 44 }}
             >
@@ -267,7 +267,7 @@ export function LibraryScreen({
             {bedtime && (
               <p
                 id="bedtime-note"
-                className="ui-label text-stone-400 italic max-w-xs text-right"
+                className="ui-label text-stone-300 italic max-w-xs text-right"
               >
                 A daytime activity. Try again after 6am.
               </p>
@@ -343,7 +343,7 @@ function ContentCard({
             <>
               <button
                 onClick={onCancelDelete}
-                className="ui-label text-stone-400 hover:text-stone-200
+                className="ui-label text-stone-300 hover:text-stone-200
                            transition-colors duration-slow px-2 py-2"
                 style={{ minHeight: 44 }}
                 aria-label="Cancel delete"
@@ -376,7 +376,7 @@ function ContentCard({
               {onDelete && (
                 <button
                   onClick={onDelete}
-                  className="ui-label text-stone-500 hover:text-ember-400
+                  className="ui-label text-stone-300 hover:text-ember-400
                              transition-colors duration-slow px-2 py-2"
                   style={{ minHeight: 44, minWidth: 44 }}
                   aria-label={`Delete ${title}`}
@@ -388,8 +388,8 @@ function ContentCard({
           )}
         </div>
       </div>
-      <p className="text-stone-400 body-text mb-1">{description}</p>
-      <p className="text-stone-500 ui-label">{meta}</p>
+      <p className="text-stone-300 body-text mb-1">{description}</p>
+      <p className="text-stone-300 ui-label">{meta}</p>
       {errorMessage && (
         <p
           role="alert"
@@ -414,7 +414,7 @@ function EmptyState({
   return (
     <div className="px-1 py-8 text-center">
       <p className="text-stone-300 body-text mb-2">{heading}</p>
-      <p className="text-stone-400 body-text max-w-xs mx-auto mb-3">{body}</p>
+      <p className="text-stone-300 body-text max-w-xs mx-auto mb-3">{body}</p>
       {codeHint && (
         <code className="ui-label text-moon-300 bg-ink-800 px-2 py-1 rounded-soft">
           {codeHint}
