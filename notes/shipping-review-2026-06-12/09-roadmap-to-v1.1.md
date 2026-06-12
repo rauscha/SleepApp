@@ -130,13 +130,13 @@ These five bugs each break The One Thing. Nothing else lands before they do.
 
 ## Phase 4 — Visual identity (report `04`, must-fix list; convergent with `06`)
 
-### ☐ 4.1 Ship the serif **[build-check]**
+### ☑ 4.1 Ship the serif **[build-check]**
 
 - **Files:** `src/index.css`, `public/fonts/`, `tailwind.config.js`, `index.html` (preload), `public/sw.js`/precache list
 - `font-serif` declares EB Garamond but no serif `@font-face` exists — headings render Georgia (iOS) / Noto Serif (Android). Self-host an EB Garamond subset (400 + 500, latin, woff2) exactly like Inter is done; preload it; ensure it's offline-cached.
 - **Accept:** built page serves the woff2; no FOUT longer than the Inter pattern; offline load still styled.
 
-### ☐ 4.2 Promote the two failing text colors
+### ☑ 4.2 Promote the two failing text colors
 
 - All screens; ~20 call sites, mechanical by role: reading-text uses of `stone-400` → `stone-300` (4.11:1 → passes AA on ink-950); `stone-500` nav labels/meta (2.33:1 at 12px) → `stone-400`+. Reserve `stone-400` for decoration, `stone-500` for non-text.
 - **Accept:** recompute the contrast pairs touched; all body/label text ≥ 4.5:1 (≥ 3:1 only where genuinely large text).
@@ -145,14 +145,14 @@ These five bugs each break The One Thing. Nothing else lands before they do.
 
 - `singing-bowl.jpg` (Buddha-statue stock — literally the brief's banned "loud wellness iconography"), `forest-day.jpg` (daylight garden path with pedestrian), `monsoon.jpg` (near-white sky = flashlight at 2am). Quality bar: `ocean-night.jpg`. Andrew picks/sources images; agent then optimizes, updates `public/scenes/photos/NOTICES.md`, and applies a tonal-grade/scrim pass so no card can be bright at night (review item 8: crush blacks toward `#0B0D10`, cap highlight luminance — apply set-wide).
 
-### ☐ 4.4 Sleepy-ergonomics fixes (one commit)
+### ☑ 4.4 Sleepy-ergonomics fixes (one commit)
 
 - `src/screens/TonightScreen.tsx:258`: scene-card descriptions 14px → 16px (they're reading text under the app's own rule).
 - `src/screens/PlayerScreen.tsx:36` + overlay classes: Nightstand wake window 3s → ~7s; woken-controls opacity 40% → ~60%.
 - Demote the 128px ember Stop disc: keep the ≥44px target, ghost-ring or warm-stone fill instead of full ember; let the scene photo be the hero. Consider "End the night" label.
 - **Accept:** visual self-check via dev server; type/test green.
 
-### ☐ 4.5 Polish sweep (one commit)
+### ☑ 4.5 Polish sweep (one commit)
 
 - `SettingsScreen.tsx`: `text-red-400` → `text-ember-400`; phantom `placeholder-ink-400` → `placeholder-stone-500` (verify contrast on ink-800).
 - Gate the Tonight "Dev tools" button behind `import.meta.env.DEV` (and extract the ~700-line Harness from `App.tsx` into a lazy-loaded module — code-review should-fix #5, kills it from the prod bundle entirely).
