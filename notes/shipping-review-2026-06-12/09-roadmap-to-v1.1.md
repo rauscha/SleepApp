@@ -178,25 +178,25 @@ Run the existing Phase-5 plan (PWA install, iOS Safari device test, perf) plus t
 
 Order matters: 6.1 is the biggest utility gap; 6.2–6.3 are the ideation trio that compounds with it.
 
-### ☐ 6.1 The 3 a.m. Door
+### ☑ 6.1 The 3 a.m. Door
 
 - **Builds on:** `src/lib/bedtime.ts` (add a deep-night window predicate), `lastSceneId` in settings, `SceneCoordinator.startScene()`'s existing `firstFadeSeconds` option.
 - Opening the app in the deep-night window while nothing plays shows a single near-black panel — one line, one tap: resume the last scene at reduced volume with a long (~30s) first fade. No nav, no photos, no white text. Escape hatch to the normal app in a dim corner.
 - **Accept:** unit tests for the window predicate + resume params; manual dev-server check of the panel's luminance.
 
-### ☐ 6.2 Night Drift
+### ☑ 6.2 Night Drift
 
 - **Builds on:** the forest day/evening/night triptych in `public/scenes/` + `SceneCoordinator.crossfadeTo()` with a stretched crossfade.
 - A scene JSON gains an optional `driftsTo: { sceneId, afterMinutes, crossfadeSeconds }`; forest-evening drifts into forest-night ~40 min in via a very long crossfade. Timer scheduling must live at the coordinator/session level (per 1.3's pattern), survive Player unmount, and be cancelled by scene stop/switch.
 - **Accept:** fake-timer test of the drift schedule + cancellation; conformance test extended to validate `driftsTo` targets exist.
 
-### ☐ 6.3 Narration Sundown
+### ☑ 6.3 Narration Sundown
 
 - **Builds on:** `durationSeconds` already stored in `StoryMetadata`; Howler volume control in `src/screens/ContentPlayerScreen.tsx`.
 - Story narration rides a slow gain ramp over its final third so the voice submerges under the paired scene bed instead of ending (a state change is a wake event). Settings toggle, default on.
 - **Accept:** test the ramp math; manual listen.
 
-### ☐ 6.4 Bedtime greeting + make the Eno engine legible (one commit, ~15 lines total)
+### ☑ 6.4 Bedtime greeting + make the Eno engine legible (one commit, ~15 lines total)
 
 - Tonight subtitle swaps by hour via `isBedtime()`-style logic (late-evening / small-hours / early-morning variants) — the function and tests already exist and are currently used only to disable a button.
 - One line of player copy: *"Layered live on prime-length loops — tonight's soundscape won't repeat."* This is the app's deepest engineering converted into its best moment for free (the fun review's #1 and #2 cheapest delights, and the originality review's "invisible engine" finding).
@@ -205,7 +205,7 @@ Order matters: 6.1 is the biggest utility gap; 6.2–6.3 are the ideation trio t
 
 Originality rated the three bundled AI meditations the app's one "poorly copied" feature (boilerplate prompts, worse than free human-narrated competitors); utility rated the ~25-min catalogue its stale point. **Decide with Andrew:** invest the prompt/voice craft the stories got (then expand to ~10 via `tools/gen-meditation.ts`), or cut the category. Either way: write real descriptions to replace "A body scan meditation." in the app's editorial voice.
 
-### ☐ 6.6 Library voice pass (cheap, after 6.5)
+### ☑ 6.6 Library voice pass (cheap, after 6.5)
 
 Pair each story with one italic line of its own prose in the Library card; in-world generator progress copy ("Tide is reading your story…" over "Synthesizing chunk 3 of 5…").
 
