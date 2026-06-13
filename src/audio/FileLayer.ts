@@ -105,6 +105,7 @@ export class FileLayer implements Layer {
 
   private currentVolume: number;
   private playing = false;
+  private disposed = false;
   private nextVariantIndex = 0;
   private lastVariantIndex = -1;
   private liveSources: LiveSource[] = [];
@@ -141,23 +142,9 @@ export class FileLayer implements Layer {
 
     // Sanity check: the loop offset must be longer than the crossfade,
     // otherwise we'd start iteration N+2 before iteration N+1 has even
-    // begun. This is a programmer error — surface it loudly.
-    for (const v of this.variants) {
-      if (v.loopOffsetSeconds <= this.crossfadeSeconds) {
-        throw new Error(
-          `FileLayer "${this.id}": variant "${v.id}" loopOffset ` +
-            `(${v.loopOffsetSeconds}s) must be greater than crossfade ` +
-            `(${this.crossfadeSeconds}s).`
-        );
-      }
-      if (v.buffer.duration < v.loopOffsetSeconds + this.crossfadeSeconds) {
-        throw new Error(
-          `FileLayer "${this.id}": variant "${v.id}" buffer duration ` +
-            `(${v.buffer.duration.toFixed(2)}s) is too short for loopOffset ` +
-            `${v.loopOffsetSeconds}s + crossfade ${this.crossfadeSeconds}s.`
-        );
-      }
-    }
+    // begun, and the buffer must outlast offset+crossfade. Programmer
+    // errors — surface them loudly.
+    for (const v of this.variants) this.validateVariant(v);
   }
 
   start(): void {
@@ -429,6 +416,51 @@ export class FileLayer implements Layer {
       /* noop */
     }
     this.playing = false;
+    this.disposed = true;
+  }
+
+  /** True once disposed — lets the coordinator skip adding deferred variants
+   *  to a layer whose scene was torn down. */
+  get isDisposed(): boolean {
+    return this.disposed;
+  }
+
+  /** Number of variants currently in the rotation pool (grows as deferred
+   *  variants are decoded in). For diagnostics/tests. */
+  get variantCount(): number {
+    return this.variants.length;
+  }
+
+  /**
+   * Append a variant to the rotation pool after construction. This is how
+   * the coordinator defers loading non-first variants: the scene starts with
+   * just its first variant (fast), and the rest are decoded in the
+   * background and added here, ready for the next rotation (minutes out).
+   * No-op once disposed. Throws on a config error (same checks as the
+   * constructor) so a too-short variant surfaces.
+   */
+  addVariant(variant: AudioVariant): void {
+    if (this.disposed) return;
+    this.validateVariant(variant);
+    this.variants.push(variant);
+  }
+
+  /** Shared loopOffset/duration sanity checks for a variant. */
+  private validateVariant(v: AudioVariant): void {
+    if (v.loopOffsetSeconds <= this.crossfadeSeconds) {
+      throw new Error(
+        `FileLayer "${this.id}": variant "${v.id}" loopOffset ` +
+          `(${v.loopOffsetSeconds}s) must be greater than crossfade ` +
+          `(${this.crossfadeSeconds}s).`
+      );
+    }
+    if (v.buffer.duration < v.loopOffsetSeconds + this.crossfadeSeconds) {
+      throw new Error(
+        `FileLayer "${this.id}": variant "${v.id}" buffer duration ` +
+          `(${v.buffer.duration.toFixed(2)}s) is too short for loopOffset ` +
+          `${v.loopOffsetSeconds}s + crossfade ${this.crossfadeSeconds}s.`
+      );
+    }
   }
 }
 

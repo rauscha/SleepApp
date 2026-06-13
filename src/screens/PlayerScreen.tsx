@@ -29,7 +29,7 @@ import type { Scene } from '../audio/Scene';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { scenePlayerBackground } from '../lib/sceneBackground';
 import { getSetting, setSetting } from '../storage';
-import { exitFullscreenSafe, requestFullscreenSafe } from '../utils/fullscreen';
+import { requestFullscreenSafe } from '../utils/fullscreen';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -171,25 +171,20 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
   const [awake, wake] = useWakeTimer(WAKE_DURATION_MS);
   const isIdle = useIdleTimer(IDLE_TIMEOUT_MS, displayMode === 'lush');
 
-  // Auto-engage Nightstand after idle timeout. Try to go fullscreen as
-  // well — this usually fails because the idle path has no recent user
-  // gesture, but on browsers that grant fullscreen on "transient
-  // activation" persisting through the idle window we get it for free.
-  // Either way, the first tap-to-wake in nightstand re-requests it.
+  // Auto-engage Nightstand after idle timeout. We do NOT re-request
+  // fullscreen here: re-entering fullscreen re-triggers Android's bright
+  // "swipe down to exit full screen" toast, and the idle path has no user
+  // gesture to grant it anyway. Fullscreen, once entered from the scene
+  // pick, persists across the session.
   useEffect(() => {
-    if (isIdle) {
-      setDisplayMode('nightstand');
-      requestFullscreenSafe();
-    }
+    if (isIdle) setDisplayMode('nightstand');
   }, [isIdle]);
 
-  // Always release fullscreen when the Player unmounts (back to Tonight,
-  // stop button, etc.) — leaving the rest of the app in fullscreen would
-  // hide the system bars from the user when they're picking their next
-  // scene, which is not what they want.
-  useEffect(() => {
-    return () => exitFullscreenSafe();
-  }, []);
+  // NOTE: we intentionally do NOT exit fullscreen on unmount. The previous
+  // exit-on-unmount meant every "← Scenes" dropped fullscreen, and the next
+  // scene pick re-entered it — re-showing Android's bright fullscreen toast
+  // on every single scene start. Staying in fullscreen across Tonight↔Player
+  // keeps that toast to a single appearance per session.
 
   // AudioContext state-change logging moved into AudioEngine itself so it
   // captures transitions from any screen (including ContentPlayerScreen
@@ -460,11 +455,11 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
         remaining={remaining}
         awake={awake}
         onTap={() => {
-          // Each wake-tap is a user gesture — opportunistically re-request
-          // fullscreen so the status bar disappears even if the auto-engage
-          // path could not get it the first time. requestFullscreenSafe is
-          // a noop when we're already fullscreen.
-          requestFullscreenSafe();
+          // Just reveal the controls. We deliberately do NOT re-request
+          // fullscreen on every wake-tap — that re-fired Android's bright
+          // "swipe to exit full screen" toast all night long. Fullscreen
+          // entered at the scene pick persists; a stray OS exit is not worth
+          // strobing the toast at a sleeping user.
           wake();
         }}
         onStop={handleStop}

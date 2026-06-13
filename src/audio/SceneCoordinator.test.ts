@@ -14,7 +14,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AudioEngine } from './AudioEngine';
-import { AudioLoadError } from './FileLayer';
+import { AudioLoadError, FileLayer } from './FileLayer';
 import { SceneCoordinator } from './SceneCoordinator';
 import { installAudioContextMock, MockAudioBuffer } from '../test/audioMock';
 import type { MockAudioContext } from '../test/audioMock';
@@ -197,6 +197,37 @@ describe('SceneCoordinator', () => {
     const scene = await coord.loadScene(basicScene('default-fallback'));
     expect(scene.getLayers().length).toBe(3); // synth + 2 synthesized els
     expect(import.meta.env.DEV).toBe(true); // sanity: the default is on here
+  });
+
+  // Perf fix: only the first variant of each element is decoded before the
+  // scene starts (fast cold-cache load + less startup memory contention);
+  // the rest are decoded in the background ~20s later and added to rotation.
+  it('decodes only the first variant eagerly, then adds the rest in the background', async () => {
+    vi.useFakeTimers();
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+
+    const def = basicScene('multi', { elementCount: 1 });
+    def.elements[0]!.variants.push({ id: 'v0b', url: '/audio/multi/el0-b.mp3' });
+
+    const scene = await coord.startScene(def);
+    const layer = scene
+      .getLayers()
+      .find((l) => l.id === 'multi:el0') as unknown as FileLayer;
+    // Only the first variant is loaded at start.
+    expect(layer.variantCount).toBe(1);
+
+    // Advance past the deferred delay, keeping the audio clock alive so the
+    // watchdog doesn't recreate the context mid-test; flush the async decode.
+    const ctx = engine.context as unknown as MockAudioContext;
+    for (let t = 0; t < 21_000; t += 500) {
+      ctx.advanceTime(0.5);
+      await vi.advanceTimersByTimeAsync(500);
+    }
+    // The second variant is now in the rotation pool.
+    expect(layer.variantCount).toBe(2);
   });
 
   it('rethrows when a variant fetch fails and fallbackToSynthetic=false', async () => {
