@@ -13,12 +13,19 @@ import {
   deriveTitle,
   estimateDurationSeconds,
   fetchWithTimeout,
+  generateStory,
   isLongForm,
   isProjectsEnabled,
   makeStoryId,
   normalizePcmChunks,
   synthesizeStoryAudio,
 } from './storyGenerator';
+import { getStory, listStories } from '../storage';
+import { __resetDbForTests } from '../storage/assets';
+import {
+  installFakeIndexedDB,
+  type FakeIndexedDBHandle,
+} from '../test/fakeIndexedDB';
 
 // Pure-function coverage for the story generation pipeline plus
 // fetch-mocked coverage for the new long-form paths (Projects API +
@@ -522,12 +529,20 @@ describe('callElevenLabsChunked', () => {
     );
 
     const steps: string[] = [];
-    await callElevenLabsChunked('key', 'voice-1', script, undefined, (s) => {
-      if (s.stage === 'synthesizing') steps.push(s.message);
-    });
+    await callElevenLabsChunked(
+      'key',
+      'voice-1',
+      script,
+      undefined,
+      (s) => {
+        if (s.stage === 'synthesizing') steps.push(s.message);
+      },
+      'Tide'
+    );
+    // In-world progress copy (roadmap 6.6) still conveys per-chunk progress.
     expect(steps).toEqual([
-      'Synthesizing chunk 1 of 2…',
-      'Synthesizing chunk 2 of 2…',
+      'Tide is reading your story… (part 1 of 2)',
+      'Tide is reading your story… (part 2 of 2)',
     ]);
   });
 });
@@ -816,5 +831,65 @@ describe('fetchWithTimeout', () => {
     const res = await fetchWithTimeout('https://example.test', {}, 10_000);
     expect(res.status).toBe(200);
     expect((await res.arrayBuffer()).byteLength).toBe(3);
+  });
+});
+
+// generateStory persistence + the H2 orphan-rollback (review bug H2).
+describe('generateStory persistence', () => {
+  let idb: FakeIndexedDBHandle;
+
+  beforeEach(() => {
+    idb = installFakeIndexedDB();
+    __resetDbForTests();
+    // Claude returns a short script (single-call TTS path); ElevenLabs
+    // returns MP3 bytes. Both paths go through fetchWithTimeout → fetch.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string | URL) => {
+        const u = url.toString();
+        if (u.includes('api.anthropic.com')) {
+          return new Response(
+            JSON.stringify({
+              content: [{ type: 'text', text: '<title>Test Tide</title>You drift along the water.' }],
+            }),
+            { status: 200 }
+          );
+        }
+        if (u.includes('api.elevenlabs.io')) {
+          return new Response(new Uint8Array([1, 2, 3, 4]).buffer, {
+            status: 200,
+            headers: { 'content-type': 'audio/mpeg' },
+          });
+        }
+        throw new Error(`unexpected fetch: ${u}`);
+      })
+    );
+  });
+  afterEach(() => {
+    idb.restore();
+    __resetDbForTests();
+    vi.unstubAllGlobals();
+  });
+
+  const opts = {
+    theme: 'a quiet harbour',
+    voiceName: 'tide' as const,
+    anthropicApiKey: 'sk-ant-test',
+    elevenLabsApiKey: 'el-test',
+    useProjects: false,
+  };
+
+  it('persists metadata and audio on the happy path', async () => {
+    const m = await generateStory(opts);
+    expect(await getStory(m.id)).not.toBeNull();
+    expect(await listStories()).toHaveLength(1);
+  });
+
+  it('rejects and leaves no orphaned metadata when the audio write aborts (H2)', async () => {
+    idb.abortWritesFor('audioAssets');
+    await expect(generateStory(opts)).rejects.toBeInstanceOf(DOMException);
+    // The metadata row written just before the failed audio write must be
+    // rolled back — the Library must never list a story with no audio.
+    expect(await listStories()).toHaveLength(0);
   });
 });

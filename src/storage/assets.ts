@@ -58,13 +58,29 @@ async function withStore<T>(
     const tx = db.transaction(storeName, mode);
     const store = tx.objectStore(storeName);
     const result = fn(store);
+    const abortError = () =>
+      tx.error ?? new DOMException('IndexedDB transaction aborted', 'AbortError');
     if (result instanceof Promise) {
       result.then(resolve, reject);
-    } else {
-      result.onsuccess = () => resolve(result.result);
-      result.onerror = () => reject(result.error);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(abortError());
+      return;
     }
+    // Capture the request's result on success, but resolve on tx.oncomplete
+    // — NOT on request.onsuccess. A request's onsuccess fires before the
+    // transaction commits, and the commit can still abort afterwards (most
+    // importantly a QuotaExceededError on a large story-audio write).
+    // Resolving on onsuccess reported success for a write that never landed
+    // — losing a $1–3 generated story while the UI said "done" (bug H2).
+    // tx.onabort was also previously unwired, so a quota abort was silent.
+    let value: T;
+    result.onsuccess = () => {
+      value = result.result;
+    };
+    result.onerror = () => reject(result.error);
+    tx.oncomplete = () => resolve(value);
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(abortError());
   });
 }
 
@@ -107,4 +123,10 @@ export async function getStoryAudio(id: string): Promise<StoredAudioAsset | null
     store.get(id)
   );
   return result ?? null;
+}
+
+/** Test hook — drop the cached DB connection so a fresh fake IndexedDB can
+ *  be installed between tests. Not used in production. */
+export function __resetDbForTests(): void {
+  dbPromise = null;
 }

@@ -151,16 +151,96 @@ self.addEventListener('fetch', (event) => {
 
 async function cacheFirst(req, cacheName) {
   const cache = await caches.open(cacheName);
+  // iOS Safari's media stack issues Range requests for <audio> (html5:true
+  // Howler — meditations + stories) and chokes when a ranged request is
+  // answered with a full-body 200 (review bug M3). Serve a real 206 sliced
+  // from the cached full body instead. cache.match ignores the Range header
+  // by default, so it returns the cached 200 we then slice.
+  const rangeHeader = req.headers.get('range');
+  if (rangeHeader) return rangedResponse(req, cache, rangeHeader);
+
   const cached = await cache.match(req);
   if (cached) return cached;
   const res = await fetch(req);
-  // Only cache full 200 responses. 206 partial-content (range requests for
-  // <audio> seeking) MUST NOT be cached — replaying a 206 for a full request
-  // would give the page a truncated buffer.
+  // Only cache full 200 responses. 206 partial-content MUST NOT be cached —
+  // replaying a 206 for a full request would give the page a truncated buffer.
   if (res && res.ok && res.status === 200) {
     cache.put(req, res.clone()).catch(() => undefined);
   }
   return res;
+}
+
+// Answer a Range request with a 206 sliced from the cached full body. If the
+// body isn't cached yet, pass the ranged request to the network (so playback
+// still works online) and kick off a background full fetch so the NEXT ranged
+// request — including an offline one — can be served from cache.
+async function rangedResponse(req, cache, rangeHeader) {
+  const cached = await cache.match(req);
+  if (!cached) {
+    fetchAndCacheFull(req.url, cache);
+    return fetch(req);
+  }
+  const buffer = await cached.arrayBuffer();
+  const total = buffer.byteLength;
+  const range = parseRange(rangeHeader, total);
+  if (!range) {
+    return new Response(null, {
+      status: 416,
+      statusText: 'Range Not Satisfiable',
+      headers: { 'Content-Range': `bytes */${total}` },
+    });
+  }
+  const { start, end } = range; // inclusive end
+  const slice = buffer.slice(start, end + 1);
+  const headers = new Headers(cached.headers);
+  headers.set('Content-Range', `bytes ${start}-${end}/${total}`);
+  headers.set('Content-Length', String(slice.byteLength));
+  headers.set('Accept-Ranges', 'bytes');
+  return new Response(slice, {
+    status: 206,
+    statusText: 'Partial Content',
+    headers,
+  });
+}
+
+// Parse a single-range "bytes=START-END" header against a known total size.
+// Returns { start, end } with an INCLUSIVE end, or null when unsatisfiable.
+// Handles the open-ended "bytes=START-" and suffix "bytes=-N" forms. Only
+// single ranges are supported — multi-range (comma-separated) returns null,
+// which the caller turns into a 416 (media elements never send multi-range).
+function parseRange(header, total) {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(String(header).trim());
+  if (!m) return null;
+  const hasStart = m[1] !== '';
+  const hasEnd = m[2] !== '';
+  if (!hasStart && !hasEnd) return null;
+  let start;
+  let end;
+  if (!hasStart) {
+    // Suffix form: the last N bytes.
+    const n = parseInt(m[2], 10);
+    if (n <= 0) return null;
+    start = Math.max(0, total - n);
+    end = total - 1;
+  } else {
+    start = parseInt(m[1], 10);
+    end = hasEnd ? parseInt(m[2], 10) : total - 1;
+  }
+  if (start > end || start >= total) return null;
+  if (end >= total) end = total - 1;
+  return { start, end };
+}
+
+// Background: fetch the FULL resource (no Range header) and cache it so a
+// later ranged request can be served a 206 from cache, even offline.
+function fetchAndCacheFull(url, cache) {
+  fetch(url)
+    .then((res) => {
+      if (res && res.ok && res.status === 200) {
+        cache.put(url, res.clone()).catch(() => undefined);
+      }
+    })
+    .catch(() => undefined);
 }
 
 async function staleWhileRevalidate(req, cacheName) {

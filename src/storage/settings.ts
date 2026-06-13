@@ -37,6 +37,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   anthropicApiKey: null,
   displayMode: 'lush',
   defaultTimerMinutes: null,
+  narrationSundown: true,
 };
 
 // Cached in-memory copy so per-key reads don't hit localStorage every time.

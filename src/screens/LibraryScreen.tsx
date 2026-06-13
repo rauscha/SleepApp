@@ -12,17 +12,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isBedtime } from '../lib/bedtime';
+import { resolvePublicUrl } from '../lib/baseUrl';
+import { storyExcerpt } from '../lib/storyExcerpt';
 import { getStoryAudio, listStories, deleteStory } from '../storage';
 import type {
   BundledStoryMetadata,
   MeditationMetadata,
   StoryMetadata,
 } from '../storage/types';
-
-function resolvePublicUrl(path: string): string {
-  const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
-  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
-}
 
 async function fetchMeditationIndex(): Promise<MeditationMetadata[]> {
   const url = resolvePublicUrl('/meditations/index.json');
@@ -103,7 +100,7 @@ export function LibraryScreen({
       .then(setMeditations)
       .catch((err) => setMeditationError(String(err)));
     // Bundled stories swallow their own errors — see fetchBundledStoryIndex.
-    fetchBundledStoryIndex().then(setBundledStories);
+    void fetchBundledStoryIndex().then(setBundledStories);
   }, []);
 
   const refreshStories = useCallback(() => {
@@ -193,7 +190,7 @@ export function LibraryScreen({
   }
 
   return (
-    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-5 py-8 min-h-full">
+    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-6 py-8 min-h-full">
       <header className="mb-6 px-1">
         <h1 className="font-serif text-stone-50 text-4xl leading-tight mb-6">
           Library
@@ -208,7 +205,7 @@ export function LibraryScreen({
                 'flex-1 py-2 ui-label rounded capitalize transition-colors duration-slow',
                 tab === t
                   ? 'bg-ink-600 text-stone-100'
-                  : 'text-stone-400 hover:text-stone-200',
+                  : 'text-stone-300 hover:text-stone-200',
               ].join(' ')}
               style={{ minHeight: 44 }}
             >
@@ -229,8 +226,7 @@ export function LibraryScreen({
           {meditations.length === 0 && !meditationError && (
             <EmptyState
               heading="No meditations yet"
-              body="Run the gen-meditation CLI tool to generate your first meditation and bundle it with the app."
-              codeHint="npx tsx tools/gen-meditation.ts"
+              body="Generate one from the Stories tab."
             />
           )}
           <div className="space-y-3">
@@ -267,7 +263,7 @@ export function LibraryScreen({
             {bedtime && (
               <p
                 id="bedtime-note"
-                className="ui-label text-stone-400 italic max-w-xs text-right"
+                className="ui-label text-stone-300 italic max-w-xs text-right"
               >
                 A daytime activity. Try again after 6am.
               </p>
@@ -294,13 +290,14 @@ export function LibraryScreen({
                 key={s.id}
                 title={s.title}
                 description={s.theme}
+                excerpt={storyExcerpt(s.script)}
                 meta={fmtDuration(s.durationSeconds)}
                 busy={loadingId === s.id}
                 errorMessage={storyError?.id === s.id ? storyError.message : null}
                 confirmingDelete={confirmDeleteId === s.id}
-                onPlay={() => handlePlayStory(s)}
+                onPlay={() => void handlePlayStory(s)}
                 onDelete={() => setConfirmDeleteId(s.id)}
-                onConfirmDelete={() => handleConfirmDelete(s.id)}
+                onConfirmDelete={() => void handleConfirmDelete(s.id)}
                 onCancelDelete={() => setConfirmDeleteId(null)}
               />
             ))}
@@ -314,6 +311,7 @@ export function LibraryScreen({
 function ContentCard({
   title,
   description,
+  excerpt = null,
   meta,
   busy = false,
   errorMessage = null,
@@ -325,6 +323,8 @@ function ContentCard({
 }: {
   title: string;
   description: string;
+  /** One italic line of the content's own prose (roadmap 6.6). */
+  excerpt?: string | null;
   meta: string;
   busy?: boolean;
   errorMessage?: string | null;
@@ -335,7 +335,7 @@ function ContentCard({
   onCancelDelete?: () => void;
 }) {
   return (
-    <div className="bg-ink-800 rounded-softer px-5 py-4">
+    <div className="bg-ink-800 rounded-softer px-6 py-4">
       <div className="flex items-start justify-between gap-3 mb-1">
         <h3 className="font-serif text-stone-50 text-lg leading-tight">{title}</h3>
         <div className="flex gap-3 shrink-0 mt-0.5">
@@ -343,7 +343,7 @@ function ContentCard({
             <>
               <button
                 onClick={onCancelDelete}
-                className="ui-label text-stone-400 hover:text-stone-200
+                className="ui-label text-stone-300 hover:text-stone-200
                            transition-colors duration-slow px-2 py-2"
                 style={{ minHeight: 44 }}
                 aria-label="Cancel delete"
@@ -376,7 +376,7 @@ function ContentCard({
               {onDelete && (
                 <button
                   onClick={onDelete}
-                  className="ui-label text-stone-500 hover:text-ember-400
+                  className="ui-label text-stone-300 hover:text-ember-400
                              transition-colors duration-slow px-2 py-2"
                   style={{ minHeight: 44, minWidth: 44 }}
                   aria-label={`Delete ${title}`}
@@ -388,8 +388,13 @@ function ContentCard({
           )}
         </div>
       </div>
-      <p className="text-stone-400 body-text mb-1">{description}</p>
-      <p className="text-stone-500 ui-label">{meta}</p>
+      <p className="text-stone-300 body-text mb-1">{description}</p>
+      {excerpt && (
+        <p className="text-stone-300 body-text italic mb-1 leading-relaxed">
+          “{excerpt}”
+        </p>
+      )}
+      <p className="text-stone-300 ui-label">{meta}</p>
       {errorMessage && (
         <p
           role="alert"
@@ -402,24 +407,11 @@ function ContentCard({
   );
 }
 
-function EmptyState({
-  heading,
-  body,
-  codeHint,
-}: {
-  heading: string;
-  body: string;
-  codeHint?: string;
-}) {
+function EmptyState({ heading, body }: { heading: string; body: string }) {
   return (
     <div className="px-1 py-8 text-center">
       <p className="text-stone-300 body-text mb-2">{heading}</p>
-      <p className="text-stone-400 body-text max-w-xs mx-auto mb-3">{body}</p>
-      {codeHint && (
-        <code className="ui-label text-moon-300 bg-ink-800 px-2 py-1 rounded-soft">
-          {codeHint}
-        </code>
-      )}
+      <p className="text-stone-300 body-text max-w-xs mx-auto">{body}</p>
     </div>
   );
 }

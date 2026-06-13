@@ -1,29 +1,12 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getAudioEngine } from './audio/AudioEngine';
-import { NoiseGenerator } from './audio/NoiseGenerator';
-import { TinnitusMaskLayer } from './audio/TinnitusMaskLayer';
-import { ToneMatcher } from './audio/ToneMatcher';
-import { FileLayer } from './audio/FileLayer';
-import {
-  DEFAULT_SCENE_CROSSFADE_SECONDS,
-  DEFAULT_SCENE_FIRST_START_SECONDS,
-  getSceneCoordinator,
-} from './audio/SceneCoordinator';
-import type { VariantLoadOutcome } from './audio/SceneCoordinator';
-import {
-  fetchSceneDefinition,
-  fetchSceneIndex,
-} from './audio/sceneRegistry';
-import type {
-  SceneIndex,
-  SceneIndexEntry,
-} from './audio/sceneRegistry';
-import type { Scene } from './audio/Scene';
-import { getAllSettings, setSetting } from './storage';
-import type { NoiseColor } from './audio/types';
-import { generateTestPadBuffer } from './audio/synth/testPad';
+import { getSceneCoordinator } from './audio/SceneCoordinator';
+import { fetchSceneDefinition, fetchSceneIndex } from './audio/sceneRegistry';
+import { getSetting } from './storage';
+import { isDeepNight, deepNightResumeParams } from './lib/deepNight';
 import { TonightScreen } from './screens/TonightScreen';
 import { PlayerScreen } from './screens/PlayerScreen';
+import { DeepNightDoor } from './screens/DeepNightDoor';
 import type { ContentItem } from './screens/LibraryScreen';
 
 // Lazy-load post-Tonight screens. Together these pull in Howler (~30 kB),
@@ -47,6 +30,12 @@ const StoryGeneratorScreen = lazy(() =>
     default: m.StoryGeneratorScreen,
   }))
 );
+// Dev-only engine harness — its own chunk, only ever imported in dev. The
+// route that mounts it is also gated on import.meta.env.DEV, so a production
+// build tree-shakes the import away entirely.
+const Harness = lazy(() =>
+  import('./dev/Harness').then((m) => ({ default: m.Harness }))
+);
 
 function ScreenFallback() {
   return <div className="h-full bg-ink-950" aria-hidden="true" />;
@@ -59,14 +48,19 @@ type Screen =
   | 'content-player'
   | 'story-generator'
   | 'settings'
-  | 'harness';
+  | 'harness'
+  | 'deep-night-door';
 
 // Screens where the persistent bottom nav stays hidden — the immersive
 // player surfaces shouldn't have UI chrome under them while the user is
-// drifting off, and ContentPlayer is similarly task-focused.
-const IMMERSIVE_SCREENS = new Set<Screen>(['player', 'content-player']);
+// drifting off, ContentPlayer is similarly task-focused, and the 3 a.m.
+// Door is deliberately a single bare panel.
+const IMMERSIVE_SCREENS = new Set<Screen>([
+  'player',
+  'content-player',
+  'deep-night-door',
+]);
 
-const SHOW_TINNITUS_HARNESS = false;
 
 export function App() {
   const engine = useMemo(() => getAudioEngine(), []);
@@ -88,13 +82,29 @@ export function App() {
   // the last-visited screen: reopening the app should put the scene picker
   // in front of someone who's about to sleep, not wherever they last
   // browsed (e.g. Library). No Begin interstitial.
+  const coordinator = useMemo(() => getSceneCoordinator(engine), [engine]);
   const [screen, setScreen] = useState<Screen>(() => {
-    if (engine.isInitialized) {
-      const coord = getSceneCoordinator(engine);
-      if (coord.getCurrentScene()) return 'player';
-    }
+    if (engine.isInitialized && coordinator.getCurrentScene()) return 'player';
+    // The 3 a.m. Door: opened in the deep-night window with nothing playing
+    // and a scene to resume → a single near-black "back to sleep" panel
+    // instead of the bright Tonight screen (roadmap 6.1).
+    if (isDeepNight() && getSetting('lastSceneId')) return 'deep-night-door';
     return 'tonight';
   });
+  // When a session is resumed via the Door, the Player opens straight into
+  // Nightstand (black) so the screen never brightens at 3am.
+  const [resumeDark, setResumeDark] = useState(false);
+
+  // Wire the Night Drift catalogue lookup once (roadmap 6.2): the coordinator
+  // schedules the drift, but resolving a driftsTo target id into a definition
+  // needs the scene registry, which lives up here.
+  useEffect(() => {
+    coordinator.setSceneResolver(async (id) => {
+      const idx = await fetchSceneIndex();
+      const entry = idx.scenes.find((s) => s.id === id);
+      return entry ? fetchSceneDefinition(entry) : null;
+    });
+  }, [coordinator]);
 
   const [activeContent, setActiveContent] = useState<ContentItem | null>(null);
   const blobUrlRef = useRef<string | null>(null);
@@ -118,6 +128,16 @@ export function App() {
     }
     const onPopState = () => {
       // User pressed back — return to Tonight rather than leaving the app.
+      // Run the same content-leave cleanup as "← Library" (bug M5): if a
+      // content blob URL is live, revoke it and clear the active content,
+      // or hardware-back from the content player leaks a story's ~45 MB
+      // blob for the page's lifetime. blobUrlRef is a ref so this closure
+      // (empty-deps effect) always sees the current value.
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+      setActiveContent(null);
       setScreen('tonight');
       try {
         window.history.pushState({ screen: 'tonight', sentinel: true }, '');
@@ -133,6 +153,13 @@ export function App() {
   const playContent = useCallback(
     async (item: ContentItem) => {
       await ensureUnlocked();
+      // Revoke any previous content blob before overwriting the ref — a
+      // back-to-back play of two stories would otherwise strand the first
+      // one's ~45 MB object URL for the page's lifetime (bug M5).
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
       if (item.audioUrl.startsWith('blob:')) blobUrlRef.current = item.audioUrl;
       setActiveContent(item);
       setScreen('content-player');
@@ -148,6 +175,35 @@ export function App() {
     setActiveContent(null);
     setScreen('library');
   }, []);
+
+  // 3 a.m. Door resume — fetch the last scene and start it gently (long fade,
+  // reduced gain), then open the Player straight into Nightstand so the
+  // screen stays dark. Any failure quietly drops to Tonight.
+  const handleDeepNightResume = useCallback(async () => {
+    const lastSceneId = getSetting('lastSceneId');
+    if (!lastSceneId) {
+      setScreen('tonight');
+      return;
+    }
+    try {
+      await ensureUnlocked();
+      const idx = await fetchSceneIndex();
+      const entry = idx.scenes.find((s) => s.id === lastSceneId);
+      if (!entry) {
+        setScreen('tonight');
+        return;
+      }
+      const def = await fetchSceneDefinition(entry);
+      await coordinator.startScene(def, {
+        ...deepNightResumeParams(),
+        sleepTimerMinutes: getSetting('defaultTimerMinutes'),
+      });
+      setResumeDark(true);
+      setScreen('player');
+    } catch {
+      setScreen('tonight');
+    }
+  }, [ensureUnlocked, coordinator]);
 
   const showNav = !IMMERSIVE_SCREENS.has(screen);
 
@@ -166,14 +222,26 @@ export function App() {
             ensureUnlocked={ensureUnlocked}
           />
         )}
+        {screen === 'deep-night-door' && (
+          <DeepNightDoor
+            onResume={() => void handleDeepNightResume()}
+            onOpenApp={() => setScreen('tonight')}
+          />
+        )}
         {screen === 'player' && (
-          <PlayerScreen onExit={() => setScreen('tonight')} />
+          <PlayerScreen
+            startInNightstand={resumeDark}
+            onExit={() => {
+              setResumeDark(false);
+              setScreen('tonight');
+            }}
+          />
         )}
         {screen === 'library' && (
           <Suspense fallback={<ScreenFallback />}>
             <LibraryScreen
               onBack={() => setScreen('tonight')}
-              onPlay={playContent}
+              onPlay={(item) => void playContent(item)}
               onGenerateStory={() => setScreen('story-generator')}
             />
           </Suspense>
@@ -203,8 +271,10 @@ export function App() {
             <SettingsScreen onBack={() => setScreen('tonight')} />
           </Suspense>
         )}
-        {screen === 'harness' && (
-          <Harness onBackToTonight={() => setScreen('tonight')} />
+        {screen === 'harness' && import.meta.env.DEV && (
+          <Suspense fallback={<ScreenFallback />}>
+            <Harness onBackToTonight={() => setScreen('tonight')} />
+          </Suspense>
         )}
       </main>
       {showNav && <BottomNav current={screen} onNavigate={setScreen} />}
@@ -273,7 +343,7 @@ function NavButton({
       className={[
         'flex-1 flex flex-col items-center justify-center gap-1',
         'py-2 transition-colors duration-slow',
-        active ? 'text-moon-300' : 'text-stone-500 hover:text-stone-300',
+        active ? 'text-moon-300' : 'text-stone-400 hover:text-stone-300',
       ].join(' ')}
       style={{ minHeight: 56 }}
     >
@@ -345,719 +415,3 @@ function GearIcon() {
   );
 }
 
-// ── Harness (unchanged dev surface) ────────────────────────────────────
-
-function Harness({ onBackToTonight }: { onBackToTonight: () => void }) {
-  const engine = useMemo(() => getAudioEngine(), []);
-  const [settings] = useState(() => getAllSettings());
-  const [contextState, setContextState] = useState(engine.state);
-
-  useEffect(() => {
-    const unsub = engine.addListener((e) => {
-      if (e.kind === 'state') setContextState(e.state);
-    });
-    return unsub;
-  }, [engine]);
-
-  return (
-    <div className="bg-ink-950 text-stone-100 px-6 py-8 max-w-md mx-auto">
-      <header className="mb-8 flex justify-between items-start gap-4">
-        <button
-          onClick={onBackToTonight}
-          className="text-xs text-stone-400 hover:text-stone-200 transition-colors duration-slow shrink-0 mt-2"
-          aria-label="Back to Tonight"
-        >
-          ← Tonight
-        </button>
-        <div className="text-right">
-          <h1 className="text-stone-50 font-serif text-3xl">Engine harness</h1>
-          <p className="text-stone-300 text-sm mt-1">
-            Dev surface. AudioContext: {contextState}
-          </p>
-        </div>
-      </header>
-
-      <Spectrum />
-      <Divider />
-      <ScenesSection
-        tinnitusCenterHz={settings.tinnitus.centerHz}
-        tinnitusBandwidthHz={settings.tinnitus.bandwidthHz}
-      />
-      <Divider />
-      <NoiseSection />
-      <Divider />
-      {SHOW_TINNITUS_HARNESS && (
-        <>
-          <Divider />
-          <ToneMatcherSection
-            initialHz={settings.tinnitus.centerHz}
-            onSave={() => {
-              /* save flow removed during shelving; rewire when reviving */
-            }}
-          />
-          <Divider />
-          <TinnitusMaskSection
-            centerHz={settings.tinnitus.centerHz}
-            bandwidthHz={settings.tinnitus.bandwidthHz}
-          />
-          <Divider />
-        </>
-      )}
-      <CrossfadeSection />
-      <Divider />
-      <MasterSection
-        initialVolume={settings.masterVolume}
-        onChange={(v) => setSetting('masterVolume', v)}
-      />
-    </div>
-  );
-}
-
-function Divider() {
-  return <div className="h-px bg-ink-700 my-8" />;
-}
-
-function Spectrum() {
-  const engine = useMemo(() => getAudioEngine(), []);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    if (!engine.isInitialized) return;
-    const analyser = engine.bus.analyser;
-    const buf = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
-    let raf = 0;
-    const draw = () => {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx2d = canvas.getContext('2d');
-        if (ctx2d) {
-          analyser.getByteFrequencyData(buf);
-          const W = canvas.width;
-          const H = canvas.height;
-          ctx2d.fillStyle = '#10131A';
-          ctx2d.fillRect(0, 0, W, H);
-          const sampleRate = engine.context.sampleRate;
-          const nyquist = sampleRate / 2;
-          const minHz = 30;
-          ctx2d.fillStyle = '#9BB7AE';
-          for (let x = 0; x < W; x++) {
-            const t = x / (W - 1);
-            const hz = minHz * Math.pow(nyquist / minHz, t);
-            const bin = Math.min(buf.length - 1, Math.floor((hz / nyquist) * buf.length));
-            const v = buf[bin] ?? 0;
-            const h = (v / 255) * H;
-            ctx2d.fillRect(x, H - h, 1, h);
-          }
-        }
-      }
-      raf = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => cancelAnimationFrame(raf);
-  }, [engine]);
-
-  return (
-    <Section title="Spectrum">
-      <p className="text-xs text-stone-300 mb-2">
-        Log-frequency, ~30 Hz to Nyquist. White ~ flat; pink slopes down ~3 dB/oct;
-        brown slopes down ~6 dB/oct; tinnitus mask shows a peak.
-      </p>
-      <canvas
-        ref={canvasRef}
-        width={360}
-        height={90}
-        className="w-full rounded-soft bg-ink-800"
-      />
-    </Section>
-  );
-}
-
-function NoiseSection() {
-  const engine = useMemo(() => getAudioEngine(), []);
-  const [color, setColor] = useState<NoiseColor>('pink');
-  const [volume, setVolume] = useState(0.5);
-  const [playing, setPlaying] = useState(false);
-  const layerRef = useRef<NoiseGenerator | null>(null);
-
-  const ensureLayer = () => {
-    if (!layerRef.current) {
-      const layer = new NoiseGenerator(engine, {
-        id: 'synth-bed',
-        color,
-        defaultVolume: volume,
-      });
-      engine.addLayer(layer);
-      layerRef.current = layer;
-    }
-    return layerRef.current;
-  };
-
-  return (
-    <Section title="Synth bed (white / pink / brown)">
-      <div className="flex gap-2 mb-4">
-        {(['white', 'pink', 'brown'] as const).map((c) => (
-          <button
-            key={c}
-            onClick={() => {
-              setColor(c);
-              layerRef.current?.setColor(c);
-            }}
-            className={
-              'px-3 py-1 rounded-soft text-sm transition-all duration-slow ease-exhale ' +
-              (color === c ? 'bg-moon-500 text-ink-950' : 'bg-ink-800 text-stone-200')
-            }
-          >
-            {c}
-          </button>
-        ))}
-      </div>
-      <Slider
-        label={'Volume -- ' + Math.round(volume * 100) + '%'}
-        value={volume}
-        onChange={(v) => {
-          setVolume(v);
-          layerRef.current?.setVolume(v);
-        }}
-      />
-      <div className="mt-3">
-        <PlayPause
-          playing={playing}
-          onPlay={async () => {
-            await engine.unlock();
-            await engine.loadNoiseWorklet();
-            const layer = ensureLayer();
-            layer.start();
-            setPlaying(true);
-          }}
-          onStop={() => {
-            if (layerRef.current) {
-              void engine.removeLayer(layerRef.current.id);
-              layerRef.current = null;
-            }
-            setPlaying(false);
-          }}
-        />
-      </div>
-    </Section>
-  );
-}
-
-function ToneMatcherSection({
-  initialHz,
-  onSave,
-}: {
-  initialHz: number;
-  onSave: (hz: number, bandwidthHz: number) => void;
-}) {
-  const engine = useMemo(() => getAudioEngine(), []);
-  const matcherRef = useRef<ToneMatcher | null>(null);
-  const [sliderPos, setSliderPos] = useState(ToneMatcher.hzToSlider(initialHz));
-  const [bandwidth, setBandwidth] = useState(400);
-  const [playing, setPlaying] = useState(false);
-
-  const hz = ToneMatcher.sliderToHz(sliderPos);
-
-  return (
-    <Section title="Tinnitus tone matcher">
-      <p className="text-xs text-stone-300 mb-3">
-        Slide until the tone matches your tinnitus. Logarithmic scale, 2 kHz to 12 kHz.
-      </p>
-      <Slider
-        label={'Frequency -- ' + Math.round(hz) + ' Hz'}
-        value={sliderPos}
-        onChange={(v) => {
-          setSliderPos(v);
-          if (matcherRef.current) {
-            matcherRef.current.setFrequency(ToneMatcher.sliderToHz(v));
-          }
-        }}
-      />
-      <div className="mt-2">
-        <Slider
-          label={'Bandwidth -- ' + Math.round(bandwidth / 2) + ' Hz each side'}
-          value={(bandwidth - 50) / (1000 - 50)}
-          onChange={(v) => setBandwidth(50 + v * (1000 - 50))}
-        />
-      </div>
-      <div className="mt-3 flex gap-2">
-        <button
-          onClick={async () => {
-            if (playing) {
-              await matcherRef.current?.stop();
-              setPlaying(false);
-            } else {
-              await engine.unlock();
-              if (!matcherRef.current) {
-                matcherRef.current = new ToneMatcher(engine.context, engine.bus.input);
-                matcherRef.current.setFrequency(hz);
-                matcherRef.current.setVolume(0.08);
-              }
-              matcherRef.current.start();
-              setPlaying(true);
-            }
-          }}
-          className="px-3 py-1 rounded-soft text-sm bg-ink-800 text-stone-100"
-        >
-          {playing ? 'Stop tone' : 'Play tone'}
-        </button>
-        <button
-          onClick={() => onSave(hz, bandwidth)}
-          className="px-3 py-1 rounded-soft text-sm bg-moon-500 text-ink-950"
-        >
-          Save
-        </button>
-      </div>
-    </Section>
-  );
-}
-
-function TinnitusMaskSection({
-  centerHz,
-  bandwidthHz,
-}: {
-  centerHz: number;
-  bandwidthHz: number;
-}) {
-  const engine = useMemo(() => getAudioEngine(), []);
-  const layerRef = useRef<TinnitusMaskLayer | null>(null);
-  const [volume, setVolume] = useState(0.2);
-  const [playing, setPlaying] = useState(false);
-
-  useEffect(() => {
-    layerRef.current?.setCenterFrequency(centerHz);
-    layerRef.current?.setBandwidth(bandwidthHz);
-  }, [centerHz, bandwidthHz]);
-
-  return (
-    <Section title="Tinnitus masking layer">
-      <p className="text-xs text-stone-300 mb-3">
-        Band-passed white noise at {Math.round(centerHz)} Hz, +/-
-        {' '}{Math.round(bandwidthHz / 2)} Hz.
-      </p>
-      <Slider
-        label={'Volume -- ' + Math.round(volume * 100) + '%'}
-        value={volume}
-        onChange={(v) => {
-          setVolume(v);
-          layerRef.current?.setVolume(v);
-        }}
-      />
-      <div className="mt-3">
-        <PlayPause
-          playing={playing}
-          onPlay={async () => {
-            await engine.unlock();
-            await engine.loadNoiseWorklet();
-            if (!layerRef.current) {
-              const layer = new TinnitusMaskLayer(engine, {
-                centerHz,
-                bandwidthHz,
-                defaultVolume: volume,
-              });
-              engine.addLayer(layer);
-              layerRef.current = layer;
-            }
-            layerRef.current.start();
-            setPlaying(true);
-          }}
-          onStop={() => {
-            if (layerRef.current) {
-              void engine.removeLayer(layerRef.current.id);
-              layerRef.current = null;
-            }
-            setPlaying(false);
-          }}
-        />
-      </div>
-    </Section>
-  );
-}
-
-function CrossfadeSection() {
-  const engine = useMemo(() => getAudioEngine(), []);
-  const layerRef = useRef<FileLayer | null>(null);
-  const [volume, setVolume] = useState(0.5);
-  const [playing, setPlaying] = useState(false);
-  const [building, setBuilding] = useState(false);
-
-  return (
-    <Section title="Seamless crossfade -- synthesized test pad">
-      <p className="text-xs text-stone-300 mb-3">
-        Two synthesized test tones run through a FileLayer with a 5-second
-        equal-power crossfade and 12-second loop offset. There should be no
-        loop seam.
-      </p>
-      <Slider
-        label={'Volume -- ' + Math.round(volume * 100) + '%'}
-        value={volume}
-        onChange={(v) => {
-          setVolume(v);
-          layerRef.current?.setVolume(v);
-        }}
-      />
-      <div className="mt-3">
-        <PlayPause
-          playing={playing}
-          disabled={building}
-          onPlay={async () => {
-            setBuilding(true);
-            try {
-              await engine.unlock();
-              if (!layerRef.current) {
-                const ctx = engine.context;
-                const variants = [
-                  {
-                    id: 'pad-220',
-                    buffer: generateTestPadBuffer(ctx, 18, 220),
-                    loopOffsetSeconds: 12,
-                  },
-                  {
-                    id: 'pad-261',
-                    buffer: generateTestPadBuffer(ctx, 18, 261),
-                    loopOffsetSeconds: 12,
-                  },
-                ];
-                const layer = new FileLayer(engine, {
-                  id: 'crossfade-demo',
-                  label: 'Crossfade test',
-                  variants,
-                  crossfadeSeconds: 5,
-                  defaultVolume: volume,
-                  variantRotation: 'sequential',
-                });
-                engine.addLayer(layer);
-                layerRef.current = layer;
-              }
-              layerRef.current.start();
-              setPlaying(true);
-            } finally {
-              setBuilding(false);
-            }
-          }}
-          onStop={() => {
-            if (layerRef.current) {
-              void engine.removeLayer(layerRef.current.id);
-              layerRef.current = null;
-            }
-            setPlaying(false);
-          }}
-        />
-      </div>
-    </Section>
-  );
-}
-
-function ScenesSection({
-  tinnitusCenterHz,
-  tinnitusBandwidthHz,
-}: {
-  tinnitusCenterHz: number;
-  tinnitusBandwidthHz: number;
-}) {
-  const engine = useMemo(() => getAudioEngine(), []);
-  const coordinator = useMemo(() => getSceneCoordinator(engine), [engine]);
-
-  const [index, setIndex] = useState<SceneIndex | null>(null);
-  const [indexError, setIndexError] = useState<string | null>(null);
-  const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
-  const [loadingSceneId, setLoadingSceneId] = useState<string | null>(null);
-  const [variantOutcomes, setVariantOutcomes] = useState<VariantLoadOutcome[]>([]);
-  const [layerSummary, setLayerSummary] = useState<LayerSummary[]>([]);
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    if (!activeSceneId) return;
-    const interval = setInterval(() => {
-      const scene = coordinator.getCurrentScene();
-      if (scene) setLayerSummary(summarizeScene(scene));
-    }, 250);
-    return () => clearInterval(interval);
-  }, [activeSceneId, coordinator]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchSceneIndex()
-      .then((idx) => {
-        if (!cancelled) setIndex(idx);
-      })
-      .catch((err) => {
-        if (!cancelled) setIndexError(String(err));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const handleStart = useCallback(
-    async (entry: SceneIndexEntry) => {
-      setLoadingSceneId(entry.id);
-      setVariantOutcomes([]);
-      try {
-        await engine.unlock();
-        const def = await fetchSceneDefinition(entry);
-        const collected: VariantLoadOutcome[] = [];
-        const scene = await coordinator.startScene(def, {
-          tinnitus: {
-            centerHz: tinnitusCenterHz,
-            bandwidthHz: tinnitusBandwidthHz,
-          },
-          fallbackToSynthetic: true,
-          onVariantLoaded: (info) => collected.push(info),
-          fadeSeconds: DEFAULT_SCENE_CROSSFADE_SECONDS,
-          firstFadeSeconds: DEFAULT_SCENE_FIRST_START_SECONDS,
-        });
-        setVariantOutcomes(collected);
-        setActiveSceneId(scene.id);
-        setLayerSummary(summarizeScene(scene));
-      } catch (err) {
-        console.error('[ScenesSection] start failed:', err);
-        setVariantOutcomes([
-          {
-            elementId: '(scene)',
-            variantId: '(load)',
-            url: entry.url,
-            status: 'failed',
-            error: err,
-          },
-        ]);
-      } finally {
-        setLoadingSceneId(null);
-      }
-    },
-    [engine, coordinator, tinnitusCenterHz, tinnitusBandwidthHz]
-  );
-
-  const handleStop = useCallback(() => {
-    coordinator.stopScene(DEFAULT_SCENE_FIRST_START_SECONDS);
-    setActiveSceneId(null);
-    setLayerSummary([]);
-  }, [coordinator]);
-
-  const handleSurpriseMe = useCallback(() => {
-    if (!index || index.scenes.length === 0) return;
-    const choices = index.scenes.filter((s) => s.id !== activeSceneId);
-    const pool = choices.length > 0 ? choices : index.scenes;
-    const pick = pool[Math.floor(Math.random() * pool.length)];
-    if (pick) void handleStart(pick);
-  }, [index, activeSceneId, handleStart]);
-
-  const fallbackCount = variantOutcomes.filter(
-    (o) => o.status === 'fallback-synthetic'
-  ).length;
-  const failedCount = variantOutcomes.filter((o) => o.status === 'failed').length;
-
-  return (
-    <Section title="Scenes (Phase 2)">
-      <p className="text-xs text-stone-300 mb-3">
-        Multi-layer scenes with an 8-second cross-scene fade. Audio files
-        are placeholders; missing files fall back to a synthesized pad so
-        the engine works before George Vlad recordings land in
-        <code className="text-moon-300"> /public/audio/</code>.
-      </p>
-
-      {indexError && (
-        <p className="text-ember-400 text-xs mb-3">Index error: {indexError}</p>
-      )}
-
-      <div className="flex gap-2 flex-wrap mb-3">
-        {index?.scenes.map((entry) => {
-          const isActive = entry.id === activeSceneId;
-          const isLoading = entry.id === loadingSceneId;
-          return (
-            <button
-              key={entry.id}
-              disabled={isLoading}
-              onClick={() => handleStart(entry)}
-              className={
-                'px-3 py-1 rounded-soft text-sm transition-all duration-slow ease-exhale ' +
-                (isActive ? 'bg-moon-500 text-ink-950' : 'bg-ink-800 text-stone-200') +
-                ' disabled:opacity-50'
-              }
-            >
-              {isLoading ? 'Loading…' : entry.label}
-            </button>
-          );
-        })}
-        {activeSceneId && (
-          <button
-            onClick={handleStop}
-            className="px-3 py-1 rounded-soft text-sm bg-ember-500 text-ink-950"
-          >
-            Stop
-          </button>
-        )}
-        {index && index.scenes.length > 1 && (
-          <button
-            onClick={handleSurpriseMe}
-            disabled={loadingSceneId !== null}
-            className="px-3 py-1 rounded-soft text-sm bg-ink-700 text-stone-100 disabled:opacity-50"
-            title="Pick a random scene (skips the current one)"
-          >
-            Surprise me
-          </button>
-        )}
-      </div>
-
-      {variantOutcomes.length > 0 && (
-        <p className="text-xs text-stone-400 mb-3">
-          Variants loaded: {variantOutcomes.length - fallbackCount - failedCount}
-          {fallbackCount > 0 && (
-            <span className="text-moon-300">
-              {' '}
-              · {fallbackCount} synthesized fallback
-              {fallbackCount === 1 ? '' : 's'}
-            </span>
-          )}
-          {failedCount > 0 && (
-            <span className="text-ember-400">
-              {' '}
-              · {failedCount} failed
-            </span>
-          )}
-        </p>
-      )}
-
-      {layerSummary.length > 0 && (
-        <div className="space-y-3 bg-ink-800 rounded-soft p-3">
-          {layerSummary.map((row) => (
-            <div key={row.id}>
-              <Slider
-                label={`${row.label} — ${Math.round(row.volume * 100)}%`}
-                value={row.volume}
-                onChange={(v) => {
-                  const scene = coordinator.getCurrentScene();
-                  if (!scene) return;
-                  scene.setLayerVolume(row.id, v);
-                  setTick((t) => t + 1);
-                }}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-    </Section>
-  );
-}
-
-interface LayerSummary {
-  id: string;
-  label: string;
-  volume: number;
-}
-
-function summarizeScene(scene: Scene): LayerSummary[] {
-  return scene.getLayers().map((layer) => ({
-    id: layer.id,
-    label: layer.label,
-    volume: layer.getVolume(),
-  }));
-}
-
-function MasterSection({
-  initialVolume,
-  onChange,
-}: {
-  initialVolume: number;
-  onChange: (v: number) => void;
-}) {
-  const engine = useMemo(() => getAudioEngine(), []);
-  const [volume, setVolume] = useState(initialVolume);
-
-  useEffect(() => {
-    if (engine.isInitialized) engine.bus.setMasterVolume(initialVolume);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <Section title="Master">
-      <Slider
-        label={'Master -- ' + Math.round(volume * 100) + '%'}
-        value={volume}
-        onChange={(v) => {
-          setVolume(v);
-          if (engine.isInitialized) engine.bus.setMasterVolume(v);
-          onChange(v);
-        }}
-      />
-      <div className="mt-3 flex gap-2 flex-wrap">
-        <button
-          onClick={() => engine.isInitialized && engine.bus.fadeToSilence(10)}
-          className="px-3 py-1 rounded-soft text-sm bg-ink-800 text-stone-200"
-          title="Demo of the timer fade -- exponential to silence over 10s"
-        >
-          Fade out (10s)
-        </button>
-        <button
-          onClick={() => engine.isInitialized && engine.bus.cancelFade(volume, 1)}
-          className="px-3 py-1 rounded-soft text-sm bg-ink-800 text-stone-200"
-        >
-          Cancel fade
-        </button>
-      </div>
-    </Section>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 className="font-serif text-stone-50 text-xl mb-3">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function Slider({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <label className="block">
-      <span className="block text-xs text-stone-300 mb-1">{label}</span>
-      <input
-        type="range"
-        min={0}
-        max={1}
-        step={0.01}
-        value={value}
-        aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={1}
-        aria-valuenow={value}
-        aria-valuetext={`${Math.round(value * 100)} percent`}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-      />
-    </label>
-  );
-}
-
-function PlayPause({
-  playing,
-  onPlay,
-  onStop,
-  disabled,
-}: {
-  playing: boolean;
-  onPlay: () => void;
-  onStop: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      disabled={disabled}
-      onClick={() => (playing ? onStop() : onPlay())}
-      className={
-        'px-4 py-2 rounded-soft text-sm transition-all duration-slow ease-exhale ' +
-        (playing ? 'bg-ember-500 text-ink-950' : 'bg-moon-500 text-ink-950') +
-        ' disabled:opacity-50'
-      }
-    >
-      {playing ? 'Stop' : 'Play'}
-    </button>
-  );
-}

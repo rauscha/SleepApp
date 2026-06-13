@@ -11,21 +11,23 @@
 // When countdown hits zero, MasterBus.fadeToSilence(90s) runs, then scene
 // stops and the app returns to Tonight. Manual Stop cancels the fade.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 import { getAudioEngine } from '../audio/AudioEngine';
 import {
   DEFAULT_SCENE_FIRST_START_SECONDS,
   getSceneCoordinator,
 } from '../audio/SceneCoordinator';
+import { SLEEP_TIMER_FADE_SECONDS } from '../audio/SleepTimer';
 import type { Scene } from '../audio/Scene';
-import {
-  clearMediaSession,
-  setMediaSessionForScene,
-} from '../audio/mediaSession';
-import { recordEvent } from '../diagnostics/lifecycleLog';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { scenePlayerBackground } from '../lib/sceneBackground';
-import { startSwKeepAlive, stopSwKeepAlive } from '../serviceWorker/keepAlive';
 import { getSetting, setSetting } from '../storage';
 import { exitFullscreenSafe, requestFullscreenSafe } from '../utils/fullscreen';
 
@@ -33,10 +35,13 @@ import { exitFullscreenSafe, requestFullscreenSafe } from '../utils/fullscreen';
 // Constants
 
 const IDLE_TIMEOUT_MS = 30_000;  // inactivity before auto-nightstand
-const WAKE_DURATION_MS = 3_000;  // how long a tap reveals controls
+const WAKE_DURATION_MS = 7_000;  // how long a tap reveals controls (a sleepy
+                                 // user needs more than 3s to focus + act)
 
 const TIMER_OPTIONS_MINUTES = [15, 30, 60, 90] as const;
-const TIMER_FADE_SECONDS = 90;   // MasterBus fade duration when timer fires
+// MasterBus fade duration when the sleep timer fires — owned by SleepTimer;
+// re-exported here only for the on-screen "90s fade" copy.
+const TIMER_FADE_SECONDS = SLEEP_TIMER_FADE_SECONDS;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -131,9 +136,12 @@ function useWakeTimer(durationMs: number): [boolean, () => void] {
 
 export interface PlayerScreenProps {
   onExit: () => void;
+  /** Open straight into Nightstand (black) — used by the 3 a.m. Door resume
+   *  so the screen never brightens at that hour (roadmap 6.1). */
+  startInNightstand?: boolean;
 }
 
-export function PlayerScreen({ onExit }: PlayerScreenProps) {
+export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreenProps) {
   const engine = useMemo(() => getAudioEngine(), []);
   const coordinator = useMemo(() => getSceneCoordinator(engine), [engine]);
 
@@ -141,23 +149,15 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     coordinator.getCurrentScene()
   );
 
-  // Background keep-alive: silent loop through the AudioContext + screen
-  // wake lock. Both engage as soon as a scene is live and disengage when
-  // it ends. Wake Lock is no-op on browsers that don't support it; the
-  // silent loop is the load-bearing piece for Android's audio focus
-  // heuristic.
+  // Screen-scoped wake lock only. The overnight-survival protections
+  // (silent keep-alive + element sink, SW keep-alive, media session) are
+  // owned by the playback session in SceneCoordinator, not this screen —
+  // see review bug C1. Leaving the Player ("← Scenes", hardware-back) must
+  // strip nothing while the scene keeps playing, so the keep-alive and
+  // media session deliberately do NOT live in this component's lifecycle.
+  // The wake lock is visibility-bound by nature and correctly belongs to
+  // the on-screen experience, so it stays here.
   useWakeLock(scene !== null);
-  useEffect(() => {
-    if (!scene) return;
-    engine.startKeepAlive();
-    startSwKeepAlive();
-    recordEvent('keepalive-start');
-    return () => {
-      engine.stopKeepAlive();
-      stopSwKeepAlive();
-      recordEvent('keepalive-stop');
-    };
-  }, [scene, engine]);
   const [mixerOpen, setMixerOpen] = useState(false);
   const [masterVolume, setMasterVolume] = useState<number>(
     () => getSetting('masterVolume')
@@ -165,7 +165,9 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
   const [, setTick] = useState(0);
 
   // Display mode
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('lush');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(
+    startInNightstand ? 'nightstand' : 'lush'
+  );
   const [awake, wake] = useWakeTimer(WAKE_DURATION_MS);
   const isIdle = useIdleTimer(IDLE_TIMEOUT_MS, displayMode === 'lush');
 
@@ -194,18 +196,29 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
   // where the screen-level listener used to be a blind spot). See
   // AudioEngine.ensureContext.
 
-  // Sleep timer — auto-start from the user's default if one is set.
-  const [timer, setTimer] = useState<TimerMode>(() => {
-    const def = getSetting('defaultTimerMinutes');
-    return def !== null
-      ? { status: 'running', endsAt: Date.now() + def * 60_000 }
-      : { status: 'off' };
-  });
-  const [remaining, setRemaining] = useState(() => {
-    const def = getSetting('defaultTimerMinutes');
-    return def !== null ? def * 60_000 : 0;
-  });
-  const fadeExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Sleep timer — the state machine lives on the playback session
+  // (coordinator.sleepTimer), not here, so a confirmed countdown survives
+  // leaving the Player and a stale fade-exit can never stop a later scene
+  // (review bugs H1 + H3). The default-from-settings auto-arm happens at
+  // scene start (Tonight passes it to startScene), so re-entering the
+  // Player shows the live countdown rather than re-arming a fresh default.
+  // This screen only renders the timer's state and issues commands.
+  const sleepTimer = coordinator.sleepTimer;
+  const [picking, setPicking] = useState(false);
+  const [, bumpTimer] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => sleepTimer.subscribe(bumpTimer), [sleepTimer]);
+
+  const timerState = sleepTimer.getState();
+  const remaining = sleepTimer.getRemainingMs();
+  // View model the sub-components render. `picking` is pure local UI; the
+  // running/fading/off states come from the session timer.
+  const timer: TimerMode = picking
+    ? { status: 'picking' }
+    : timerState.status === 'running'
+      ? { status: 'running', endsAt: timerState.endsAt ?? Date.now() }
+      : timerState.status === 'fading'
+        ? { status: 'fading' }
+        : { status: 'off' };
 
   useEffect(() => {
     engine.bus.setMasterVolume(masterVolume);
@@ -221,90 +234,43 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
     return () => clearInterval(id);
   }, [coordinator]);
 
-  // Countdown tick
+  // Surface the Nightstand controls when the timer begins its fade, so a
+  // sleeping user who half-wakes sees "fading…" rather than a black screen
+  // going quiet. Watches the session timer's status across renders.
+  const prevTimerStatus = useRef(timerState.status);
   useEffect(() => {
-    if (timer.status !== 'running') return;
-    setRemaining(timer.endsAt - Date.now());
-    const id = setInterval(() => {
-      const ms = timer.endsAt - Date.now();
-      if (ms <= 0) {
-        setTimer({ status: 'fading' });
-        wake(); // surface controls in Nightstand so user sees "Fading…"
-        engine.bus.fadeToSilence(TIMER_FADE_SECONDS);
-        fadeExitTimer.current = setTimeout(() => {
-          fadeExitTimer.current = null;
-          coordinator.stopScene(DEFAULT_SCENE_FIRST_START_SECONDS);
-          onExit();
-        }, (TIMER_FADE_SECONDS + 0.6) * 1000);
-      } else {
-        setRemaining(ms);
-      }
-    }, 500);
-    return () => clearInterval(id);
-  }, [timer, engine, coordinator, wake, onExit]);
+    if (prevTimerStatus.current !== 'fading' && timerState.status === 'fading') {
+      wake();
+    }
+    prevTimerStatus.current = timerState.status;
+  }, [timerState.status, wake]);
 
   const handleStop = useCallback(() => {
-    if (fadeExitTimer.current) {
-      clearTimeout(fadeExitTimer.current);
-      fadeExitTimer.current = null;
-    }
-    if (timer.status === 'fading') engine.bus.cancelFade(masterVolume, 0.1);
-    setTimer({ status: 'off' });
+    // If a sleep-timer fade is mid-flight, cancel it first so the master
+    // bus gain is restored before we tear the scene down — otherwise the
+    // next session would start at zero master volume. cancel() is a no-op
+    // on the gain when the timer isn't fading.
+    sleepTimer.cancel(masterVolume);
     coordinator.stopScene(DEFAULT_SCENE_FIRST_START_SECONDS);
     setScene(null);
     onExit();
-  }, [coordinator, engine, timer, masterVolume, onExit]);
+  }, [coordinator, sleepTimer, masterVolume, onExit]);
 
-  const startTimer = useCallback((minutes: number) => {
-    setTimer({ status: 'running', endsAt: Date.now() + minutes * 60_000 });
-  }, []);
+  const startTimer = useCallback(
+    (minutes: number) => {
+      sleepTimer.start(minutes);
+      setPicking(false);
+    },
+    [sleepTimer]
+  );
 
   const cancelTimer = useCallback(() => {
-    if (fadeExitTimer.current) {
-      clearTimeout(fadeExitTimer.current);
-      fadeExitTimer.current = null;
-    }
-    if (timer.status === 'fading') engine.bus.cancelFade(masterVolume, 1);
-    setTimer({ status: 'off' });
-  }, [timer, engine, masterVolume]);
+    sleepTimer.cancel(masterVolume);
+  }, [sleepTimer, masterVolume]);
 
-  // MediaSession + scene-event logging. Tracking the last-seen scene id
-  // in a ref lets us distinguish start/switch/stop transitions cleanly
-  // from the polled `scene` state.
-  const lastSceneIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    const prev = lastSceneIdRef.current;
-    const currentId = scene?.definition.id ?? null;
-    if (prev === currentId) return;
-    if (currentId && scene) {
-      recordEvent(prev ? 'scene-switch' : 'scene-start', currentId);
-      setMediaSessionForScene(scene.definition.label, {
-        onStop: handleStop,
-        // Ambient scenes have no real pause/resume semantics — pause is
-        // the same intent as stop ("end this scene now"). We wire play so
-        // the lock-screen control surface always has both buttons visible
-        // (some Android launchers hide the controls entirely if only stop
-        // is registered). Play attempts to resume a suspended context;
-        // engine.context throws if uninitialized, which it can't be here.
-        onPause: handleStop,
-        onPlay: () => {
-          const ctx = engine.context;
-          if (ctx.state === 'suspended') void ctx.resume();
-        },
-      });
-    } else {
-      recordEvent('scene-stop', prev ?? '?');
-      clearMediaSession();
-    }
-    lastSceneIdRef.current = currentId;
-  }, [scene, handleStop, engine]);
-
-  // Belt-and-suspenders: clear the MediaSession when the Player unmounts
-  // for any reason. The effect above already clears on stop, but a hard
-  // unmount path (route change, error boundary recovery) skips that.
-  useEffect(() => {
-    return () => clearMediaSession();
-  }, []);
+  // MediaSession and scene-event logging now live in SceneCoordinator
+  // (review bug C1) so they follow the audio across screen changes. The
+  // Player just renders the polled scene state below.
 
   // No scene loaded — skip the interstitial "nothing playing" screen
   // entirely and send the user straight back to Tonight where they
@@ -333,7 +299,7 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         <div className="flex items-center justify-between mb-7">
           <button
             onClick={onExit}
-            className="ui-label text-stone-400 hover:text-stone-200
+            className="ui-label text-stone-300 hover:text-stone-200
                        transition-colors duration-slow px-2 py-2"
             style={{ minHeight: 44, minWidth: 44 }}
             aria-label="Back to scenes"
@@ -344,8 +310,8 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
             timer={timer}
             remaining={remaining}
             onTap={() => {
-              if (timer.status === 'off') setTimer({ status: 'picking' });
-              else if (timer.status === 'picking') setTimer({ status: 'off' });
+              if (timer.status === 'off') setPicking(true);
+              else if (timer.status === 'picking') setPicking(false);
               else cancelTimer();
             }}
           />
@@ -371,7 +337,7 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
         <h1 className="font-serif text-stone-50 text-3xl leading-tight">
           {scene.definition.label}
         </h1>
-        <p className="text-stone-400 body-text mt-1">
+        <p className="text-stone-300 body-text mt-1">
           {timer.status === 'fading'
             ? 'Fading out…'
             : timer.status === 'running'
@@ -381,17 +347,21 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
       </header>
 
       <div className="flex-1 flex flex-col justify-center items-center mb-8">
+        {/* Demoted from a 128px ember disc (the brightest thing on a screen
+            you close your eyes to) to a quiet warm-stone ghost-ring, so the
+            scene photo is the hero. Still a generous touch target. (4.4) */}
         <button
           onClick={handleStop}
-          className="w-32 h-32 rounded-full bg-ember-500 text-ink-950 font-serif text-xl
+          className="px-9 py-4 rounded-full border border-stone-400/50 bg-ink-950/25
+                     backdrop-blur-sm text-stone-200 font-serif text-lg
                      transition-all duration-slow ease-exhale
-                     active:scale-95 active:bg-ember-400 shadow-ambient"
+                     active:scale-95 active:border-stone-300 active:text-stone-100"
           style={{ minWidth: 44, minHeight: 44 }}
-          aria-label="Stop scene"
+          aria-label="End the night — stop the scene"
         >
-          Stop
+          End the night
         </button>
-        <p className="text-stone-400 body-text mt-4 max-w-xs text-center">
+        <p className="text-stone-300 body-text mt-4 max-w-xs text-center">
           {timer.status === 'fading'
             ? `${TIMER_FADE_SECONDS}s fade. Walk away.`
             : '8-second fade. Tap Stop and walk away.'}
@@ -420,6 +390,15 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
           />
         </label>
       </div>
+
+      {/* The app's deepest engineering, finally legible to the user (6.4):
+          the layers run on pairwise-coprime prime-length loops, so the
+          combined soundscape doesn't repeat for tens of hours. This is the
+          one line that turns the invisible Eno engine into a "show a friend"
+          moment. */}
+      <p className="body-text italic text-stone-300 mb-6 px-1 leading-relaxed">
+        Layered live on prime-length loops — tonight’s soundscape won’t repeat.
+      </p>
 
       <div>
         <button
@@ -458,7 +437,7 @@ export function PlayerScreen({ onExit }: PlayerScreenProps) {
             requestFullscreenSafe();
             setDisplayMode('nightstand');
           }}
-          className="ui-label text-stone-400 hover:text-stone-200
+          className="ui-label text-stone-300 hover:text-stone-200
                      active:text-moon-300 transition-colors duration-slow
                      px-3 py-3"
           style={{ minHeight: 44 }}
@@ -553,7 +532,7 @@ function NightstandOverlay({
         className={[
           'flex flex-col items-center gap-8 px-8 w-full max-w-xs',
           'transition-opacity duration-slow ease-exhale',
-          engaged && awake ? 'opacity-40 pointer-events-auto' : 'opacity-0 pointer-events-none',
+          engaged && awake ? 'opacity-60 pointer-events-auto' : 'opacity-0 pointer-events-none',
         ].join(' ')}
       >
         {/* Scene name + timer status. Text labels on the status line are
@@ -579,19 +558,19 @@ function NightstandOverlay({
         {/* Stop button */}
         <button
           onClick={(e) => { e.stopPropagation(); onStop(); }}
-          className="w-28 h-28 rounded-full bg-ember-500 text-ink-950
-                     font-serif text-xl transition-transform duration-slow
-                     active:scale-95"
+          className="px-8 py-4 rounded-full border border-stone-400/50
+                     text-stone-200 font-serif text-lg transition-transform duration-slow
+                     active:scale-95 active:border-stone-300"
           style={{ minWidth: 44, minHeight: 44 }}
-          aria-label="Stop scene"
+          aria-label="End the night — stop the scene"
         >
-          Stop
+          End the night
         </button>
 
         {/* Exit to Lush */}
         <button
           onClick={(e) => { e.stopPropagation(); onExitNightstand(); }}
-          className="ui-label text-stone-400 hover:text-stone-200
+          className="ui-label text-stone-300 hover:text-stone-200
                      transition-colors duration-slow px-4 py-3"
           style={{ minHeight: 44 }}
           aria-label="Exit Nightstand mode"
@@ -633,7 +612,7 @@ function TimerChip({
     accent = 'text-stone-200';
   } else {
     label = 'set timer';
-    accent = 'text-stone-400';
+    accent = 'text-stone-300';
   }
 
   return (

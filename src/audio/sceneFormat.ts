@@ -38,6 +38,22 @@ export interface SceneDefinition {
 
   /** Ambient element layers. 3–5 per the brief; we do not enforce a count. */
   elements: SceneElementDefinition[];
+
+  /**
+   * Optional Night Drift target (roadmap 6.2): after `afterMinutes` of this
+   * scene playing, the session crossfades — over a very long
+   * `crossfadeSeconds` — into the scene with id `sceneId`, so the night
+   * composes itself (forest-evening → forest-night) rather than holding one
+   * static loop. The drift is scheduled at the session level and cancelled
+   * by any scene stop/switch. The target id must exist in the catalogue
+   * (enforced by the conformance test).
+   */
+  driftsTo?: {
+    sceneId: string;
+    afterMinutes: number;
+    /** Defaults to DEFAULT_DRIFT_CROSSFADE_SECONDS if omitted. */
+    crossfadeSeconds?: number;
+  };
 }
 
 export interface SceneElementDefinition {
@@ -48,10 +64,13 @@ export interface SceneElementDefinition {
   /** Variants — 2–4 recordings of the same element type, per the brief. */
   variants: SceneVariantDefinition[];
   /**
-   * Per-layer loop offset in seconds. PRIME-ADJACENT durations across
-   * layers in the same scene give Music for Airports incommensurate
-   * looping. Suggested values: 253 (4:13), 407 (6:47), 511 (8:31), 689
-   * (11:29), 893 (14:53).
+   * Per-layer loop offset in seconds. Use a different true prime per layer
+   * in a scene so the combined pattern is incommensurate (Music for
+   * Airports). MUST be one of `PRIME_ADJACENT_LOOP_OFFSETS_SECONDS` below —
+   * 251 / 409 / 521 / 691 / 887. (The old "prime-adjacent" suggestions
+   * 253 / 407 / 511 / 689 / 893 were NOT pairwise coprime — 253 = 11·23 and
+   * 407 = 11·37 share gcd 11 — so they repeated within ~2.6 h. The
+   * conformance test enforces the on-list values.)
    */
   loopOffsetSeconds: number;
   /** Crossfade overlap in seconds. Brief minimum: 5. */

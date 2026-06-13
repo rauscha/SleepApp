@@ -17,7 +17,64 @@ import { AudioEngine } from './AudioEngine';
 import { AudioLoadError } from './FileLayer';
 import { SceneCoordinator } from './SceneCoordinator';
 import { installAudioContextMock, MockAudioBuffer } from '../test/audioMock';
+import type { MockAudioContext } from '../test/audioMock';
+import { isSwKeepAliveRunning, stopSwKeepAlive } from '../serviceWorker/keepAlive';
+import { __resetForTests, getAllEntries } from '../diagnostics/lifecycleLog';
+import { SLEEP_TIMER_FADE_SECONDS } from './SleepTimer';
 import type { SceneDefinition } from './sceneFormat';
+
+const FADE_EXIT_MS = SLEEP_TIMER_FADE_SECONDS * 1000 + 600;
+
+/**
+ * Advance fake timers AND the mock audio clock in lockstep, so the engine
+ * watchdog never mistakes a frozen ctx.currentTime for a zombie context
+ * and recreates it mid-test.
+ */
+function advanceBoth(ctx: MockAudioContext, ms: number, stepMs = 500): void {
+  let elapsed = 0;
+  while (elapsed < ms) {
+    const step = Math.min(stepMs, ms - elapsed);
+    ctx.advanceTime(step / 1000);
+    vi.advanceTimersByTime(step);
+    elapsed += step;
+  }
+}
+
+/**
+ * Install a minimal MediaSession surface so we can assert the coordinator
+ * stamps / clears the OS media session. jsdom provides neither
+ * navigator.mediaSession nor MediaMetadata.
+ */
+function installMediaSessionMock(): {
+  session: { metadata: unknown; playbackState: string };
+  handlers: Record<string, unknown>;
+  restore: () => void;
+} {
+  const handlers: Record<string, unknown> = {};
+  const session = {
+    metadata: null as unknown,
+    playbackState: 'none',
+    setActionHandler: (action: string, h: unknown) => {
+      handlers[action] = h;
+    },
+  };
+  const g = globalThis as unknown as { MediaMetadata?: unknown };
+  const priorMeta = g.MediaMetadata;
+  g.MediaMetadata = class {
+    constructor(init: Record<string, unknown>) {
+      Object.assign(this, init);
+    }
+  };
+  (navigator as unknown as { mediaSession?: unknown }).mediaSession = session;
+  return {
+    session,
+    handlers,
+    restore() {
+      delete (navigator as unknown as { mediaSession?: unknown }).mediaSession;
+      g.MediaMetadata = priorMeta;
+    },
+  };
+}
 
 const SAMPLE_RATE = 48_000;
 
@@ -78,6 +135,9 @@ describe('SceneCoordinator', () => {
     ({ restore } = installAudioContextMock());
   });
   afterEach(() => {
+    // startScene now engages the module-global SW keep-alive timer; stop it
+    // so it can't leak across tests.
+    stopSwKeepAlive();
     restore();
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -122,6 +182,21 @@ describe('SceneCoordinator', () => {
     // Every variant ended up as fallback-synthetic.
     expect(outcomes.every((s) => s === 'fallback-synthetic')).toBe(true);
     expect(outcomes.length).toBeGreaterThan(0);
+  });
+
+  // 3.1: the option now defaults to import.meta.env.DEV. In the dev/test
+  // environment that is true, so an omitted option still falls back on a
+  // 404 (authoring convenience). In a production build the same omission
+  // throws — surfacing a load failure instead of a synth-pad impostor.
+  it('defaults fallbackToSynthetic to import.meta.env.DEV (falls back in dev on 404)', async () => {
+    stubFetch([]); // every fetch 404s
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    // No fallbackToSynthetic passed — relies on the DEV-gated default.
+    const scene = await coord.loadScene(basicScene('default-fallback'));
+    expect(scene.getLayers().length).toBe(3); // synth + 2 synthesized els
+    expect(import.meta.env.DEV).toBe(true); // sanity: the default is on here
   });
 
   it('rethrows when a variant fetch fails and fallbackToSynthetic=false', async () => {
@@ -202,6 +277,20 @@ describe('SceneCoordinator', () => {
     expect(sceneGain.gain.value).toBe(1);
   });
 
+  it('first-start honors firstFadeTarget (3 a.m. Door resumes quieter)', async () => {
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    const scene = await coord.startScene(basicScene('door'), {
+      firstFadeSeconds: 30,
+      firstFadeTarget: 0.6,
+    });
+    // The ease-out curve ends at the reduced target, not full gain.
+    const sceneGain = scene.output as unknown as { gain: { value: number } };
+    expect(sceneGain.gain.value).toBeCloseTo(0.6, 5);
+  });
+
   it('crossfadeTo disposes the outgoing scene and installs the incoming as current', async () => {
     stubFetch(['/audio/']);
     const engine = new AudioEngine();
@@ -275,6 +364,43 @@ describe('SceneCoordinator', () => {
     expect(out.connections[0]).toBe(engine.bus.input);
   });
 
+  // Review bug M6 / roadmap 3.7: when re-fetching the scene fails after a
+  // mid-night context loss (offline, cold cache), the coordinator retries
+  // with backoff and then falls back to the synth bed alone — sound beats
+  // silence at 3am — instead of bouncing to Tonight.
+  it('falls back to the synth bed alone when re-fetch keeps failing (M6)', async () => {
+    vi.useFakeTimers();
+    stubFetch(['/audio/']); // first build succeeds
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    await coord.startScene(basicScene('rescue', { elementCount: 2 }));
+    expect(coord.getCurrentScene()?.getLayers().length).toBe(3); // synth + 2
+
+    // Now the network is gone — every fetch rejects.
+    (globalThis as { fetch: typeof fetch }).fetch = vi.fn(async () => {
+      throw new TypeError('Failed to fetch');
+    }) as unknown as typeof fetch;
+
+    engine.recreateContext(); // triggers restartAfterContextLoss
+    const newCtx = engine.context as unknown as MockAudioContext;
+
+    // Advance past the 0/1000/3000ms backoff while keeping the audio clock
+    // alive so the watchdog doesn't recreate the context underneath us.
+    for (let t = 0; t < 6000; t += 500) {
+      newCtx.advanceTime(0.5);
+      await vi.advanceTimersByTimeAsync(500);
+    }
+
+    const current = coord.getCurrentScene();
+    expect(current).not.toBeNull();
+    // Degraded to the synth bed alone — one layer, no FileLayers — but the
+    // session is alive and audible rather than silent.
+    expect(current!.getLayers().length).toBe(1);
+    expect(current!.definition.id).toBe('rescue');
+    expect(coord.isProtectionEngaged).toBe(true);
+  });
+
   it('drops the rebuilt scene if the user stopped playback during the rebuild', async () => {
     stubFetch(['/audio/']);
     const engine = new AudioEngine();
@@ -313,5 +439,298 @@ describe('SceneCoordinator', () => {
     const probe = new MockAudioBuffer(2, SAMPLE_RATE * 30, SAMPLE_RATE);
     expect(probe.duration).toBeCloseTo(30, 5);
     expect(probe.numberOfChannels).toBe(2);
+  });
+
+  // -------------------------------------------------------------------
+  // Session-owned overnight protections (review bug C1 / roadmap 1.1).
+  // The keep-alive, SW pings, and media session must follow the *audio*,
+  // not whatever screen is mounted: starting a scene engages them, and
+  // they survive a Player exit (which at this level is simply "nobody
+  // called stopScene"). Only stopScene tears them down.
+
+  it('startScene engages the session protections and stamps the media session', async () => {
+    stubFetch(['/audio/']);
+    __resetForTests();
+    const media = installMediaSessionMock();
+    try {
+      const engine = new AudioEngine();
+      await engine.unlock();
+      const coord = new SceneCoordinator(engine);
+
+      const scene = await coord.startScene(basicScene('protected'));
+
+      // Engine keep-alive (silent loop + element sink) and SW pings up.
+      expect(engine.isKeepAliveRunning).toBe(true);
+      expect(isSwKeepAliveRunning()).toBe(true);
+      expect(coord.isProtectionEngaged).toBe(true);
+      // Media session stamped with the scene label + a stop handler.
+      expect(media.session.metadata).not.toBeNull();
+      expect(media.session.playbackState).toBe('playing');
+      expect(typeof media.handlers.stop).toBe('function');
+
+      // "Leave the Player": at the coordinator level nobody calls
+      // stopScene, so the scene stays current and every protection stays
+      // engaged. This is the heart of the C1 fix.
+      expect(coord.getCurrentScene()).toBe(scene);
+      expect(engine.isKeepAliveRunning).toBe(true);
+      expect(isSwKeepAliveRunning()).toBe(true);
+
+      const kinds = getAllEntries().map((e) => e.kind);
+      expect(kinds).toContain('scene-start');
+      expect(kinds).toContain('keepalive-start');
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('stopScene tears down every session protection', async () => {
+    stubFetch(['/audio/']);
+    __resetForTests();
+    const media = installMediaSessionMock();
+    try {
+      const engine = new AudioEngine();
+      await engine.unlock();
+      const coord = new SceneCoordinator(engine);
+      await coord.startScene(basicScene('teardown'));
+
+      coord.stopScene(2);
+
+      expect(coord.getCurrentScene()).toBeNull();
+      expect(engine.isKeepAliveRunning).toBe(false);
+      expect(isSwKeepAliveRunning()).toBe(false);
+      expect(coord.isProtectionEngaged).toBe(false);
+      expect(media.session.metadata).toBeNull();
+      expect(media.session.playbackState).toBe('none');
+
+      const kinds = getAllEntries().map((e) => e.kind);
+      expect(kinds).toContain('scene-stop');
+      expect(kinds).toContain('keepalive-stop');
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('keeps protections engaged across a crossfade, refreshing the label', async () => {
+    stubFetch(['/audio/']);
+    const media = installMediaSessionMock();
+    try {
+      const engine = new AudioEngine();
+      await engine.unlock();
+      const coord = new SceneCoordinator(engine);
+      await coord.startScene(basicScene('first'));
+      await coord.startScene(basicScene('second')); // crossfade
+
+      expect(engine.isKeepAliveRunning).toBe(true);
+      expect(isSwKeepAliveRunning()).toBe(true);
+      expect(coord.isProtectionEngaged).toBe(true);
+      // Label refreshed to the incoming scene.
+      expect(media.session.metadata).toMatchObject({ title: 'Scene second' });
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('does not touch the media session when manageMediaSession is false (content bed)', async () => {
+    stubFetch(['/audio/']);
+    const media = installMediaSessionMock();
+    try {
+      const engine = new AudioEngine();
+      await engine.unlock();
+      const coord = new SceneCoordinator(engine);
+
+      await coord.startScene(basicScene('bed'), { manageMediaSession: false });
+
+      // Keep-alive + SW pings still engage (the bed must survive overnight)…
+      expect(engine.isKeepAliveRunning).toBe(true);
+      expect(isSwKeepAliveRunning()).toBe(true);
+      // …but the coordinator left the media session alone for the content
+      // player to own.
+      expect(media.session.metadata).toBeNull();
+
+      // And tearing the bed down must not clear a media session the
+      // coordinator never set (no throw, still 'none').
+      coord.stopScene(1);
+      expect(media.session.playbackState).toBe('none');
+    } finally {
+      media.restore();
+    }
+  });
+
+  // -------------------------------------------------------------------
+  // Session-owned sleep timer (review bugs H1 + H3 / roadmap 1.3).
+
+  it('arms the sleep timer from sleepTimerMinutes and clears it on stop', async () => {
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+
+    await coord.startScene(basicScene('timed'), { sleepTimerMinutes: 30 });
+    expect(coord.sleepTimer.getState().status).toBe('running');
+    expect(coord.sleepTimer.isArmed).toBe(true);
+
+    coord.stopScene(1);
+    expect(coord.sleepTimer.getState().status).toBe('off');
+    expect(coord.sleepTimer.isArmed).toBe(false);
+  });
+
+  it('a new scene start does not let a stale fade-exit stop the new scene (H1)', async () => {
+    vi.useFakeTimers();
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    const ctx = engine.context as unknown as MockAudioContext;
+    const stopSpy = vi.spyOn(coord, 'stopScene');
+
+    // Scene A with a very short sleep timer that fires almost immediately.
+    await coord.startScene(basicScene('A'), { sleepTimerMinutes: 0.02 });
+    advanceBoth(ctx, 1500); // first tick past the deadline → fading
+    expect(coord.sleepTimer.getState().status).toBe('fading');
+
+    // User exits mid-fade and starts a fresh scene B (crossfade). The stale
+    // fade-exit must be cancelled, not left to stop B 90s later.
+    await coord.startScene(basicScene('B'));
+    expect(coord.sleepTimer.getState().status).toBe('off');
+    expect(coord.sleepTimer.isArmed).toBe(false);
+    stopSpy.mockClear();
+
+    // Well past the old fade-exit deadline — B must still be playing.
+    advanceBoth(ctx, FADE_EXIT_MS * 2);
+    expect(stopSpy).not.toHaveBeenCalled();
+    expect(coord.getCurrentScene()?.definition.id).toBe('B');
+  });
+
+  // -------------------------------------------------------------------
+  // Night Drift (roadmap 6.2).
+
+  it('drifts to the target scene after afterMinutes', async () => {
+    vi.useFakeTimers();
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    const target = basicScene('night', { elementCount: 2 });
+    coord.setSceneResolver((id) =>
+      Promise.resolve(id === 'drift-target' ? target : null)
+    );
+
+    const evening = {
+      ...basicScene('evening', { elementCount: 2 }),
+      driftsTo: { sceneId: 'drift-target', afterMinutes: 0.02, crossfadeSeconds: 1 },
+    };
+    await coord.startScene(evening);
+    expect(coord.isDriftScheduled).toBe(true);
+    expect(coord.getCurrentScene()?.definition.id).toBe('evening');
+
+    // Past afterMinutes (1200ms) + flush the async resolve/crossfade. Stay
+    // under one watchdog tick (2s) so the context isn't touched.
+    await vi.advanceTimersByTimeAsync(1300);
+    expect(coord.getCurrentScene()?.definition.id).toBe('night');
+  });
+
+  it('cancels a pending drift on scene stop', async () => {
+    vi.useFakeTimers();
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    coord.setSceneResolver(() =>
+      Promise.resolve(basicScene('night', { elementCount: 2 }))
+    );
+
+    await coord.startScene({
+      ...basicScene('evening', { elementCount: 2 }),
+      driftsTo: { sceneId: 'drift-target', afterMinutes: 0.02 },
+    });
+    expect(coord.isDriftScheduled).toBe(true);
+
+    coord.stopScene(1);
+    expect(coord.isDriftScheduled).toBe(false);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(coord.getCurrentScene()).toBeNull();
+  });
+
+  // -------------------------------------------------------------------
+  // Lock-screen soft-pause (review M4 / roadmap 3.6).
+
+  it('lock-screen pause soft-pauses and keeps the session, play resumes', async () => {
+    stubFetch(['/audio/']);
+    const media = installMediaSessionMock();
+    try {
+      const engine = new AudioEngine();
+      await engine.unlock();
+      const coord = new SceneCoordinator(engine);
+      await coord.startScene(basicScene('m4'));
+      expect(typeof media.handlers.pause).toBe('function');
+
+      (media.handlers.pause as () => void)();
+      expect(engine.isUserPaused).toBe(true);
+      expect(media.session.playbackState).toBe('paused');
+      // The session is NOT torn down — scene still current, keep-alive up.
+      expect(coord.getCurrentScene()).not.toBeNull();
+      expect(engine.isKeepAliveRunning).toBe(true);
+
+      (media.handlers.play as () => void)();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(engine.isUserPaused).toBe(false);
+      expect(media.session.playbackState).toBe('playing');
+    } finally {
+      media.restore();
+    }
+  });
+
+  // -------------------------------------------------------------------
+  // Serialized scene starts (review bug M1 / roadmap 1.5).
+
+  it('two racing first-starts leave exactly one playing scene, loser disposed', async () => {
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+
+    // Fire both before either resolves — both take the first-start branch
+    // because neither has set currentScene yet.
+    const scenes = await Promise.all([
+      coord.startScene(basicScene('race-A')),
+      coord.startScene(basicScene('race-B')),
+    ]);
+
+    const current = coord.getCurrentScene();
+    expect(current).not.toBeNull();
+    const losers = scenes.filter((s) => s !== current);
+    expect(losers).toHaveLength(1);
+    expect(current!.isDisposed()).toBe(false);
+    expect(losers[0]!.isDisposed()).toBe(true);
+
+    // Exactly one scene is wired into the bus; the loser is connected to
+    // nothing (dispose disconnected it before it could start).
+    const curConn = (current!.output as unknown as { connections: unknown[] }).connections;
+    const loseConn = (losers[0]!.output as unknown as { connections: unknown[] }).connections;
+    expect(curConn).toContain(engine.bus.input);
+    expect(loseConn).toHaveLength(0);
+  });
+
+  it('racing starts over an existing scene crossfade to one winner', async () => {
+    stubFetch(['/audio/']);
+    const engine = new AudioEngine();
+    await engine.unlock();
+    const coord = new SceneCoordinator(engine);
+    await coord.startScene(basicScene('base'));
+
+    const scenes = await Promise.all([
+      coord.startScene(basicScene('xf-A')),
+      coord.startScene(basicScene('xf-B')),
+    ]);
+
+    const current = coord.getCurrentScene();
+    const losers = scenes.filter((s) => s !== current);
+    expect(losers).toHaveLength(1);
+    expect(current!.isDisposed()).toBe(false);
+    expect(losers[0]!.isDisposed()).toBe(true);
+    expect(
+      (losers[0]!.output as unknown as { connections: unknown[] }).connections
+    ).toHaveLength(0);
   });
 });

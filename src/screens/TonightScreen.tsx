@@ -21,6 +21,7 @@ import {
 } from '../audio/sceneRegistry';
 import type { SceneIndex, SceneIndexEntry } from '../audio/sceneRegistry';
 import { sceneCardBackground } from '../lib/sceneBackground';
+import { tonightGreeting } from '../lib/bedtime';
 import { getSetting, setSetting } from '../storage';
 import { requestFullscreenSafe } from '../utils/fullscreen';
 
@@ -77,9 +78,15 @@ export function TonightScreen({
         await ensureUnlocked();
         const def = await fetchSceneDefinition(entry);
         await coordinator.startScene(def, {
-          fallbackToSynthetic: true,
+          // fallbackToSynthetic defaults to import.meta.env.DEV: in prod a
+          // missing variant must fail loudly (caught below → startError),
+          // not play a synth pad impersonating the scene all night (3.1).
           fadeSeconds: DEFAULT_SCENE_CROSSFADE_SECONDS,
           firstFadeSeconds: DEFAULT_SCENE_FIRST_START_SECONDS,
+          // Arm the sleep timer on the session, not the Player (bug H3):
+          // the countdown then survives leaving the Player, and re-entering
+          // shows the live remaining time instead of re-arming the default.
+          sleepTimerMinutes: getSetting('defaultTimerMinutes'),
         });
         setSetting('lastSceneId', entry.id);
         onPlaybackStarted();
@@ -113,15 +120,13 @@ export function TonightScreen({
   const isLoading = index === null && indexError === null;
 
   return (
-    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-5 py-8 min-h-full">
+    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-6 py-8 min-h-full">
       <header className="mb-7 px-1">
         <h1 className="font-serif text-stone-50 text-4xl leading-tight">
           Tonight
         </h1>
-        <p className="text-stone-400 body-text mt-2">
-          {lastSceneId
-            ? 'Pick up where you left off, or try something new.'
-            : 'A place to land at the end of the day.'}
+        <p className="text-stone-300 body-text mt-2">
+          {tonightGreeting()}
         </p>
       </header>
 
@@ -143,7 +148,7 @@ export function TonightScreen({
             busy={busySceneId === entry.id}
             disabled={busySceneId !== null && busySceneId !== entry.id}
             background={sceneCardBackground(entry.id)}
-            onClick={() => handlePick(entry)}
+            onClick={() => void handlePick(entry)}
           />
         ))}
 
@@ -152,7 +157,7 @@ export function TonightScreen({
             <button
               onClick={handleSurpriseMe}
               disabled={busySceneId !== null}
-              className="body-text text-stone-400 hover:text-stone-200 active:text-moon-300
+              className="body-text text-stone-300 hover:text-stone-200 active:text-moon-300
                          transition-colors duration-slow disabled:opacity-40
                          px-4 py-2"
             >
@@ -168,17 +173,22 @@ export function TonightScreen({
         </p>
       )}
 
-      <footer className="mt-8 pt-4 px-1 flex justify-end">
-        <button
-          onClick={onDevToolsRequested}
-          className="text-xs text-stone-400 hover:text-stone-200
-                     active:text-moon-300 transition-colors duration-slow
-                     px-2 py-2"
-          style={{ minHeight: 44 }}
-        >
-          Dev tools
-        </button>
-      </footer>
+      {/* Dev tools are dev-only — the prod religion of this app is removing
+          everything that isn't sleep. Gated on import.meta.env.DEV so the
+          button never ships (roadmap 4.5). */}
+      {import.meta.env.DEV && (
+        <footer className="mt-8 pt-4 px-1 flex justify-end">
+          <button
+            onClick={onDevToolsRequested}
+            className="text-xs text-stone-300 hover:text-stone-200
+                       active:text-moon-300 transition-colors duration-slow
+                       px-2 py-2"
+            style={{ minHeight: 44 }}
+          >
+            Dev tools
+          </button>
+        </footer>
+      )}
     </div>
   );
 }
@@ -218,7 +228,7 @@ function SceneCard({
         className={[
           primary
             ? 'px-6 pt-10 pb-8 min-h-[200px] flex flex-col justify-end'
-            : 'px-5 pt-6 pb-5 min-h-[120px] flex flex-col justify-end',
+            : 'px-6 pt-6 pb-5 min-h-[120px] flex flex-col justify-end',
         ].join(' ')}
         style={{ background }}
       >
@@ -233,7 +243,7 @@ function SceneCard({
           </h2>
           <div className="flex flex-col items-end gap-1 shrink-0 mt-0.5">
             {isLastPlayed && (
-              <span className="text-xs uppercase tracking-widest text-stone-400">
+              <span className="text-xs uppercase tracking-widest text-stone-300">
                 last played
               </span>
             )}
@@ -243,7 +253,7 @@ function SceneCard({
               <span
                 className={[
                   'ui-label',
-                  primary ? 'text-moon-300' : 'text-stone-400',
+                  primary ? 'text-moon-300' : 'text-stone-300',
                 ].join(' ')}
               >
                 {primary ? 'Begin →' : '→'}
@@ -252,14 +262,10 @@ function SceneCard({
           </div>
         </div>
         {entry.description && (
-          <p
-            className={[
-              'text-stone-400 leading-relaxed',
-              primary ? 'body-text' : 'ui-label',
-            ].join(' ')}
-          >
-            {entry.description}
-          </p>
+          // Scene-card descriptions are reading text — 16px (body-text) per
+          // the app's own >=16px floor, not the 14px ui-label they used to
+          // ride on for non-primary cards (roadmap 4.4).
+          <p className="text-stone-300 body-text">{entry.description}</p>
         )}
       </div>
     </button>
@@ -277,7 +283,7 @@ function SkeletonCards() {
       </div>
       {[0, 1].map((i) => (
         <div key={i} className="rounded-softer overflow-hidden animate-pulse">
-          <div className="bg-ink-800 px-5 pt-6 pb-5">
+          <div className="bg-ink-800 px-6 pt-6 pb-5">
             <div className="h-6 w-32 bg-ink-600 rounded mb-2" />
             <div className="h-3 w-52 bg-ink-700 rounded" />
           </div>

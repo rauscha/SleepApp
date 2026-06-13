@@ -21,6 +21,7 @@ import {
 import { useWakeLock } from '../hooks/useWakeLock';
 import { startSwKeepAlive, stopSwKeepAlive } from '../serviceWorker/keepAlive';
 import { recordEvent } from '../diagnostics/lifecycleLog';
+import { narrationGain } from '../lib/narrationSundown';
 import { getSetting, setSetting } from '../storage';
 
 export interface ContentPlayerScreenProps {
@@ -79,9 +80,23 @@ export function ContentPlayerScreen({
       const h = howlRef.current;
       if (!h) return;
       const pos = h.seek() as number;
-      if (typeof pos === 'number') setPosition(pos);
+      if (typeof pos === 'number') {
+        setPosition(pos);
+        // Narration Sundown (roadmap 6.3): for a bed-paired story, ramp the
+        // voice down over its final third so it submerges under the bed
+        // (which plays on all night) instead of ending on a hard stop.
+        // Gated to stories with a bed — meditations stop with the content,
+        // so there's nothing to submerge under.
+        if (
+          bedBehavior === 'continue' &&
+          bedSceneId &&
+          getSetting('narrationSundown')
+        ) {
+          h.volume(narrationGain(pos, h.duration()));
+        }
+      }
     }, 500);
-  }, [stopTick]);
+  }, [stopTick, bedBehavior, bedSceneId]);
 
   // Build Howl on mount; tear it down on unmount.
   useEffect(() => {
@@ -160,7 +175,14 @@ export function ContentPlayerScreen({
           }
           const def = await fetchSceneDefinition(entry);
           if (cancelled) return;
-          await coordinator.startScene(def, { fallbackToSynthetic: true });
+          // manageMediaSession: false — this screen owns the OS media
+          // session for the narration (title + Howler transport); the
+          // coordinator must not stamp the bed scene's label over it.
+          // fallbackToSynthetic inherits import.meta.env.DEV (3.1): a bed
+          // that 404s in prod must not become a synth pad under narration.
+          await coordinator.startScene(def, {
+            manageMediaSession: false,
+          });
           startedHere = true;
         }
         setSetting('lastSceneId', bedSceneId);
@@ -218,20 +240,18 @@ export function ContentPlayerScreen({
     };
   }, [bedSceneId, engine]);
 
-  // Keep both Android-focus signals alive whenever this screen is responsible
-  // for audio (narration playing OR a bed that's still going). Same condition
-  // as the wake lock above — fixes the overnight-silence case where narration
-  // ended at minute 30 and the bed limped along without an audio focus signal
-  // until the OS finally pulled the tab.
-  const keepAudioFocusAlive = state === 'playing' || bedKeepsScreenLive;
+  // Keep the Android-focus signals alive for bare, unpaired narration.
+  // For *bed-paired* content the SceneCoordinator owns the keep-alive + SW
+  // pings — they follow the bed scene, not this screen (review bug C1), so
+  // they survive the user leaving while the bed plays on (stories) and tear
+  // down with the bed (meditations). Managing them here too would double-
+  // stop the coordinator's keep-alive on unmount while a story bed is still
+  // playing, so we only run this for content with no bed.
+  const keepAudioFocusAlive = !bedSceneId && state === 'playing';
   useEffect(() => {
     if (!keepAudioFocusAlive) return;
     engine.startKeepAlive();
     startSwKeepAlive();
-    // Mirror the PlayerScreen pattern so story/meditation sessions show up
-    // in the lifecycle log alongside scene sessions. Without this, a story
-    // playback session is invisible to diagnostics — which is exactly what
-    // we hit when trying to read the Signal-interruption incident.
     recordEvent('keepalive-start', 'content');
     return () => {
       engine.stopKeepAlive();
@@ -296,7 +316,7 @@ export function ContentPlayerScreen({
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={onBack}
-            className="ui-label text-stone-400 hover:text-stone-200
+            className="ui-label text-stone-300 hover:text-stone-200
                        transition-colors duration-slow px-2 py-2"
             style={{ minHeight: 44, minWidth: 44 }}
             aria-label="Back to Library"
@@ -305,7 +325,7 @@ export function ContentPlayerScreen({
           </button>
           <button
             onClick={handleStopAll}
-            className="ui-label text-stone-400 hover:text-stone-100
+            className="ui-label text-stone-300 hover:text-stone-100
                        transition-colors duration-slow px-2 py-2"
             style={{ minHeight: 44, minWidth: 44 }}
             aria-label="Stop all audio"
@@ -316,7 +336,7 @@ export function ContentPlayerScreen({
         <h1 className="font-serif text-stone-50 text-3xl leading-tight mb-2">
           {title}
         </h1>
-        <p className="text-stone-400 body-text">{description}</p>
+        <p className="text-stone-300 body-text">{description}</p>
       </header>
 
       {state === 'error' && (
@@ -339,7 +359,7 @@ export function ContentPlayerScreen({
           disabled={state === 'loading' || state === 'error'}
           className="w-full disabled:opacity-40"
         />
-        <div className="flex justify-between ui-label text-stone-400 mt-1 font-mono">
+        <div className="flex justify-between ui-label text-stone-300 mt-1 font-mono">
           <span>{formatSeconds(position)}</span>
           <span>{duration > 0 ? formatSeconds(duration) : '--:--'}</span>
         </div>
@@ -371,7 +391,7 @@ export function ContentPlayerScreen({
       </div>
 
       {/* Status line */}
-      <p className="text-center body-text text-stone-400">
+      <p className="text-center body-text text-stone-300">
         {state === 'loading'
           ? 'Loading…'
           : state === 'playing'

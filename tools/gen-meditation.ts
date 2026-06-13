@@ -68,45 +68,56 @@ const VOICE_IDS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 // Prompts
 
+// Shared craft, lifted to match the sleep-story prompt (the project's gold
+// standard) per roadmap 6.5 — the meditations were boilerplate "body scan"
+// fare; invest the same voice the stories got: a real arc, progressive
+// vagueness, and permission to trail off because the listener is already
+// asleep before the end.
+const SHARED_CRAFT = `Your goal is to put the listener to sleep, not to instruct or improve them — no wellness language, no "be present," no benefits, no metaphors that ask for thought.
+
+Voice:
+- Second person, soft, slow, and pleasantly monotonous. Repetition is a feature, not a flaw.
+- An arc from orient (settle in, where the body is) → deepen (the practice itself) → drift (progressively vaguer, dream-adjacent, the words loosening).
+- Every 2–3 sentences, insert [pause] (a held beat) or [softly] before a phrase meant to be barely spoken.
+- The last third should thin out — shorter phrases, longer pauses, sense giving way to sensation. It is fine — good, even — to trail off mid-thought near the end. The listener won't hear the finish.
+- Never anything sharp: no counting that demands focus, no "now do X," no startling image, no resolution to chase.`;
+
 function buildPrompt(style: string): string {
   if (style === 'breath-focus') {
-    return `You write deliberate, calming breath-focus meditations for adults preparing for sleep.
+    return `You write deliberate, calming breath-focus meditations for adults who want to fall asleep.
 
-Rules:
-- 900–1100 words (8–10 minutes at slow pace).
-- Guide attention to the breath: its rhythm, depth, the pause between exhale and inhale.
-- Language is slow, even, and pleasantly repetitive. Use second person ("notice your breath…").
-- Every 2–3 sentences insert [pause] (half-second beat) or [softly] before a phrase to be gentle.
-- No visualization of active scenes. No excitement. No abrupt transitions.
-- End with the listener already nearly asleep.
+${SHARED_CRAFT}
+
+This one:
+- 900–1100 words (8–10 minutes at a slow pace).
+- Rest attention on the breath — its weight, the warmth of the exhale, the still pause before the next one arrives. Let the breath slow on its own; never command it.
+- Return to the breath gently each time the mind wanders, without judgement, until returning and breathing blur together.
 
 Output ONLY the meditation script. No title. No preamble.`;
   }
 
   if (style === 'visualization') {
-    return `You write deliberate, calming sleep visualizations for adults.
+    return `You write deliberate, calming sleep visualizations for adults who want to fall asleep.
 
-Rules:
+${SHARED_CRAFT}
+
+This one:
 - 900–1100 words.
-- Guide the listener through a calm, still environment: a quiet forest clearing, a still lake at dusk, an empty beach at night.
-- All sensory details are peaceful: soft textures, cool air, quiet sounds, darkness.
-- Every 2–3 sentences insert [pause] or [softly] before a gentle phrase.
-- No sudden sounds, no movement, no tension.
-- End with the listener settling into stillness.
+- One still, dim place held the whole way through — a quiet forest clearing at dusk, a windless lake under low cloud, an empty beach after dark. Don't travel; stay, and let detail settle like silt.
+- Every detail soft and cool: muffled sound, slow air, fading light, nothing that moves quickly or asks to be watched.
 
 Output ONLY the meditation script. No title. No preamble.`;
   }
 
   // Default: body-scan
-  return `You write deliberate, calming body-scan meditations for adults preparing for sleep.
+  return `You write deliberate, calming body-scan meditations for adults who want to fall asleep.
 
-Rules:
-- 900–1100 words (8–10 minutes at slow pace).
-- Guide attention methodically through the body: feet → legs → hips → belly → chest → arms → shoulders → face → scalp.
-- Language is slow, even, and pleasantly repetitive. Use second person ("allow your feet to soften…").
-- Every 2–3 sentences insert [pause] (half-second beat) or [softly] before a phrase to be gentle.
-- No excitement. No abrupt transitions. The progression should feel like sinking.
-- End with the whole body relaxed, the listener nearly asleep.
+${SHARED_CRAFT}
+
+This one:
+- 900–1100 words (8–10 minutes at a slow pace).
+- Move attention slowly through the body — feet → legs → hips → belly → chest → arms → shoulders → face → scalp — letting each part grow heavy and warm and be left behind.
+- The descent should feel like sinking, each region softer than the last, until the body is one heavy, settled weight.
 
 Output ONLY the meditation script. No title. No preamble.`;
 }
@@ -126,6 +137,9 @@ function parseArgs() {
     voice:  get('--voice', 'hush') as 'hush' | 'ember' | 'glen',
     id:     get('--id', ''),
     script: get('--script', ''),
+    // Editorial one-line description for the Library card (roadmap 6.5).
+    // Falls back to the boilerplate only when omitted — prefer to pass one.
+    description: get('--description', ''),
   };
 }
 
@@ -272,7 +286,7 @@ async function main() {
     process.exit(1);
   }
 
-  const { title, style, voice, id: rawId, script: scriptPath } = parseArgs();
+  const { title, style, voice, id: rawId, script: scriptPath, description } = parseArgs();
   const id = rawId || toKebab(title);
   const audioPath = `${id}.mp3`;
   const voiceId = VOICE_IDS[voice];
@@ -361,7 +375,7 @@ async function main() {
   const entry: IndexEntry = {
     id,
     title:       existing?.title       ?? title,
-    description: existing?.description ?? `A ${style.replace('-', ' ')} meditation.`,
+    description: existing?.description ?? (description || `A ${style.replace('-', ' ')} meditation.`),
     style:       existing?.style       ?? style,
     durationSeconds,
     voiceId:     existing?.voiceId     ?? voice,

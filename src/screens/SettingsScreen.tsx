@@ -47,7 +47,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
   const engine = useMemo(() => getAudioEngine(), []);
   const [settings, setSettings] = useState(() => getAllSettings());
 
-  function update<K extends 'masterVolume' | 'defaultTimerMinutes' | 'elevenLabsApiKey' | 'anthropicApiKey'>(
+  function update<K extends 'masterVolume' | 'defaultTimerMinutes' | 'elevenLabsApiKey' | 'anthropicApiKey' | 'narrationSundown'>(
     key: K,
     value: (typeof settings)[K]
   ) {
@@ -56,7 +56,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
   }
 
   return (
-    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-5 py-8 min-h-full">
+    <div className="bg-ink-950 text-stone-100 flex flex-col max-w-md mx-auto px-6 py-8 min-h-full">
       <header className="mb-8 px-1">
         <h1 className="font-serif text-stone-50 text-4xl leading-tight">
           Settings
@@ -91,7 +91,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
 
         <div>
           <p className="body-text text-stone-300 mb-2">Default sleep timer</p>
-          <p className="body-text text-stone-400 mb-3">
+          <p className="body-text text-stone-300 mb-3">
             When set, the timer starts automatically every time you begin a scene.
           </p>
           <div className="flex flex-wrap gap-2">
@@ -116,6 +116,28 @@ export function SettingsScreen(_props: SettingsScreenProps) {
             })}
           </div>
         </div>
+
+        <div className="mt-6">
+          <p className="body-text text-stone-300 mb-2">Narration sundown</p>
+          <p className="body-text text-stone-300 mb-3">
+            A story’s narration fades down over its final third so the voice
+            submerges under the scene bed instead of stopping — the room keeps
+            playing all night.
+          </p>
+          <button
+            onClick={() => update('narrationSundown', !settings.narrationSundown)}
+            aria-pressed={settings.narrationSundown}
+            className={[
+              'px-4 py-2 rounded-soft ui-label transition-colors duration-slow',
+              settings.narrationSundown
+                ? 'bg-moon-600 text-stone-50'
+                : 'bg-ink-700 text-stone-300 hover:bg-ink-600',
+            ].join(' ')}
+            style={{ minHeight: 44, minWidth: 44 }}
+          >
+            {settings.narrationSundown ? 'On' : 'Off'}
+          </button>
+        </div>
       </section>
 
       <div className="h-px bg-ink-700 mb-8" />
@@ -123,7 +145,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
       {/* ── Offline ──────────────────────────────────────────────────── */}
       <section className="mb-8 px-1">
         <h2 className="font-serif text-stone-300 text-lg mb-2">Offline</h2>
-        <p className="body-text text-stone-400 mb-5">
+        <p className="body-text text-stone-300 mb-5">
           Download every scene, meditation, and bundled story so the app
           plays with no network. About 290 MB total. Already-downloaded
           files are skipped, so tapping this again is safe.
@@ -136,12 +158,12 @@ export function SettingsScreen(_props: SettingsScreenProps) {
       {/* ── AI features ──────────────────────────────────────────────── */}
       <section className="mb-8 px-1">
         <h2 className="font-serif text-stone-300 text-lg mb-2">AI features</h2>
-        <p className="body-text text-stone-400 mb-2">
+        <p className="body-text text-stone-300 mb-2">
           Your keys are stored in this browser only and are never sent
           anywhere except directly to ElevenLabs and Anthropic from your
           device.
         </p>
-        <p className="body-text text-stone-500 italic mb-5">
+        <p className="body-text text-stone-300 italic mb-5">
           Stored unencrypted on this device — anyone with access to this
           unlocked browser can read them. Consider rotating quarterly.
         </p>
@@ -169,7 +191,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
       {/* ── Diagnostics ──────────────────────────────────────────────── */}
       <section className="mb-8 px-1">
         <h2 className="font-serif text-stone-300 text-lg mb-2">Diagnostics</h2>
-        <p className="body-text text-stone-400 mb-5">
+        <p className="body-text text-stone-300 mb-5">
           Local-only log of page lifecycle events (visibility, freeze/resume,
           audio state). Useful when an overnight session ends earlier than
           expected. Nothing leaves the device unless you share it.
@@ -180,7 +202,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
       <div className="h-px bg-ink-700 mb-8" />
 
       {/* ── About ─────────────────────────────────────────────────────── */}
-      <footer className="px-1 ui-label text-stone-500 space-y-1">
+      <footer className="px-1 ui-label text-stone-300 space-y-1">
         <p>Sleep App · v0.1.0</p>
         {/* The running build, not the deployed one — the SW only adopts a
             new deploy on cold start, so this is how you confirm the phone
@@ -280,7 +302,7 @@ function OfflineDownloadPanel() {
       )}
 
       {statusError && (
-        <p className="body-text text-red-400" role="status">
+        <p className="body-text text-ember-400" role="status">
           {statusError}
         </p>
       )}
@@ -303,7 +325,7 @@ function OfflineDownloadPanel() {
         {!running && (
           <button
             type="button"
-            onClick={handleDownload}
+            onClick={() => void handleDownload()}
             disabled={status?.complete === true}
             className={[
               'px-3 py-2 rounded-soft ui-label transition-colors duration-slow',
@@ -331,7 +353,7 @@ function OfflineDownloadPanel() {
       </div>
 
       {error && (
-        <p className="body-text text-red-400" role="status">
+        <p className="body-text text-ember-400" role="status">
           {error}
         </p>
       )}
@@ -376,7 +398,7 @@ function DiagnosticsPanel() {
         return;
       }
     }
-    handleCopy();
+    void handleCopy();
   };
 
   const handleDownload = () => {
@@ -412,9 +434,9 @@ function DiagnosticsPanel() {
       </p>
 
       <div className="flex flex-wrap gap-2">
-        <DiagButton onClick={handleShare}>Share…</DiagButton>
-        <DiagButton onClick={handleCopy}>Copy</DiagButton>
-        <DiagButton onClick={handleDownload}>Download</DiagButton>
+        <DiagButton onClick={() => void handleShare()}>Share…</DiagButton>
+        <DiagButton onClick={() => void handleCopy()}>Copy</DiagButton>
+        <DiagButton onClick={() => void handleDownload()}>Download</DiagButton>
         <DiagButton onClick={handleClear} variant="quiet">Clear</DiagButton>
         <DiagButton onClick={refresh} variant="quiet">Refresh</DiagButton>
       </div>
@@ -427,18 +449,18 @@ function DiagnosticsPanel() {
 
       {lastTen.length > 0 && (
         <div className="mt-3 bg-ink-800 rounded-soft p-3 max-h-56 overflow-y-auto">
-          <p className="ui-label text-stone-400 mb-2">
+          <p className="ui-label text-stone-300 mb-2">
             Most recent {lastTen.length} (newest first):
           </p>
           <ul className="space-y-1 ui-label font-mono text-stone-300">
             {lastTen.map((e, i) => (
               <li key={`${e.ts}-${i}`} className="leading-snug break-words">
-                <span className="text-stone-400">
+                <span className="text-stone-300">
                   {new Date(e.ts).toLocaleTimeString()}
                 </span>{' '}
                 <span className="text-stone-200">{e.kind}</span>
                 {e.detail && (
-                  <span className="text-stone-400"> · {e.detail}</span>
+                  <span className="text-stone-300"> · {e.detail}</span>
                 )}
               </li>
             ))}
@@ -460,7 +482,7 @@ function DiagButton({
 }) {
   const cls =
     variant === 'quiet'
-      ? 'bg-ink-700 text-stone-400 hover:bg-ink-600 hover:text-stone-200'
+      ? 'bg-ink-700 text-stone-300 hover:bg-ink-600 hover:text-stone-200'
       : 'bg-moon-600 text-stone-50 hover:bg-moon-500';
   return (
     <button
@@ -494,7 +516,7 @@ function ApiKeyField({
     <div className="mb-5">
       <label className="block">
         <span className="block body-text text-stone-300 mb-1">{label}</span>
-        <span className="block body-text text-stone-400 mb-2">{hint}</span>
+        <span className="block body-text text-stone-300 mb-2">{hint}</span>
         {envOverride ? (
           <p className="body-text text-moon-300 bg-ink-800 rounded-soft px-3 py-2.5">
             Loaded from build env — no entry needed.
@@ -510,7 +532,7 @@ function ApiKeyField({
               spellCheck={false}
               className="w-full bg-ink-800 text-stone-200 body-text rounded-soft
                          px-3 py-2.5 pr-16 border border-ink-600
-                         placeholder-ink-400 focus:outline-none
+                         placeholder-stone-500 focus:outline-none
                          focus:border-moon-600 transition-colors"
               aria-label={label}
             />
@@ -519,7 +541,7 @@ function ApiKeyField({
                 type="button"
                 onClick={() => setVisible((v) => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2
-                           ui-label text-stone-400 hover:text-stone-200
+                           ui-label text-stone-300 hover:text-stone-200
                            transition-colors px-2 py-2"
                 style={{ minHeight: 44 }}
                 aria-label={visible ? 'Hide key' : 'Show key'}

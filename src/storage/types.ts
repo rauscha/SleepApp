@@ -50,6 +50,11 @@ export interface UserSettings {
 
   /** Default sleep timer duration in minutes; null = no timer. */
   defaultTimerMinutes: number | null;
+
+  /** Narration Sundown: ramp a story's narration down over its final third
+   *  so the voice submerges under the paired scene bed instead of ending on
+   *  a hard stop (a state change is a wake event). Default on. */
+  narrationSundown: boolean;
 }
 
 // ---------------------------------------------------------------------------

@@ -74,6 +74,7 @@ function swPrecachePlugin(): Plugin {
           `${base}manifest.json`,
           `${base}icons/icon.svg`,
           `${base}fonts/InterVariable.woff2`,
+          `${base}fonts/EBGaramond-latin.woff2`,
         ];
         for (const key of Object.keys(bundle)) {
           if (key.startsWith('assets/') &&
@@ -163,6 +164,9 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
-    sourcemap: true,
+    // Sourcemaps off for the production bundle (review Low finding): they
+    // ship the full readable source to anyone who opens devtools on the
+    // deploy. Dev keeps its own (esbuild) sourcemaps regardless.
+    sourcemap: false,
   },
 });

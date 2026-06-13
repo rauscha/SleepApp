@@ -14,7 +14,9 @@ export type EngineEvent =
   | { kind: 'state'; state: AudioContextState }
   | { kind: 'context-recreated' }
   | { kind: 'layer-added'; id: string }
-  | { kind: 'layer-removed'; id: string };
+  | { kind: 'layer-removed'; id: string }
+  | { kind: 'user-paused' }
+  | { kind: 'user-resumed' };
 
 export type EngineListener = (e: EngineEvent) => void;
 
@@ -46,6 +48,12 @@ export class AudioEngine {
   private stagnantTicks = 0;
   private sinkElement: HTMLAudioElement | null = null;
   private elementSinkEngaged = false;
+  // True while the user (lock-screen / headset pause) has deliberately
+  // suspended playback. The whole survival stack exists to KEEP the context
+  // running, so a soft-pause has to suppress the auto-resume machinery
+  // (watchdog, visibilitychange/focus resume, liveness probe) until the user
+  // resumes — otherwise we'd wake the context right back up. (Review M4.)
+  private userPaused = false;
 
   static readonly LAYER_SOFT_CAP = 6;
 
@@ -310,18 +318,22 @@ export class AudioEngine {
       this.sinkElement = el;
       el.addEventListener('pause', () => {
         // Something other than disengage paused the sink (OS media
-        // controls without our handler, focus weirdness). One replay
-        // attempt; if that's refused, the pause stands and the log
-        // shows why the night went quiet.
+        // controls without our handler, focus weirdness). Try to resume;
+        // if the replay is refused, the bus would otherwise pour audio
+        // into a paused element forever — total silence the zombie
+        // watchdog can't see, because the context stays 'running' with
+        // currentTime advancing (review bug C2). So a refused replay falls
+        // back to direct hardware output: sound beats a trapped stream.
         if (!this.elementSinkEngaged) return;
-        recordEvent('media-sink-paused');
-        el.play().catch(() => undefined);
+        recordEvent('media-sink-paused', 'pause-event');
+        void this.retrySinkPlayOrFallback();
       });
     }
     try {
       el.srcObject = stream;
-      const p = el.play();
-      if (p) await p;
+      // el.play() returns a Promise in real browsers and undefined in the
+      // jsdom test shim; awaiting it is safe either way.
+      await el.play();
       if (this.masterBus !== bus) return; // context recreated mid-play()
       this.elementSinkEngaged = true;
       recordEvent('media-sink', 'element');
@@ -346,8 +358,85 @@ export class AudioEngine {
     this.masterBus?.detachElementSink();
   }
 
+  /**
+   * Recover a sink element that was paused out from under us (review bug
+   * C2). One replay attempt; if it's refused, detach the sink so the bus
+   * reaches hardware directly — sound beats trapping the audio in a paused
+   * element the watchdog can't see. No-op when the sink isn't engaged or
+   * is already playing. Driven from three places: the element's own
+   * 'pause' event, the visibilitychange path, and the watchdog tick.
+   */
+  private async retrySinkPlayOrFallback(): Promise<void> {
+    const el = this.sinkElement;
+    if (!el || !this.elementSinkEngaged) return;
+    if (!el.paused) return; // already playing — nothing to recover
+    try {
+      // el.play() returns a Promise in real browsers and undefined in the
+      // jsdom test shim; awaiting it is safe either way.
+      await el.play();
+    } catch {
+      // A disengage/recreate may have raced in while play() was pending;
+      // only fall back if we're still the engaged sink.
+      if (this.elementSinkEngaged) this.fallbackFromElementSink();
+    }
+  }
+
+  /**
+   * Detach the element sink and restore direct hardware output, leaving
+   * the silent keep-alive and the rest of the session intact. The element
+   * can be re-engaged later (a recreateContext or a fresh startKeepAlive).
+   */
+  private fallbackFromElementSink(): void {
+    this.elementSinkEngaged = false;
+    this.masterBus?.detachElementSink();
+    recordEvent('media-sink-fallback');
+  }
+
   get isKeepAliveRunning(): boolean {
     return this.keepAlive?.isRunning ?? false;
+  }
+
+  /**
+   * Soft-pause from a user/OS action (lock-screen or headset pause). Suspend
+   * the context and set the userPaused flag so the auto-resume machinery
+   * leaves it alone until resumeForUser(). The session itself stays intact
+   * (scene, keep-alive, element sink), so this is fully recoverable — the
+   * lock-screen Play button or bringing the app to the foreground resumes it
+   * (review M4: Andrew chose resumable soft-pause over stop-and-exit).
+   */
+  async pauseForUser(): Promise<void> {
+    if (this.userPaused) return;
+    this.userPaused = true;
+    recordEvent('user-pause');
+    this.emit({ kind: 'user-paused' });
+    const ctx = this.ctx;
+    if (ctx && (ctx.state as string) === 'running') {
+      try {
+        await ctx.suspend();
+      } catch {
+        /* best-effort */
+      }
+    }
+  }
+
+  /** Resume from a soft-pause. Clears the flag and resumes the context. */
+  async resumeForUser(): Promise<void> {
+    if (!this.userPaused) return;
+    this.userPaused = false;
+    recordEvent('user-resume');
+    this.emit({ kind: 'user-resumed' });
+    const ctx = this.ctx;
+    if (ctx && (ctx.state as string) !== 'running') {
+      try {
+        await ctx.resume();
+      } catch {
+        /* will retry on the next foreground/gesture */
+      }
+    }
+  }
+
+  get isUserPaused(): boolean {
+    return this.userPaused;
   }
 
   addListener(fn: EngineListener): () => void {
@@ -441,7 +530,8 @@ export class AudioEngine {
    */
   private async verifyContextAlive(): Promise<void> {
     const ctx = this.ctx;
-    if (!ctx || this.verifyInFlight || !this.hasActiveSession) return;
+    if (!ctx || this.verifyInFlight || !this.hasActiveSession || this.userPaused)
+      return;
     this.verifyInFlight = true;
     try {
       if ((ctx.state as string) !== 'running') {
@@ -471,7 +561,7 @@ export class AudioEngine {
     this.visibilityHandlerInstalled = true;
     const tryResume = () => {
       const ctx = this.ctx;
-      if (!ctx) return;
+      if (!ctx || this.userPaused) return;
       // Anything other than 'running' gets a resume attempt — this
       // covers iOS Safari's non-standard 'interrupted' state too.
       if ((ctx.state as string) !== 'running') {
@@ -482,11 +572,26 @@ export class AudioEngine {
     };
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
+        // Bringing the app to the foreground is a resume intent: undo a
+        // soft-pause rather than leaving the user staring at a silent scene.
+        if (this.userPaused) {
+          void this.resumeForUser();
+          return;
+        }
         tryResume();
         void this.verifyContextAlive();
+        // A return-to-foreground is a fresh chance to re-arm a sink the OS
+        // paused while we were hidden (bug C2, layer b).
+        void this.retrySinkPlayOrFallback();
       }
     });
-    window.addEventListener('focus', tryResume);
+    window.addEventListener('focus', () => {
+      if (this.userPaused) {
+        void this.resumeForUser();
+        return;
+      }
+      tryResume();
+    });
     setInterval(() => this.watchdogTick(), 2000);
   }
 
@@ -509,7 +614,10 @@ export class AudioEngine {
    */
   private watchdogTick(): void {
     const ctx = this.ctx;
-    if (!ctx || !this.hasActiveSession) {
+    // While the user has soft-paused, the context is intentionally suspended
+    // — the watchdog must not resume it or trip the zombie detector on the
+    // (legitimately) frozen clock (review M4).
+    if (!ctx || !this.hasActiveSession || this.userPaused) {
       this.stagnantTicks = 0;
       this.lastWatchdogCurrentTime = -1;
       return;
@@ -536,6 +644,15 @@ export class AudioEngine {
       this.stagnantTicks = 0;
     }
     this.lastWatchdogCurrentTime = ctx.currentTime;
+
+    // Third failure signal (review bug C2, layer c): the context is
+    // 'running' and its clock advances, yet the element sink is paused —
+    // audio flows into a paused element and reaches no speaker, invisible
+    // to the clock-based zombie check above. Re-attempt play on the
+    // watchdog's cadence; fall back to direct output if it stays refused.
+    if (this.elementSinkEngaged && this.sinkElement?.paused) {
+      void this.retrySinkPlayOrFallback();
+    }
   }
 }
 
