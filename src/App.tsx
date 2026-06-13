@@ -2,7 +2,8 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } fro
 import { getAudioEngine } from './audio/AudioEngine';
 import { getSceneCoordinator } from './audio/SceneCoordinator';
 import { fetchSceneDefinition, fetchSceneIndex } from './audio/sceneRegistry';
-import { getSetting } from './storage';
+import { getSetting, requestPersistentStorage } from './storage';
+import { recordEvent } from './diagnostics/lifecycleLog';
 import { isDeepNight, deepNightResumeParams } from './lib/deepNight';
 import { TonightScreen } from './screens/TonightScreen';
 import { PlayerScreen } from './screens/PlayerScreen';
@@ -94,6 +95,14 @@ export function App() {
   // When a session is resumed via the Door, the Player opens straight into
   // Nightstand (black) so the screen never brightens at 3am.
   const [resumeDark, setResumeDark] = useState(false);
+
+  // Ask for persistent storage on launch so the OS can't evict a user's
+  // generated story audio between sessions (they paid to synthesize it).
+  useEffect(() => {
+    void requestPersistentStorage().then((granted) => {
+      recordEvent('storage-persist', granted ? 'granted' : 'denied');
+    });
+  }, []);
 
   // Wire the Night Drift catalogue lookup once (roadmap 6.2): the coordinator
   // schedules the drift, but resolving a driftsTo target id into a definition

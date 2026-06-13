@@ -4,7 +4,7 @@
   "description": "Deep bronze bowl drone with a slow shimmer of higher bowls overhead. Designed as a sound-bath bed under meditations.",
   "synth": {
     "color": "brown",
-    "defaultVolume": 0.12
+    "defaultVolume": 0.08
   },
   "tinnitus": {
     "enabledByDefault": false,
