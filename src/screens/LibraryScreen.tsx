@@ -171,6 +171,37 @@ export function LibraryScreen({
     [onPlay]
   );
 
+  // Export a generated story's audio to a file the user can keep, so a paid
+  // story survives storage eviction or an app reinstall. Pulls the blob from
+  // IndexedDB and triggers a download.
+  const handleDownloadStory = useCallback(async (story: StoryMetadata) => {
+    setStoryError(null);
+    try {
+      const asset = await getStoryAudio(story.id);
+      if (!asset) throw new Error('Audio not found — try regenerating.');
+      const blob = new Blob([asset.data], { type: asset.mimeType });
+      const url = URL.createObjectURL(blob);
+      const ext = asset.mimeType.includes('wav') ? 'wav' : 'mp3';
+      const safe = (story.title || 'sleep-story')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 60);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${safe || 'sleep-story'}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (err) {
+      setStoryError({
+        id: story.id,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }, []);
+
   const handleConfirmDelete = useCallback(
     async (id: string) => {
       try {
@@ -296,6 +327,7 @@ export function LibraryScreen({
                 errorMessage={storyError?.id === s.id ? storyError.message : null}
                 confirmingDelete={confirmDeleteId === s.id}
                 onPlay={() => void handlePlayStory(s)}
+                onDownload={() => void handleDownloadStory(s)}
                 onDelete={() => setConfirmDeleteId(s.id)}
                 onConfirmDelete={() => void handleConfirmDelete(s.id)}
                 onCancelDelete={() => setConfirmDeleteId(null)}
@@ -317,6 +349,7 @@ function ContentCard({
   errorMessage = null,
   confirmingDelete = false,
   onPlay,
+  onDownload,
   onDelete,
   onConfirmDelete,
   onCancelDelete,
@@ -330,6 +363,8 @@ function ContentCard({
   errorMessage?: string | null;
   confirmingDelete?: boolean;
   onPlay: () => void;
+  /** Export the audio to a file (generated stories only). */
+  onDownload?: () => void;
   onDelete?: () => void;
   onConfirmDelete?: () => void;
   onCancelDelete?: () => void;
@@ -373,6 +408,18 @@ function ContentCard({
               >
                 {busy ? 'Loading…' : 'Play →'}
               </button>
+              {onDownload && (
+                <button
+                  onClick={onDownload}
+                  className="ui-label text-stone-300 hover:text-stone-100
+                             transition-colors duration-slow px-2 py-2"
+                  style={{ minHeight: 44, minWidth: 44 }}
+                  aria-label={`Save ${title} to a file`}
+                  title="Save a copy you keep"
+                >
+                  Save
+                </button>
+              )}
               {onDelete && (
                 <button
                   onClick={onDelete}

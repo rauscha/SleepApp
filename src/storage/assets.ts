@@ -21,6 +21,29 @@ const STORE_AUDIO = 'audioAssets';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
+/**
+ * Ask the browser to make this origin's storage PERSISTENT, so it is not
+ * silently evicted under storage pressure. Without this, IndexedDB is
+ * "best-effort": a phone low on space can drop a user's generated story
+ * audio (~45 MB WAVs) between sessions — losing content they paid real money
+ * to synthesize, which is exactly the "stories disappear when I reload" bug.
+ *
+ * Idempotent and best-effort: returns whether storage is now persistent.
+ * On Android Chrome this is typically granted for installed PWAs / engaged
+ * sites without a prompt. Safe to call on every launch.
+ */
+export async function requestPersistentStorage(): Promise<boolean> {
+  try {
+    const storage =
+      typeof navigator !== 'undefined' ? navigator.storage : undefined;
+    if (!storage?.persist) return false;
+    if (storage.persisted && (await storage.persisted())) return true;
+    return await storage.persist();
+  } catch {
+    return false;
+  }
+}
+
 function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
   const promise = new Promise<IDBDatabase>((resolve, reject) => {
