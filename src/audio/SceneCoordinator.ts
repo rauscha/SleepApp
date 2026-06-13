@@ -57,6 +57,21 @@ export const DEFAULT_DRIFT_CROSSFADE_SECONDS = 60;
  */
 const RESTART_RETRY_DELAYS_MS = [0, 1000, 3000];
 
+/**
+ * How long after a scene starts to begin decoding its non-first variants in
+ * the background. Long enough to clear the startup window (decode/memory
+ * contention that used to stutter the first ~10–15s), far shorter than the
+ * first rotation (loopOffset >= 251s), so the variants are ready in time.
+ */
+const DEFERRED_VARIANT_DELAY_MS = 20_000;
+
+/** A FileLayer plus the element variants still waiting to be decoded into it. */
+interface DeferredVariantLoad {
+  fileLayer: FileLayer;
+  element: SceneElementDefinition;
+  variants: SceneVariantDefinition[];
+}
+
 function sleepMs(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -205,27 +220,89 @@ export class SceneCoordinator {
       layers.push(tinnitus);
     }
 
-    // 3) Element layers — one FileLayer per element, all variants
-    //    decoded eagerly per §3.5 ("audio files preloaded before the
-    //    scene starts playing").
+    // 3) Element layers — one FileLayer per element. We decode ONLY the
+    //    first variant of each element before the scene starts; the rest
+    //    are decoded in the background a little later (loadDeferredVariants).
+    //    Decoding every variant up front meant a cold-cache scene downloaded
+    //    + decoded ~4 long files (each a huge PCM buffer) before a note
+    //    played — the 15–45s "is it frozen?" load and the startup memory
+    //    contention. Variants only rotate at the loopOffset boundary
+    //    (>=251s, minutes out), so the others have all the time they need.
+    const deferred: DeferredVariantLoad[] = [];
     for (const element of definition.elements) {
-      const variants = await this.loadElementVariants(element, fallback, options.onVariantLoaded);
+      if (element.variants.length === 0) {
+        throw new Error(
+          `Scene element "${element.id}" has no variants — every element ` +
+            `needs at least one recording.`
+        );
+      }
+      const first = await this.loadVariant(
+        element,
+        element.variants[0]!,
+        fallback,
+        options.onVariantLoaded
+      );
       const fileLayer = new FileLayer(this.engine, {
         id: `${definition.id}:${element.id}`,
         label: element.label,
-        variants,
+        variants: [first],
         crossfadeSeconds: element.crossfadeSeconds,
         defaultVolume: element.defaultVolume,
         variantRotation: element.variantRotation,
       });
       layers.push(fileLayer);
+      const rest = element.variants.slice(1);
+      if (rest.length > 0) deferred.push({ fileLayer, element, variants: rest });
     }
 
-    return new Scene(this.engine, {
+    const scene = new Scene(this.engine, {
       id: definition.id,
       definition,
       layers,
     });
+
+    if (deferred.length > 0) {
+      this.scheduleDeferredVariants(deferred, fallback, options.onVariantLoaded);
+    }
+    return scene;
+  }
+
+  /**
+   * Decode the remaining (non-first) variants of each element in the
+   * background, a little after the scene starts, and add them to the
+   * rotation. Deferred so the decode doesn't contend with the scene's first
+   * seconds; spaced out and sequential to keep memory/CPU spikes small. A
+   * variant that fails to load just means less rotation, never a crash.
+   */
+  private scheduleDeferredVariants(
+    loads: DeferredVariantLoad[],
+    fallback: boolean,
+    onLoaded?: (info: VariantLoadOutcome) => void
+  ): void {
+    setTimeout(() => {
+      void this.loadDeferredVariants(loads, fallback, onLoaded);
+    }, DEFERRED_VARIANT_DELAY_MS);
+  }
+
+  private async loadDeferredVariants(
+    loads: DeferredVariantLoad[],
+    fallback: boolean,
+    onLoaded?: (info: VariantLoadOutcome) => void
+  ): Promise<void> {
+    for (const { fileLayer, element, variants } of loads) {
+      for (const variant of variants) {
+        if (fileLayer.isDisposed) break; // scene torn down — stop the work
+        try {
+          const v = await this.loadVariant(element, variant, fallback, onLoaded);
+          if (!fileLayer.isDisposed) fileLayer.addVariant(v);
+        } catch (err) {
+          recordEvent(
+            'variant-deferred-fail',
+            `${element.id}/${variant.id}: ${shortErr(err)}`
+          );
+        }
+      }
+    }
   }
 
   /**
@@ -275,6 +352,12 @@ export class SceneCoordinator {
       return scene;
     }
     scene.output.connect(this.engine.bus.input);
+    // Pre-warm the <audio> element sink on the silent keep-alive BEFORE the
+    // scene's audio ramps in. Engaging the MediaStream sink has a brief
+    // priming hiccup on Android; doing it here (scene gain still 0) lets that
+    // settle on silence rather than stuttering the first audible seconds.
+    // Idempotent — engageSessionProtections below calls it again as a no-op.
+    this.engine.startKeepAlive();
     scene.start();
     // First start from silence uses the front-loaded 'ease-out' curve so
     // the scene becomes audible quickly. Cross-scene fades (crossfadeTo)
@@ -591,29 +674,6 @@ export class SceneCoordinator {
       definition,
       layers: [synth],
     });
-  }
-
-  private async loadElementVariants(
-    element: SceneElementDefinition,
-    fallback: boolean,
-    onLoaded?: (info: VariantLoadOutcome) => void
-  ): Promise<AudioVariant[]> {
-    if (element.variants.length === 0) {
-      throw new Error(
-        `Scene element "${element.id}" has no variants — every element ` +
-          `needs at least one recording.`
-      );
-    }
-    const out: AudioVariant[] = [];
-    // Decode in parallel — file decode is the slow part and we don't
-    // want a 6-element scene to load serially.
-    const results = await Promise.all(
-      element.variants.map((variant) =>
-        this.loadVariant(element, variant, fallback, onLoaded)
-      )
-    );
-    for (const result of results) out.push(result);
-    return out;
   }
 
   private async loadVariant(
