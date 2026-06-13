@@ -6,13 +6,14 @@
 // layer against a hand-rolled in-memory IndexedDB that can reproduce that
 // exact success-then-abort window.
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   __resetDbForTests,
   deleteStory,
   getStory,
   getStoryAudio,
   listStories,
+  requestPersistentStorage,
   saveStory,
   saveStoryAudio,
 } from './assets';
@@ -84,5 +85,35 @@ describe('assets storage', () => {
     await deleteStory('s4');
     expect(await getStory('s4')).toBeNull();
     expect(await getStoryAudio('s4')).toBeNull();
+  });
+});
+
+describe('requestPersistentStorage', () => {
+  const original = Object.getOwnPropertyDescriptor(navigator, 'storage');
+  function setStorage(value: unknown) {
+    Object.defineProperty(navigator, 'storage', { configurable: true, value });
+  }
+  afterEach(() => {
+    if (original) Object.defineProperty(navigator, 'storage', original);
+    else setStorage(undefined);
+  });
+
+  it('returns false when the StorageManager API is unavailable', async () => {
+    setStorage(undefined);
+    expect(await requestPersistentStorage()).toBe(false);
+  });
+
+  it('returns true without re-requesting when already persisted', async () => {
+    const persist = vi.fn(async () => true);
+    setStorage({ persisted: async () => true, persist });
+    expect(await requestPersistentStorage()).toBe(true);
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it('requests persistence when not yet persisted', async () => {
+    const persist = vi.fn(async () => true);
+    setStorage({ persisted: async () => false, persist });
+    expect(await requestPersistentStorage()).toBe(true);
+    expect(persist).toHaveBeenCalledTimes(1);
   });
 });
