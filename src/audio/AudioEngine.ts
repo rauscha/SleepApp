@@ -48,6 +48,14 @@ export class AudioEngine {
   private stagnantTicks = 0;
   private sinkElement: HTMLAudioElement | null = null;
   private elementSinkEngaged = false;
+  // Guards against a concurrent engageElementSink() while a previous engage's
+  // el.play() is still pending. `elementSinkEngaged` only flips true AFTER
+  // that await, so without this flag two near-simultaneous engages (e.g. the
+  // scene-start pre-warm + engageSessionProtections) both run: the second
+  // reassigns srcObject, interrupting the first play() with an AbortError,
+  // and the sink ends up DETACHED but flagged engaged — silently killing the
+  // overnight "playing media" protection. Set synchronously before the await.
+  private elementSinkEngaging = false;
   // True while the user (lock-screen / headset pause) has deliberately
   // suspended playback. The whole survival stack exists to KEEP the context
   // running, so a soft-pause has to suppress the auto-resume machinery
@@ -308,11 +316,20 @@ export class AudioEngine {
    * element that has played once keeps its autoplay trust.
    */
   private async engageElementSink(): Promise<void> {
-    if (!this.masterBus || this.elementSinkEngaged) return;
+    if (!this.masterBus || this.elementSinkEngaged || this.elementSinkEngaging) {
+      return;
+    }
     if (typeof document === 'undefined') return;
+    // Claim the in-flight slot synchronously so a concurrent call bails out
+    // above instead of reassigning srcObject mid-play() (the AbortError /
+    // detached-but-engaged regression).
+    this.elementSinkEngaging = true;
     const bus = this.masterBus;
     const stream = bus.attachElementSink();
-    if (!stream) return; // unsupported — direct output still wired
+    if (!stream) {
+      this.elementSinkEngaging = false;
+      return; // unsupported — direct output still wired
+    }
     const el = this.sinkElement ?? document.createElement('audio');
     if (!this.sinkElement) {
       this.sinkElement = el;
@@ -342,6 +359,8 @@ export class AudioEngine {
       // direct path rather than playing into an inaudible stream.
       if (this.masterBus === bus) bus.detachElementSink();
       recordEvent('media-sink', `fallback: ${String(err).slice(0, 120)}`);
+    } finally {
+      this.elementSinkEngaging = false;
     }
   }
 
@@ -484,6 +503,7 @@ export class AudioEngine {
     // from the new bus; the element itself is reused (keeps its autoplay
     // trust from the gesture that first played it).
     this.elementSinkEngaged = false;
+    this.elementSinkEngaging = false;
     if (this.sinkElement) {
       try {
         this.sinkElement.pause();
