@@ -159,6 +159,35 @@ describe('AudioEngine', () => {
       expect(analyser.connections).toEqual([ctx.destination]);
     });
 
+    // Regression: two near-simultaneous engages (the scene-start pre-warm +
+    // engageSessionProtections both call startKeepAlive) must NOT both run.
+    // The second reassigning srcObject interrupted the first play() with an
+    // AbortError and left the sink detached-but-engaged — killing the
+    // overnight "playing media" protection. The in-flight guard collapses
+    // them to a single engage.
+    it('collapses concurrent engages into one (no double element-sink load)', async () => {
+      const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+      const engine = new AudioEngine();
+      await engine.unlock();
+      // Two synchronous calls, exactly like the scene-start path.
+      engine.startKeepAlive();
+      engine.startKeepAlive();
+      await vi.waitFor(() => {
+        const analyser = engine.bus.analyser as unknown as MockAnalyserNode;
+        expect(
+          analyser.connections.some((c) => c instanceof MockMediaStreamDestination)
+        ).toBe(true);
+      });
+      // Exactly one play() attempt, and the sink ends ATTACHED (not detached
+      // by a racing second engage).
+      expect(playSpy).toHaveBeenCalledTimes(1);
+      const analyser = engine.bus.analyser as unknown as MockAnalyserNode;
+      expect(
+        analyser.connections.some((c) => c instanceof MockMediaStreamDestination)
+      ).toBe(true);
+      expect(engine.isKeepAliveRunning).toBe(true);
+    });
+
     it('falls back to direct output when element.play() is refused', async () => {
       vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(
         new Error('autoplay refused')
