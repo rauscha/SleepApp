@@ -9,12 +9,11 @@
 // gradient-only treatment used before photos landed.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getAudioEngine } from '../audio/AudioEngine';
 import {
   DEFAULT_SCENE_CROSSFADE_SECONDS,
   DEFAULT_SCENE_FIRST_START_SECONDS,
-  getSceneCoordinator,
 } from '../audio/SceneCoordinator';
+import { getHowlScenePlayer } from '../audio/howl/HowlScenePlayer';
 import {
   fetchSceneDefinition,
   fetchSceneIndex,
@@ -37,8 +36,9 @@ export function TonightScreen({
   onDevToolsRequested,
   ensureUnlocked,
 }: TonightScreenProps) {
-  const engine = useMemo(() => getAudioEngine(), []);
-  const coordinator = useMemo(() => getSceneCoordinator(engine), [engine]);
+  // Path A: scene beds play through the Howler html5 session, not the Web
+  // Audio coordinator — so the OS keeps the looping elements alive overnight.
+  const coordinator = useMemo(() => getHowlScenePlayer(), []);
 
   const [index, setIndex] = useState<SceneIndex | null>(null);
   const [indexError, setIndexError] = useState<string | null>(null);

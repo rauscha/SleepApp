@@ -19,13 +19,10 @@ import {
   useRef,
   useState,
 } from 'react';
-import { getAudioEngine } from '../audio/AudioEngine';
-import {
-  DEFAULT_SCENE_FIRST_START_SECONDS,
-  getSceneCoordinator,
-} from '../audio/SceneCoordinator';
+import { DEFAULT_SCENE_FIRST_START_SECONDS } from '../audio/SceneCoordinator';
+import { getHowlScenePlayer } from '../audio/howl/HowlScenePlayer';
 import { SLEEP_TIMER_FADE_SECONDS } from '../audio/SleepTimer';
-import type { Scene } from '../audio/Scene';
+import type { HowlScene } from '../audio/howl/HowlScene';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { scenePlayerBackground } from '../lib/sceneBackground';
 import { getSetting, setSetting } from '../storage';
@@ -142,10 +139,9 @@ export interface PlayerScreenProps {
 }
 
 export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreenProps) {
-  const engine = useMemo(() => getAudioEngine(), []);
-  const coordinator = useMemo(() => getSceneCoordinator(engine), [engine]);
+  const coordinator = useMemo(() => getHowlScenePlayer(), []);
 
-  const [scene, setScene] = useState<Scene | null>(() =>
+  const [scene, setScene] = useState<HowlScene | null>(() =>
     coordinator.getCurrentScene()
   );
 
@@ -216,7 +212,7 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
         : { status: 'off' };
 
   useEffect(() => {
-    engine.bus.setMasterVolume(masterVolume);
+    coordinator.setMasterVolume(masterVolume);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -379,7 +375,7 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
             onChange={(e) => {
               const v = parseFloat(e.target.value);
               setMasterVolume(v);
-              engine.bus.setMasterVolume(v);
+              coordinator.setMasterVolume(v);
               setSetting('masterVolume', v);
             }}
           />
@@ -495,7 +491,7 @@ function NightstandOverlay({
   onExitNightstand,
 }: {
   engaged: boolean;
-  scene: Scene;
+  scene: HowlScene;
   timer: TimerMode;
   remaining: number;
   awake: boolean;
