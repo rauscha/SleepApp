@@ -63,6 +63,11 @@ const fakeFactory: HowlFactory = (opts: HowlFactoryOptions) => new FakeHowl(opts
 const firstVariant = (el: { variants: { id: string; url: string }[] }) =>
   el.variants[0]!;
 
+/** Find the fake Howl whose source url contains `sub` (robust to layer order;
+ *  the synth bed is now layer 0, so index-based lookups would be brittle). */
+const bySrc = (sub: string): FakeHowl =>
+  FakeHowl.all.find((h) => h.opts.src.some((s) => s.includes(sub)))!;
+
 function makeDef(overrides: Partial<SceneDefinition> = {}): SceneDefinition {
   return {
     id: 'test-scene',
@@ -94,46 +99,60 @@ beforeEach(() => {
 });
 
 describe('HowlScene', () => {
-  it('creates one looping element per scene element and fades each in', () => {
+  it('creates a synth bed + one looping element per scene element, fading each in', () => {
     const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
     scene.start(5);
 
-    expect(FakeHowl.all).toHaveLength(2);
-    const [rain, wind] = FakeHowl.all;
-    expect(rain!.played).toBe(true);
-    expect(wind!.played).toBe(true);
+    expect(FakeHowl.all).toHaveLength(3); // synth bed + rain + wind
+    const bed = bySrc('/_bed/brown');
+    const rain = bySrc('rain-1');
+    const wind = bySrc('wind-1');
+    expect(bed.played).toBe(true);
+    expect(rain.played).toBe(true);
+    expect(wind.played).toBe(true);
     // Each fades from 0 to its mix level (master 1) over 5000ms.
-    expect(rain!.fades.at(-1)).toEqual([0, 0.5, 5000]);
-    expect(wind!.fades.at(-1)).toEqual([0, 0.3, 5000]);
+    expect(rain.fades.at(-1)).toEqual([0, 0.5, 5000]);
+    expect(wind.fades.at(-1)).toEqual([0, 0.3, 5000]);
+    expect(bed.fades.at(-1)).toEqual([0, 0.1, 5000]); // synth.defaultVolume
+  });
+
+  it('plays the synth-bed carrier from the scene color', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    const bedLayer = scene.getLayers().find((l) => l.id === 'test-scene:synth-bed');
+    expect(bedLayer).toBeDefined();
+    expect(bedLayer!.label).toBe('Synth bed');
+    expect(bySrc('/_bed/brown')).toBeDefined();
   });
 
   it('scales every layer by the master volume', () => {
     const scene = new HowlScene(makeDef(), 0.5, fakeFactory, firstVariant);
     scene.start(0);
-    const [rain] = FakeHowl.all;
+    const rain = bySrc('rain-1');
     // 0.5 mix * 0.5 master = 0.25.
-    expect(rain!.vol).toBeCloseTo(0.25, 5);
+    expect(rain.vol).toBeCloseTo(0.25, 5);
 
     scene.setMaster(1);
-    expect(rain!.vol).toBeCloseTo(0.5, 5);
+    expect(rain.vol).toBeCloseTo(0.5, 5);
   });
 
   it('applies a reduced scene gain (deep-night resume) on top of master', () => {
     const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
     scene.start(0, 0.6); // deep-night target
-    const [rain] = FakeHowl.all;
+    const rain = bySrc('rain-1');
     // 0.5 mix * 1 master * 0.6 sceneGain = 0.30.
-    expect(rain!.vol).toBeCloseTo(0.3, 5);
+    expect(rain.vol).toBeCloseTo(0.3, 5);
   });
 
   it('setLayerVolume retargets a single layer', () => {
     const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
     scene.start(0);
     scene.setLayerVolume('test-scene:rain', 0.8);
-    const [rain, wind] = FakeHowl.all;
-    expect(rain!.vol).toBeCloseTo(0.8, 5);
-    expect(wind!.vol).toBeCloseTo(0.3, 5); // untouched
-    expect(scene.getLayers()[0]!.getVolume()).toBeCloseTo(0.8, 5);
+    const rain = bySrc('rain-1');
+    const wind = bySrc('wind-1');
+    expect(rain.vol).toBeCloseTo(0.8, 5);
+    expect(wind.vol).toBeCloseTo(0.3, 5); // untouched
+    const rainLayer = scene.getLayers().find((l) => l.id === 'test-scene:rain')!;
+    expect(rainLayer.getVolume()).toBeCloseTo(0.8, 5);
   });
 
   it('fadeToSilence ramps every layer to 0', () => {
@@ -172,7 +191,7 @@ describe('HowlScenePlayer', () => {
     const player = new HowlScenePlayer(fakeFactory);
     const scene = await player.startScene(makeDef(), { firstFadeSeconds: 0 });
     expect(player.getCurrentScene()).toBe(scene);
-    expect(FakeHowl.all).toHaveLength(2);
+    expect(FakeHowl.all).toHaveLength(3); // synth bed + 2 elements
   });
 
   it('crossfades to a new scene, fading out the old one', async () => {
@@ -200,8 +219,8 @@ describe('HowlScenePlayer', () => {
     const player = new HowlScenePlayer(fakeFactory);
     await player.startScene(makeDef(), { firstFadeSeconds: 0 });
     player.setMasterVolume(0.5);
-    const [rain] = FakeHowl.all;
-    expect(rain!.vol).toBeCloseTo(0.25, 5); // 0.5 mix * 0.5 master
+    const rain = bySrc('rain-1');
+    expect(rain.vol).toBeCloseTo(0.25, 5); // 0.5 mix * 0.5 master
   });
 
   it('stopScene fades out, clears current, and resets the timer', async () => {

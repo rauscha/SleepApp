@@ -1,11 +1,11 @@
 {
   "source": "Pixabay",
   "originalFilename": "eryliaa-gentle-rain-on-window-for-sleep-422420.mp3",
-  "license": "Pixabay Content License — free, no attribution required, commercial use OK",
+  "license": "Pixabay Content License \u2014 free, no attribution required, commercial use OK",
   "downloadedAt": "2026-05-12",
-  "trimmedTo": "720s",
+  "trimmedTo": "409s",
   "outputFormat": "48 kHz / 192 kbps / stereo MP3",
   "replaceWhen": "once the rest of the app is built",
   "qualityWarning": "mono source duplicated to stereo, loses spatial width",
-  "notes": "Re-encoded from Pixabay source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3."
+  "notes": "Re-encoded from Pixabay source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3. Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
 }

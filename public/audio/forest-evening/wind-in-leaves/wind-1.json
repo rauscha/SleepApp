@@ -1,0 +1,10 @@
+{
+  "source": "Pixabay",
+  "originalFilename": "freesound_community-poplar_wind-53373.mp3",
+  "license": "Pixabay Content License \u2014 free, no attribution required, commercial use OK",
+  "downloadedAt": "2026-05-12",
+  "trimmedTo": "409s",
+  "outputFormat": "48 kHz / 192 kbps / stereo MP3",
+  "notes": "Re-encoded from Pixabay source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3. Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless.",
+  "edits": "2026-05-30: excised two muffled background-voice blips at ~45.0-45.7s (audible as faint talking from another room). Cut [44.80-45.90s] and equal-power (qsin) crossfaded the surrounding wind with a 0.30s overlap; seamless on stationary noise. Duration 590s -> 588.6s (still > loopOffset 521 + crossfade 5). Original backed up off-repo."
+}

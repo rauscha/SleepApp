@@ -1,9 +1,9 @@
 {
   "source": "freetousesounds sound library",
   "originalFilename": "freetousesounds - Haunting Dockside Nautical Ambience Busa - 27 AMBNaut-LR_Korea-Ambience, Nautical, Shipyard, Tug Boats, Industrial Work, Hammering, Beeping Cranes, Workers, Y.ogg",
-  "license": "Free To Use Sounds paid library — derivative works permitted (including commercial), no attribution required. Original sounds may not be redistributed in their original form; the shipped MP3 is a derivative (transcoded + loudnorm-normalized). See https://freetousesounds.com/license-agreement",
+  "license": "Free To Use Sounds paid library \u2014 derivative works permitted (including commercial), no attribution required. Original sounds may not be redistributed in their original form; the shipped MP3 is a derivative (transcoded + loudnorm-normalized). See https://freetousesounds.com/license-agreement",
   "downloadedAt": "2026-05-29",
-  "trimmedTo": "555s (155s clip + silence)",
+  "trimmedTo": "521s",
   "outputFormat": "44.1 kHz / 128 kbps / stereo MP3",
-  "notes": "Second sparse dockside variant. 60s lead silence, 155s clip, trailing silence to 555s."
+  "notes": "Second sparse dockside variant. 60s lead silence, 155s clip, trailing silence to 555s. Seamless-looped to 521s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
 }
