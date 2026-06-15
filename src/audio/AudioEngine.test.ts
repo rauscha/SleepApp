@@ -19,6 +19,7 @@ import {
   type MockAudioContext,
 } from '../test/audioMock';
 import type { Layer } from './types';
+import { __resetForTests, getAllEntries } from '../diagnostics/lifecycleLog';
 
 function makeMockLayer(id: string): Layer & { startCalls: number; stopCalls: number; disposeCalls: number } {
   const output = new MockGainNode() as unknown as GainNode;
@@ -186,6 +187,44 @@ describe('AudioEngine', () => {
         analyser.connections.some((c) => c instanceof MockMediaStreamDestination)
       ).toBe(true);
       expect(engine.isKeepAliveRunning).toBe(true);
+    });
+
+    // The silent-stall blind spot: the element is NOT paused, but its own
+    // clock freezes while the AudioContext keeps ticking (the MediaStream
+    // stopped feeding the speaker, no event fired). The watchdog must notice
+    // and re-engage the sink.
+    it('re-engages the sink when its element clock silently stalls', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+      vi.spyOn(HTMLMediaElement.prototype, 'paused', 'get').mockReturnValue(false);
+      let ct = 0;
+      vi.spyOn(HTMLMediaElement.prototype, 'currentTime', 'get').mockImplementation(
+        () => ct
+      );
+
+      const engine = new AudioEngine();
+      await engine.unlock();
+      engine.startKeepAlive();
+      await flushMicrotasks(); // settle the async engage
+      const ctx = engine.context as unknown as MockAudioContext;
+      __resetForTests(); // clear the log before the interesting part
+
+      // Healthy: the element clock advances alongside the audio clock.
+      for (let i = 0; i < 4; i++) {
+        ct += 2;
+        ctx.advanceTime(2);
+        vi.advanceTimersByTime(2000);
+      }
+      // Stall: the audio clock keeps ticking but the element clock freezes.
+      for (let i = 0; i < 4; i++) {
+        ctx.advanceTime(2);
+        vi.advanceTimersByTime(2000);
+      }
+      await flushMicrotasks();
+
+      const kinds = getAllEntries().map((e) => e.kind);
+      expect(kinds).toContain('media-sink-stall');
+      expect(kinds).toContain('media-sink-reengage');
     });
 
     it('falls back to direct output when element.play() is refused', async () => {

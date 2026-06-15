@@ -32,6 +32,12 @@ const LIVENESS_PROBE_MS = 400;
 /** Floor between automatic context rebuilds so a hard platform failure
  *  can't put us in a rebuild loop. User-gesture rebuilds bypass this. */
 const RECREATE_MIN_INTERVAL_MS = 30_000;
+/** Floor between element-sink re-engages after a detected silent stall, so a
+ *  persistently stalling sink can't thrash the audio graph. */
+const SINK_REENGAGE_MIN_INTERVAL_MS = 30_000;
+/** Consecutive watchdog ticks of a frozen element clock (after it had been
+ *  advancing) before we treat the sink as stalled. */
+const SINK_STALL_TICKS = 3;
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -56,6 +62,18 @@ export class AudioEngine {
   // and the sink ends up DETACHED but flagged engaged — silently killing the
   // overnight "playing media" protection. Set synchronously before the await.
   private elementSinkEngaging = false;
+  // Element-sink silent-stall detection. The sink routes audio through an
+  // <audio> element fed by a MediaStream; on some Androids that pipe stops
+  // feeding the speaker WITHOUT firing 'pause' — audio dies while the
+  // AudioContext keeps ticking, invisible to every other check (the
+  // documented watchdog blind spot). We sample the ELEMENT's own clock: if
+  // it freezes after having advanced, the sink stalled and we re-engage it.
+  private sinkLastCurrentTime = -1;
+  private sinkStallTicks = 0;
+  private sinkClockAdvancedEver = false;
+  private sinkSampleCount = 0;
+  private sinkClockLogged = false;
+  private lastSinkReengageMs = 0;
   // True while the user (lock-screen / headset pause) has deliberately
   // suspended playback. The whole survival stack exists to KEEP the context
   // running, so a soft-pause has to suppress the auto-resume machinery
@@ -366,6 +384,7 @@ export class AudioEngine {
 
   private disengageElementSink(): void {
     this.elementSinkEngaged = false;
+    this.resetSinkClockTracking();
     if (this.sinkElement) {
       try {
         this.sinkElement.pause();
@@ -504,6 +523,7 @@ export class AudioEngine {
     // trust from the gesture that first played it).
     this.elementSinkEngaged = false;
     this.elementSinkEngaging = false;
+    this.resetSinkClockTracking();
     if (this.sinkElement) {
       try {
         this.sinkElement.pause();
@@ -665,14 +685,86 @@ export class AudioEngine {
     }
     this.lastWatchdogCurrentTime = ctx.currentTime;
 
-    // Third failure signal (review bug C2, layer c): the context is
-    // 'running' and its clock advances, yet the element sink is paused —
-    // audio flows into a paused element and reaches no speaker, invisible
-    // to the clock-based zombie check above. Re-attempt play on the
-    // watchdog's cadence; fall back to direct output if it stays refused.
-    if (this.elementSinkEngaged && this.sinkElement?.paused) {
+    this.checkElementSinkHealth();
+  }
+
+  /**
+   * Element-sink health, on the watchdog's cadence. The context is 'running'
+   * and its clock advances; the sink is the remaining way audio dies
+   * invisibly:
+   *   (a) the <audio> element is paused — re-attempt play / fall back to
+   *       direct output (review bug C2);
+   *   (b) the element is NOT paused but its OWN clock has frozen while the
+   *       context clock keeps ticking — the MediaStream silently stopped
+   *       feeding the speaker, the documented blind spot that killed audio
+   *       overnight with the context still looking healthy. Re-engage the
+   *       sink to recover.
+   * The element-clock signal is only trusted once we've seen it advance —
+   * some engines never advance currentTime for a live MediaStream, and we
+   * must not false-trigger on that. A one-time 'media-sink-clock' log records
+   * which case this device is, so the behaviour is verifiable from a log.
+   */
+  private checkElementSinkHealth(): void {
+    const el = this.sinkElement;
+    if (!this.elementSinkEngaged || !el) return;
+
+    if (el.paused) {
+      this.sinkLastCurrentTime = -1;
+      this.sinkStallTicks = 0;
       void this.retrySinkPlayOrFallback();
+      return;
     }
+
+    const t = el.currentTime;
+    if (this.sinkLastCurrentTime >= 0) {
+      if (t > this.sinkLastCurrentTime) {
+        this.sinkClockAdvancedEver = true;
+        this.sinkStallTicks = 0;
+      } else if (this.sinkClockAdvancedEver) {
+        // Frozen after having advanced → a genuine stall.
+        this.sinkStallTicks++;
+        if (this.sinkStallTicks >= SINK_STALL_TICKS) {
+          this.sinkStallTicks = 0;
+          recordEvent('media-sink-stall', `ct=${t.toFixed(1)}`);
+          this.reengageElementSink();
+          return;
+        }
+      }
+    }
+    this.sinkLastCurrentTime = t;
+
+    // One-time diagnostic per engage: tells us whether the element clock is
+    // even a usable signal on this device.
+    if (!this.sinkClockLogged && ++this.sinkSampleCount >= 5) {
+      this.sinkClockLogged = true;
+      recordEvent(
+        'media-sink-clock',
+        `ct=${t.toFixed(2)} advanced=${this.sinkClockAdvancedEver}`
+      );
+    }
+  }
+
+  /**
+   * Recover a silently stalled element sink by tearing it down and
+   * re-engaging it fresh. Rate-limited so a sink that keeps stalling can't
+   * thrash the graph; if it can't recover, the lifecycle log shows repeated
+   * 'media-sink-stall' entries to diagnose from.
+   */
+  private reengageElementSink(): void {
+    const now = Date.now();
+    if (now - this.lastSinkReengageMs < SINK_REENGAGE_MIN_INTERVAL_MS) return;
+    this.lastSinkReengageMs = now;
+    recordEvent('media-sink-reengage');
+    this.disengageElementSink();
+    void this.engageElementSink();
+  }
+
+  private resetSinkClockTracking(): void {
+    this.sinkLastCurrentTime = -1;
+    this.sinkStallTicks = 0;
+    this.sinkClockAdvancedEver = false;
+    this.sinkSampleCount = 0;
+    this.sinkClockLogged = false;
   }
 }
 
