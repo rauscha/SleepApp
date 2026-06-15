@@ -1,15 +1,17 @@
 # Claude Code instructions for this project
 
-## Current focus — Roadmap to v1.1 (as of 2026-06-12)
+## Current focus — v1.0 ship candidate (as of 2026-06-15)
 
 A full eight-front shipping review lives in
-`notes/shipping-review-2026-06-12/` (`00-executive-summary.md` first).
-**The execution plan is `09-roadmap-to-v1.1.md` in that directory — work
-its phases in order and check steps off there as they land.** Headline:
-security signed off, architecture graded A−, but Phase 1 of the roadmap
-fixes 2 Critical + 3 High bugs in the overnight-survival and sleep-timer
-paths that gate v1.0. Don't start lower-phase polish while a Phase 1 box
-is unchecked.
+`notes/shipping-review-2026-06-12/` (`00-executive-summary.md` first); its
+execution plan is `09-roadmap-to-v1.1.md` (check steps off there as they
+land). Phases 1–5 are essentially done and the overnight-survival problem
+that gated v1.0 is **solved** — see "Audio engine invariants" below: the
+scene bed was pivoted off Web Audio onto a native Howler `html5` engine
+(2026-06-15, recorded in DECISIONS.md), confirmed over a real 6h overnight.
+What's left before tagging v1.0 is the roadmap's `[ASK]`/`[DEVICE]` items:
+replace 3 off-brief photos (4.3), decide the meditation catalogue (6.5), and
+run the device pass + tag (5.2).
 
 ## After completing any step
 
@@ -89,28 +91,35 @@ minutes. This is core audio design, not an implementation detail.
    another true prime to that list, don't pick an arbitrary number.
    (2026-06-12 review: shipped `rain-on-window.json` carried an off-list
    515 for ~weeks and nothing caught it — four independent reviewers did.
-   Roadmap step 2.2 adds a conformance test so the contract enforces
-   itself; until that test exists, verify offsets by hand on every scene
-   edit.)
+   `src/audio/sceneCatalogue.test.ts` now enforces this for every scene, so
+   a bad offset fails the suite — but still sanity-check by eye.)
 
-3. **Every variant MP3 must be longer than its element's
-   `loopOffsetSeconds + crossfadeSeconds`** (default crossfade = 5s).
-   FileLayer needs the tail to crossfade into the next iteration. If your
-   source audio is shorter than the offset, either pick a longer source,
-   acrossfade-extend the source (see `tools/grow-out-scenes.sh` for an
-   example), or pad sparse "event" layers with silence — don't lower the
-   offset off the prime list. **Leave ≥10s of margin** over the bare
-   minimum: the review found four shipped variants within 10s of the
-   limit, which silently become scene-killing constructor throws if
-   `crossfadeSeconds` is ever raised. (Trap discovered there: fixing
-   rain-pavement's offset to 521 requires extending `pavement-2.mp3`
-   first — it's 525s, 1s under the new requirement.)
+3. **Every variant MP3's length must EQUAL its element's
+   `loopOffsetSeconds`** (within ~2.5s MP3-frame slack). Under the Howler
+   `html5` engine (see "Audio engine invariants" below) each layer loops the
+   *whole file* natively — the file **is** the loop, so its length sets the
+   loop period. A file longer or shorter than its prime offset breaks the
+   incommensurate-loops math (the combined pattern resyncs early, or the loop
+   ticks). Don't hand-trim: run **`tools/loopify-scenes.py`**, which trims
+   every variant to its element's offset with a gapless 6s wrap (head summed
+   over the faded post-loop tail) so native looping has no seam, and renders
+   the synth-bed carriers. It's idempotent — **re-run it any time you add or
+   change scene audio**; then `src/audio/sceneCatalogue.test.ts` verifies
+   every file landed on its prime. (Pre-pivot this rule was the opposite —
+   "longer than offset + crossfade" — because the old FileLayer crossfaded
+   *within* a longer file. `tools/grow-out-scenes.sh` belonged to that era;
+   loopify supersedes it.)
 
 4. **Voice the stack like a mix**, not like a flat sum: the closest /
    primary element rides loudest (~0.55–0.60), supporting layers sit at
    0.25–0.35, and the synth bed underneath at ~0.10–0.16 to glue the
    spectrum. Sparse "event" layers (distant thunder, occasional dockside)
-   sit quieter still (~0.18–0.20) and use a long mostly-silent loop.
+   sit quieter still (~0.18–0.20) and use a long mostly-silent loop. The
+   synth bed is no longer a live Web-Audio `NoiseGenerator`: it's a
+   pre-rendered 887s noise loop (`public/audio/_bed/<color>.mp3` — the 5th
+   prime, coprime to every element offset) that `HowlScene` plays as a quiet
+   native layer under every scene. Tune its level by ear with the in-app
+   "Synth bed" mixer slider; re-render it via `tools/loopify-scenes.py`.
 
 If you're adding a scene with only one element because that's all the
 source audio you have, **don't ship it yet** — either find/transcode more
@@ -119,34 +128,64 @@ sparse scene shipped now is harder to fix later than one held back.
 
 ## Audio engine invariants
 
-- `FileLayer` pre-fills a 3-iteration pipeline (`LOOKAHEAD_COUNT = 3`) so
-  iOS Safari setTimeout throttling can't cause a loop seam.
-- Never remove `pipelineTail` or `lastHandledStartTime` without reading the
-  chain-timer design in `FileLayer.ts` first.
-- Scene crossfade (8s) runs via `SceneCoordinator.startScene()` — do not
-  call `fileLayer.stop()` directly during a scene transition.
-- **Overnight protections must be owned by the playback session, not a
-  screen.** Keep-alive, the `<audio>` element sink, SW keep-alive, and
-  media session must live/die with the scene (SceneCoordinator), never in
-  a React unmount cleanup — a screen exit while audio plays must strip
-  nothing. (2026-06-12 review bug C1; roadmap step 1.1.)
-- **The element sink is a watchdog blind spot:** a paused sink element
-  with the bus still routed into it is total silence while the
-  AudioContext stays `running` with `currentTime` advancing — the zombie
-  detector cannot see it. Any change to sink engagement must keep a
-  recovery path (detach-and-fall-back beats silence) and a
-  `sinkElement.paused && elementSinkEngaged` check in the watchdog.
-  (Review bug C2; roadmap step 1.2.)
-- Production paths must fail loudly: `fallbackToSynthetic` is a dev-only
-  affordance — the sole legitimate prod use is the 3am
-  `restartAfterContextLoss` last resort, where sound beats silence.
+**The production scene bed runs through Howler `html5` (`src/audio/howl/`),
+not Web Audio.** This was the 2026-06-15 pivot (DECISIONS.md): routing the
+Web Audio bus into an `<audio>` element via `MediaStreamAudioDestinationNode`
+is explicitly unsupported (W3C #2293) — on Chromium the element's
+`currentTime` never advances, so the OS freezes the tab ~90s after
+screen-off. That was the overnight death we chased for days; no watchdog
+beats a primitive the browser suspends by design. The fix lets the OS own
+each loop, exactly like Spotify/Calm/YouTube.
+
+- **`HowlScene`** plays one looping `Howl({ html5: true, loop: true })`
+  `<audio>` element per layer (plus the synth-bed carrier). It exposes the
+  same surface PlayerScreen reads off the old Web Audio `Scene`
+  (`id`/`definition`/`getLayers`/`setLayerVolume`/`isDisposed`), so the UI
+  was untouched by the pivot.
+- **`HowlScenePlayer`** (`getHowlScenePlayer()`) is the playback session —
+  the drop-in for `SceneCoordinator`'s production surface
+  (`startScene`/`crossfadeTo`/`stopScene`/`getCurrentScene`/`sleepTimer`/
+  `setSceneResolver`). Scene crossfade defaults to 8s. Tonight, App, Player,
+  and ContentPlayer all point here.
+- **No keep-alive stack on this path.** Because the OS owns each looping
+  element, there is *no* MediaStream sink, silent keep-alive, zombie
+  watchdog, or `recreateContext` on the bed. Don't reintroduce them — they
+  were treating symptoms of the unsupported construct above (the closed
+  draft "element-sink stall watchdog" PR was the pivot's casualty).
+- **Overnight protections are still owned by the session, not a screen.**
+  `HowlScenePlayer` owns the sleep timer, Night Drift, the OS media session,
+  and the SW keep-alive ping; they live/die with the scene, never in a React
+  unmount cleanup — a screen exit while audio plays must strip nothing.
+  (2026-06-12 review bugs C1/H1/H3, preserved across the pivot.)
+- **Overlapping starts serialize to one winner** via `startGeneration` — a
+  superseded build is `dispose()`d, not started (review bug M1).
+- `fallbackToSynthetic` is still accepted on `StartSceneOptions` for
+  call-site compatibility but is a **no-op** on the html5 path — it streams
+  real files, so there is no synthetic pad to fall back to.
+
+The Web Audio engine (`AudioEngine`/`SceneCoordinator`/`FileLayer`/
+`MasterBus`/`NoiseGenerator`) is **retained only for the dev harness and its
+unit tests** — it is off the production overnight path. If you must touch it,
+its `FileLayer` chain-timer design (`LOOKAHEAD_COUNT = 3`, `pipelineTail`,
+`lastHandledStartTime`) is subtle — read it first. Don't wire it back into a
+user-facing path without re-deciding the pivot.
 
 ## File layout reminders
 
 - `src/screens/` — Phase 3 UI screens (TonightScreen, PlayerScreen).
-- `src/audio/` — audio engine; pure-function tests in `*.test.ts` files.
+- `src/audio/howl/` — **the production scene-bed engine** (`HowlScene`,
+  `HowlScenePlayer`); tests alongside.
+- `src/audio/` — the legacy Web Audio engine (dev harness + tests only — see
+  "Audio engine invariants") plus shared scene types/format; `*.test.ts`
+  files, including `sceneCatalogue.test.ts`, the scene-contract conformance
+  test.
 - `public/scenes/` — scene JSON files served statically; `index.json` is
   the scene catalogue.
+- `public/audio/` — scene variant MP3s + `.json` sidecars; `_bed/` holds the
+  pre-rendered synth-bed noise loops.
+- `tools/loopify-scenes.py` — idempotent; trims variants to their prime
+  offset (gapless) and renders the synth beds. Re-run on any scene-audio
+  change.
 - `NEXT_STEPS.md` — personal current-state TODO; gitignored. Update if
   present, skip if absent.
 - `DECISIONS.md` — historical architecture decisions; don't overwrite, append.
