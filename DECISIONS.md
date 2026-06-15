@@ -214,3 +214,57 @@ with `style={{ minHeight: 44 }}` for tap-target compliance. The "Generate new st
 
 **Trade-off accepted.** In StoryGeneratorScreen the Cancel button was previously full-width (replacing the full-width Generate during the busy state). Under this tier it becomes a small right-aligned ghost — visually lighter mid-generation. That's a feature, not a bug: the destructive mid-flight action shouldn't dominate the layout, and accidentally clicking it costs a $1–3 ElevenLabs job.
 
+
+## Overnight playback: pivot the bed off Web Audio onto Howler html5 (2026-06-15)
+
+**What.** Scene beds no longer play through the Web Audio graph. They now play
+as one looping Howler `html5: true` `<audio>` element per scene layer
+(`src/audio/howl/HowlScene.ts`, orchestrated by `HowlScenePlayer.ts`, a
+drop-in for `SceneCoordinator`'s production surface). The production screens
+(Tonight, App, Player, ContentPlayer) call `getHowlScenePlayer()`. The Web
+Audio `AudioEngine` / `SceneCoordinator` / `FileLayer` / `MasterBus` remain in
+the tree for the dev harness and their existing tests, but are off the
+production bed path.
+
+**Why.** For ~a week the bed kept dying overnight despite a deep stack of
+defenses (silent keep-alive, `<audio>` element sink via
+`MediaStreamAudioDestinationNode`, a zombie watchdog, mid-night
+`recreateContext`, and finally a silent-sink-stall detector). Research into
+prior art found the root cause is architectural, not a bug we could finally
+squash:
+  - Routing a `MediaStreamAudioDestinationNode.stream` into an `<audio>`
+    element's `srcObject` is explicitly unsupported (W3C Web Audio API issue
+    #2293). On Chromium the element's `currentTime` never advances, so the OS
+    does not treat it as live media — exactly the silent stall we saw.
+  - Mobile browsers suspend/throttle `AudioContext` and `setTimeout`-driven
+    buffer scheduling the moment the screen locks (WebKit bug 231105; Apple
+    dev forums). No watchdog reliably beats a primitive that is being
+    suspended by design.
+  - The apps that do play all night (Spotify Web, Calm, YouTube) play a real
+    HTML5 media element + Media Session and let the OS own the playback loop.
+    Howler `html5: true` is that primitive — and already powered our narration
+    player without complaint.
+
+So the bed now rests on the OS-backed media element. The entire fragile
+survival stack is gone from the bed path; the session still owns the sleep
+timer, Night Drift, and the OS media session so they survive leaving the
+Player (review bugs C1 / H1 / H3 preserved).
+
+**Trade-offs accepted.**
+  - The Eno incommensurate-loops guarantee weakens: native file looping loops
+    each element at its file length, not a curated prime `loopOffsetSeconds`.
+    Still incommensurate because file lengths differ, but not the exact
+    pairwise-coprime contract. Restoring it precisely is a Path B/D follow-up
+    (trim/pad sources to prime lengths, or pre-render one mixed file).
+  - The synth-bed glue layer (Web-Audio noise, 0.08–0.16) is dropped; restore
+    by pre-rendering a brown-noise loop MP3 if the spectrum feels thin.
+  - Howler (~30 kB gz) moved into the initial bundle (Tonight imports it
+    eagerly). Acceptable vs. overnight survival; can be lazy-loaded later.
+
+**Next — Path D (hybrid handoff), documented in NEXT_STEPS.** Keep the rich
+live Web Audio mix while foreground/falling-asleep, hand off to the Howler
+html5 path on `visibilitychange → hidden` / screen lock, so overnight survival
+never depends on Web Audio while the falling-asleep texture keeps the curated
+primes + synth glue. Decide after a clean overnight read on Path A whether to
+cross back to Web Audio on foreground at all, or retire the Web Audio bed
+entirely.

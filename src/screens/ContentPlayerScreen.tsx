@@ -7,8 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Howl } from 'howler';
-import { getAudioEngine } from '../audio/AudioEngine';
-import { getSceneCoordinator } from '../audio/SceneCoordinator';
+import { getHowlScenePlayer } from '../audio/howl/HowlScenePlayer';
 import {
   fetchSceneDefinition,
   fetchSceneIndex,
@@ -55,8 +54,9 @@ export function ContentPlayerScreen({
   bedBehavior = 'continue',
   onBack,
 }: ContentPlayerScreenProps) {
-  const engine = useMemo(() => getAudioEngine(), []);
-  const coordinator = useMemo(() => getSceneCoordinator(engine), [engine]);
+  // The bed-under-narration plays through the same Howler html5 session as
+  // standalone scenes (Path A), so it survives the night the same way.
+  const coordinator = useMemo(() => getHowlScenePlayer(), []);
   const howlRef = useRef<Howl | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'playing' | 'paused' | 'ended' | 'error'>('loading');
   const [position, setPosition] = useState(0);
@@ -231,34 +231,34 @@ export function ContentPlayerScreen({
   useEffect(() => {
     if (!bedSceneId) return;
     const master = getSetting('masterVolume');
-    engine.bus.setMasterVolume(master * bedAttenuation);
-  }, [bedSceneId, bedAttenuation, engine]);
+    coordinator.setMasterVolume(master * bedAttenuation);
+  }, [bedSceneId, bedAttenuation, coordinator]);
   useEffect(() => {
     if (!bedSceneId) return;
     return () => {
-      engine.bus.setMasterVolume(getSetting('masterVolume'));
+      coordinator.setMasterVolume(getSetting('masterVolume'));
     };
-  }, [bedSceneId, engine]);
+  }, [bedSceneId, coordinator]);
 
-  // Keep the Android-focus signals alive for bare, unpaired narration.
-  // For *bed-paired* content the SceneCoordinator owns the keep-alive + SW
-  // pings — they follow the bed scene, not this screen (review bug C1), so
-  // they survive the user leaving while the bed plays on (stories) and tear
-  // down with the bed (meditations). Managing them here too would double-
-  // stop the coordinator's keep-alive on unmount while a story bed is still
-  // playing, so we only run this for content with no bed.
+  // Keep the service-worker focus ping alive for bare, unpaired narration.
+  // The narration itself is an html5 <audio> element (Howler html5:true),
+  // which the OS keeps alive as background media; the SW ping + wake lock +
+  // media session are what keep the *tab* around long enough for that. For
+  // *bed-paired* content the HowlScenePlayer owns the SW ping — it follows
+  // the bed scene, not this screen (review bug C1) — so we only run this for
+  // content with no bed to avoid double-stopping it on unmount.
+  // (No Web Audio keep-alive here any more: the old silent-loop + element
+  // sink was the fragile MediaStream path we retired in the Path A pivot.)
   const keepAudioFocusAlive = !bedSceneId && state === 'playing';
   useEffect(() => {
     if (!keepAudioFocusAlive) return;
-    engine.startKeepAlive();
     startSwKeepAlive();
     recordEvent('keepalive-start', 'content');
     return () => {
-      engine.stopKeepAlive();
       stopSwKeepAlive();
       recordEvent('keepalive-stop', 'content');
     };
-  }, [keepAudioFocusAlive, engine]);
+  }, [keepAudioFocusAlive]);
 
   useEffect(() => {
     if (state === 'loading' || state === 'error') return;

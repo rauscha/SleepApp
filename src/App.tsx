@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getAudioEngine } from './audio/AudioEngine';
-import { getSceneCoordinator } from './audio/SceneCoordinator';
+import { getHowlScenePlayer } from './audio/howl/HowlScenePlayer';
 import { fetchSceneDefinition, fetchSceneIndex } from './audio/sceneRegistry';
 import { getSetting, requestPersistentStorage } from './storage';
 import { recordEvent } from './diagnostics/lifecycleLog';
@@ -83,9 +83,9 @@ export function App() {
   // the last-visited screen: reopening the app should put the scene picker
   // in front of someone who's about to sleep, not wherever they last
   // browsed (e.g. Library). No Begin interstitial.
-  const coordinator = useMemo(() => getSceneCoordinator(engine), [engine]);
+  const coordinator = useMemo(() => getHowlScenePlayer(), []);
   const [screen, setScreen] = useState<Screen>(() => {
-    if (engine.isInitialized && coordinator.getCurrentScene()) return 'player';
+    if (coordinator.getCurrentScene()) return 'player';
     // The 3 a.m. Door: opened in the deep-night window with nothing playing
     // and a scene to resume → a single near-black "back to sleep" panel
     // instead of the bright Tonight screen (roadmap 6.1).
