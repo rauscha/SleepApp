@@ -65,6 +65,14 @@ const RESTART_RETRY_DELAYS_MS = [0, 1000, 3000];
  */
 const DEFERRED_VARIANT_DELAY_MS = 20_000;
 
+/**
+ * Gap between successive deferred-variant decodes, so a scene with several
+ * elements (forest-evening: 4) spreads its background decodes out instead of
+ * doing them all in one stutter-inducing burst. With this gap they finish
+ * well before the first rotation (>= 251s).
+ */
+const DEFERRED_VARIANT_GAP_MS = 12_000;
+
 /** A FileLayer plus the element variants still waiting to be decoded into it. */
 interface DeferredVariantLoad {
   fileLayer: FileLayer;
@@ -229,19 +237,29 @@ export class SceneCoordinator {
     //    contention. Variants only rotate at the loopOffset boundary
     //    (>=251s, minutes out), so the others have all the time they need.
     const deferred: DeferredVariantLoad[] = [];
-    for (const element of definition.elements) {
-      if (element.variants.length === 0) {
-        throw new Error(
-          `Scene element "${element.id}" has no variants — every element ` +
-            `needs at least one recording.`
+    // Decode each element's first variant in PARALLEL so a heavy scene (e.g.
+    // forest-evening, 4 elements) loads in the time of its slowest single
+    // file rather than the sum of all four. This happens before the scene
+    // starts, so the simultaneous decode can't stutter audio — there's none
+    // yet — it just shortens the "is it frozen?" load.
+    const firsts = await Promise.all(
+      definition.elements.map(async (element) => {
+        if (element.variants.length === 0) {
+          throw new Error(
+            `Scene element "${element.id}" has no variants — every element ` +
+              `needs at least one recording.`
+          );
+        }
+        const first = await this.loadVariant(
+          element,
+          element.variants[0]!,
+          fallback,
+          options.onVariantLoaded
         );
-      }
-      const first = await this.loadVariant(
-        element,
-        element.variants[0]!,
-        fallback,
-        options.onVariantLoaded
-      );
+        return { element, first };
+      })
+    );
+    for (const { element, first } of firsts) {
       const fileLayer = new FileLayer(this.engine, {
         id: `${definition.id}:${element.id}`,
         label: element.label,
@@ -289,19 +307,30 @@ export class SceneCoordinator {
     fallback: boolean,
     onLoaded?: (info: VariantLoadOutcome) => void
   ): Promise<void> {
-    for (const { fileLayer, element, variants } of loads) {
-      for (const variant of variants) {
-        if (fileLayer.isDisposed) break; // scene torn down — stop the work
-        try {
-          const v = await this.loadVariant(element, variant, fallback, onLoaded);
-          if (!fileLayer.isDisposed) fileLayer.addVariant(v);
-        } catch (err) {
-          recordEvent(
-            'variant-deferred-fail',
-            `${element.id}/${variant.id}: ${shortErr(err)}`
-          );
-        }
+    // Flatten to one queue and decode one variant at a time with a gap
+    // between each. A heavy scene (forest-evening: 4 deferred variants) used
+    // to decode them back-to-back the moment the timer fired — four ~200 MB
+    // PCM allocations in a row, a stutter burst ~20s in. Spacing them out
+    // turns that into isolated blips the lookahead pipeline absorbs, and they
+    // still land far ahead of the first rotation (loopOffset >= 251s).
+    const queue = loads.flatMap(({ fileLayer, element, variants }) =>
+      variants.map((variant) => ({ fileLayer, element, variant }))
+    );
+    recordEvent('variant-deferred-start', String(queue.length));
+    for (let i = 0; i < queue.length; i++) {
+      const { fileLayer, element, variant } = queue[i]!;
+      if (fileLayer.isDisposed) continue; // scene torn down — skip the work
+      try {
+        const v = await this.loadVariant(element, variant, fallback, onLoaded);
+        if (!fileLayer.isDisposed) fileLayer.addVariant(v);
+      } catch (err) {
+        recordEvent(
+          'variant-deferred-fail',
+          `${element.id}/${variant.id}: ${shortErr(err)}`
+        );
       }
+      // Breathe between heavy decodes (skip after the last).
+      if (i < queue.length - 1) await sleepMs(DEFERRED_VARIANT_GAP_MS);
     }
   }
 
