@@ -10,17 +10,22 @@
 //
 // Hard failures (the contract): >=2 elements, every loopOffsetSeconds on the
 // PRIME_ADJACENT list, offsets distinct within a scene, every referenced
-// variant file present, every variant longer than offset + crossfade, and
-// volumes inside a sane range. Softer mix-voicing guidance and the <10s
-// duration-margin trap are surfaced as warnings (per the roadmap), not
-// failures, so pre-existing borderline values don't redden the suite.
+// variant file present, and every variant's file length EQUAL to its offset
+// (within MP3-frame slack), plus volumes inside a sane range. Softer
+// mix-voicing guidance is surfaced as warnings, not failures.
+//
+// Why "equal to" and not "longer than": under the Howler html5 engine each
+// layer loops the WHOLE file natively, so the file *is* the loop — its length
+// must be the element's prime offset. (Pre-pivot, FileLayer crossfaded within
+// a longer file, so the rule was "longer than offset + crossfade".)
 
 import { describe, expect, it } from 'vitest';
 import { PRIME_ADJACENT_LOOP_OFFSETS_SECONDS } from './sceneFormat';
 import type { SceneDefinition } from './sceneFormat';
 
-const DEFAULT_CROSSFADE = 5;
-const MARGIN_WARN_SECONDS = 10;
+// MP3 frame granularity means a file trimmed to N seconds lands within ~0.1s
+// of N; allow a little slack on top of that.
+const LENGTH_TOLERANCE_SECONDS = 2.5;
 const VALID_OFFSETS = new Set(PRIME_ADJACENT_LOOP_OFFSETS_SECONDS);
 
 // Eager glob: scene JSONs + every sidecar, keyed by project-root path.
@@ -111,10 +116,8 @@ describe('scene catalogue conformance', () => {
         );
       });
 
-      it('keeps every variant present and longer than offset + crossfade', () => {
+      it('keeps every variant present and looped to its prime offset', () => {
         for (const el of scene.elements) {
-          const crossfade = el.crossfadeSeconds ?? DEFAULT_CROSSFADE;
-          const floor = el.loopOffsetSeconds + crossfade;
           for (const variant of el.variants) {
             expect(
               mp3Paths.has(publicKey(variant.url)),
@@ -127,16 +130,12 @@ describe('scene catalogue conformance', () => {
               );
               continue;
             }
+            // The file IS the loop: its length must equal the element's prime
+            // offset so native looping doesn't tick or resync early.
             expect(
-              duration,
-              `${scene.id}/${el.id}/${variant.id}: ${duration}s <= ${floor}s (offset ${el.loopOffsetSeconds} + crossfade ${crossfade})`
-            ).toBeGreaterThan(floor);
-            const margin = duration - floor;
-            if (margin < MARGIN_WARN_SECONDS) {
-              warnings.push(
-                `${scene.id}/${el.id}/${variant.id}: only ${margin.toFixed(1)}s margin over offset+crossfade`
-              );
-            }
+              Math.abs(duration - el.loopOffsetSeconds),
+              `${scene.id}/${el.id}/${variant.id}: ${duration}s != offset ${el.loopOffsetSeconds}s`
+            ).toBeLessThanOrEqual(LENGTH_TOLERANCE_SECONDS);
           }
         }
       });

@@ -3,7 +3,7 @@
   "originalFilename": "rain-pavement-2.mp3",
   "license": "personal-use",
   "downloadedAt": "2026-05-16",
-  "trimmedTo": "540s",
+  "trimmedTo": "521s",
   "outputFormat": "48 kHz / 192 kbps / stereo MP3",
-  "notes": "Re-encoded from user-provided source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3. 2026-06-12: acrossfade-extended 525s->540s (acrossfade d=20 with a second copy, re-loudnorm -23 LUFS) so the rain-pavement element clears loopOffset 521 + 5s crossfade with >=10s margin (roadmap step 2.1)."
+  "notes": "Re-encoded from user-provided source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3. 2026-06-12: acrossfade-extended 525s->540s (acrossfade d=20 with a second copy, re-loudnorm -23 LUFS) so the rain-pavement element clears loopOffset 521 + 5s crossfade with >=10s margin (roadmap step 2.1). Seamless-looped to 521s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
 }

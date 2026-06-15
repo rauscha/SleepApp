@@ -1,9 +1,9 @@
 {
   "source": "freetousesounds sound library",
   "originalFilename": "freetousesounds - Royalty Free Ocean Sounds Sri Lanka - 06 WATRSurf-LR_SriLanka-Water, Surf, Crashing, Calm, Powerful Yet Calm Waves, Secluded Sand Beach, No People, 06.ogg",
-  "license": "Free To Use Sounds paid library — derivative works permitted (including commercial), no attribution required. Original sounds may not be redistributed in their original form; the shipped MP3 is a derivative (transcoded + loudnorm-normalized). See https://freetousesounds.com/license-agreement",
+  "license": "Free To Use Sounds paid library \u2014 derivative works permitted (including commercial), no attribution required. Original sounds may not be redistributed in their original form; the shipped MP3 is a derivative (transcoded + loudnorm-normalized). See https://freetousesounds.com/license-agreement",
   "downloadedAt": "2026-05-29",
-  "trimmedTo": "450s",
+  "trimmedTo": "409s",
   "outputFormat": "44.1 kHz / 128 kbps / stereo MP3",
-  "notes": "Sri Lanka east coast crashing surf — second wave layer at a different perspective from the primary Korea-hotel waves. Loudnorm I=-20 LUFS, 44.1 kHz 128 kbps stereo MP3."
+  "notes": "Sri Lanka east coast crashing surf \u2014 second wave layer at a different perspective from the primary Korea-hotel waves. Loudnorm I=-20 LUFS, 44.1 kHz 128 kbps stereo MP3. Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
 }

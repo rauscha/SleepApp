@@ -1,0 +1,11 @@
+{
+  "source": "Pixabay",
+  "originalFilename": "freesound_community-birds-19624.mp3",
+  "license": "Pixabay Content License \u2014 free, no attribution required, commercial use OK",
+  "downloadedAt": "2026-05-12",
+  "trimmedTo": "521s",
+  "outputFormat": "48 kHz / 192 kbps / stereo MP3",
+  "replaceWhen": "once the rest of the app is built",
+  "qualityWarning": "24 kHz / 160 kbps source: birdsong content above 12 kHz lost; mismatches the stereo 48 kHz variant 1",
+  "notes": "Re-encoded from Pixabay source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3. Seamless-looped to 521s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
+}

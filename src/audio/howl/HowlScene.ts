@@ -238,17 +238,38 @@ export class HowlScene {
     this.id = definition.id;
     this.definition = definition;
     this.master = clamp01(master);
-    this.layers = definition.elements.map((el) => {
-      const variant = pickVariant(el);
-      return new HowlLayer(
-        `${definition.id}:${el.id}`,
-        el.label,
-        [resolvePublicUrl(variant.url)],
-        el.defaultVolume,
-        this.master,
-        factory
+    const layers: HowlLayer[] = [];
+    // Synth-bed carrier (the brief's spectral glue): a quiet, seamless,
+    // pre-rendered noise loop per color, 887s (prime, coprime to the element
+    // offsets so it never resyncs with them). It rides underneath like the
+    // old Web-Audio NoiseGenerator bed, just played natively so it survives
+    // the night with everything else.
+    if (definition.synth) {
+      layers.push(
+        new HowlLayer(
+          `${definition.id}:synth-bed`,
+          'Synth bed',
+          [resolvePublicUrl(`/audio/_bed/${definition.synth.color}.mp3`)],
+          definition.synth.defaultVolume,
+          this.master,
+          factory
+        )
       );
-    });
+    }
+    for (const el of definition.elements) {
+      const variant = pickVariant(el);
+      layers.push(
+        new HowlLayer(
+          `${definition.id}:${el.id}`,
+          el.label,
+          [resolvePublicUrl(variant.url)],
+          el.defaultVolume,
+          this.master,
+          factory
+        )
+      );
+    }
+    this.layers = layers;
   }
 
   private outer(): number {

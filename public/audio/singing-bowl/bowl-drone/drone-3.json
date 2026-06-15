@@ -3,8 +3,8 @@
   "stems": "3+1+2+3+1 (75s stems)",
   "license": "Generated locally with Meta audiocraft MusicGen-medium. Weights are CC-BY-NC 4.0 (research/non-commercial), released under audiocraft license. Generated audio is original output; the sidecar records the exact prompt + seed for reproducibility.",
   "generatedAt": "2026-05-31",
-  "trimmedTo": "300s",
+  "trimmedTo": "251s",
   "outputFormat": "44.1 kHz / 128 kbps / stereo MP3 (upmixed from mono 32 kHz)",
-  "notes": "Same 5-segment stitch pattern as drone-1, cycle starts with drone-3 instead.",
+  "notes": "Same 5-segment stitch pattern as drone-1, cycle starts with drone-3 instead. Seamless-looped to 251s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless.",
   "promptHint": "prompt: Himalayan singing bowl held tone, deep resonant drone, mellow fundamental, gentle harmonic shimmer, meditative ambient bed, instrumental only, no percussion, no drums, no rhythm section, no melodic change, steady, seamless"
 }

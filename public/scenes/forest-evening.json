@@ -41,13 +41,13 @@
       "variants": [
         {
           "id": "wind-1",
-          "url": "/audio/forest-day/wind-in-leaves/wind-1.mp3",
-          "attribution": "Pixabay — see /audio/forest-day/wind-in-leaves/wind-1.json for license. Reused across forest-day, forest-night, and forest-evening."
+          "url": "/audio/forest-evening/wind-in-leaves/wind-1.mp3",
+          "attribution": "Pixabay — see /audio/forest-evening/wind-in-leaves/wind-1.json for license. Scene-local copy of the forest-day wind, looped to forest-evening's 409s offset."
         },
         {
           "id": "wind-2",
-          "url": "/audio/forest-day/wind-in-leaves/wind-2.mp3",
-          "attribution": "User-provided — see /audio/forest-day/wind-in-leaves/wind-2.json for license. Reused across forest-day, forest-night, and forest-evening."
+          "url": "/audio/forest-evening/wind-in-leaves/wind-2.mp3",
+          "attribution": "User-provided — see /audio/forest-evening/wind-in-leaves/wind-2.json for license. Scene-local copy of the forest-day wind, looped to forest-evening's 409s offset."
         }
       ]
     },
@@ -61,13 +61,13 @@
       "variants": [
         {
           "id": "birds-1",
-          "url": "/audio/forest-day/distant-birds/birds-1.mp3",
-          "attribution": "Pixabay — see /audio/forest-day/distant-birds/birds-1.json for license. Reused across forest-day and forest-evening; quieter here to suit dusk."
+          "url": "/audio/forest-evening/distant-birds/birds-1.mp3",
+          "attribution": "Pixabay — see /audio/forest-evening/distant-birds/birds-1.json for license. Scene-local copy of the forest-day birds, looped to forest-evening's 521s offset; quieter here to suit dusk."
         },
         {
           "id": "birds-2",
-          "url": "/audio/forest-day/distant-birds/birds-2.mp3",
-          "attribution": "Pixabay — see /audio/forest-day/distant-birds/birds-2.json. Flagged for replacement (24 kHz source)."
+          "url": "/audio/forest-evening/distant-birds/birds-2.mp3",
+          "attribution": "Pixabay — see /audio/forest-evening/distant-birds/birds-2.json. Scene-local copy; looped to 521s. Flagged for replacement (24 kHz source)."
         }
       ]
     },

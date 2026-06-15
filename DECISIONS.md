@@ -268,3 +268,40 @@ never depends on Web Audio while the falling-asleep texture keeps the curated
 primes + synth glue. Decide after a clean overnight read on Path A whether to
 cross back to Web Audio on foreground at all, or retire the Web Audio bed
 entirely.
+
+## Restoring the brief in the Howler engine: bed carrier + file-length-as-loop (2026-06-15)
+
+**Context.** The Howler html5 pivot (prior entry) finally survived a full real
+overnight (6h continuous, no freeze) — but it had dropped two things from the
+brief: the synth-bed spectral glue and the curated prime loop offsets, because
+native HTML5 looping loops the *whole file* rather than a chosen sub-offset.
+Path D (hybrid Web-Audio↔Howler handoff) was rejected: it requires the user to
+remember to enter Nightstand instead of just locking the phone, and forgetting
+= being woken — a hard fail. So we restore the brief *inside* the all-Howler
+engine instead.
+
+**Decisions.**
+1. **Synth-bed carrier = a pre-rendered noise loop.** `tools/loopify-scenes.py`
+   generates a seamless brown/pink/white noise MP3 at 887s (the 5th canonical
+   prime, coprime to the element offsets), loudnorm -23. `HowlScene` plays it
+   as a quiet looping layer (`<scene>:synth-bed`, vol = `synth.defaultVolume`)
+   under every scene — same role as the old Web-Audio NoiseGenerator, now
+   native so it survives the night with the rest.
+2. **The file IS the loop.** Each element's variant files are trimmed to the
+   element's `loopOffsetSeconds` (a distinct prime per element), so native
+   looping gives incommensurate loops whose combined pattern repeats only at
+   the LCM of the primes — tens of hours (Eno). `loopOffsetSeconds` now means
+   "the file's length," not "a sub-offset within a longer file."
+3. **Seamless loop encoding.** Each file's post-loop tail is faded and summed
+   over a faded-in copy of its head (fade+amix wrap, 6s), so native looping has
+   no seam tick. (acrossfade collapses when the overlap equals the clip length;
+   the fade+amix form with three input handles is the reliable recipe.)
+4. **Shared files split per scene.** forest-evening reused forest-day's
+   wind-in-leaves and distant-birds at *different* primes; it now owns
+   scene-local copies so every physical file has exactly one loop length.
+5. **Conformance test updated.** The rule flipped from "variant longer than
+   offset + crossfade" (FileLayer era) to "variant length EQUALS its offset"
+   (native-loop era), within MP3-frame slack.
+
+Re-run `tools/loopify-scenes.py` any time scene audio changes; it is idempotent
+(skips files already at their prime).

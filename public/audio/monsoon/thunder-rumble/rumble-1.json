@@ -1,9 +1,9 @@
 {
   "source": "freetousesounds sound library",
   "originalFilename": "Muffled Thunder Sounds Behind Closed Door - 34 + 06.ogg",
-  "license": "Free To Use Sounds paid library — derivative works permitted (including commercial), no attribution required. Original sounds may not be redistributed in their original form; the shipped MP3 is a derivative (transcoded + loudnorm-normalized). See https://freetousesounds.com/license-agreement",
+  "license": "Free To Use Sounds paid library \u2014 derivative works permitted (including commercial), no attribution required. Original sounds may not be redistributed in their original form; the shipped MP3 is a derivative (transcoded + loudnorm-normalized). See https://freetousesounds.com/license-agreement",
   "downloadedAt": "2026-05-29",
-  "trimmedTo": "560s (events at 60s + 320s + silence)",
+  "trimmedTo": "521s",
   "outputFormat": "44.1 kHz / 128 kbps / stereo MP3",
-  "notes": "Two muffled thunder events from the Indonesia behind-closed-door library, positioned 60s and 320s into a 560s mostly-silent track. 600 Hz low-pass per the rain-on-window convention — rumble only, no sharp cracks. Loudnorm I=-23 LUFS, 44.1 kHz 128 kbps stereo MP3."
+  "notes": "Two muffled thunder events from the Indonesia behind-closed-door library, positioned 60s and 320s into a 560s mostly-silent track. 600 Hz low-pass per the rain-on-window convention \u2014 rumble only, no sharp cracks. Loudnorm I=-23 LUFS, 44.1 kHz 128 kbps stereo MP3. Seamless-looped to 521s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
 }

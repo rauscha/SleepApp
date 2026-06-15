@@ -3,8 +3,8 @@
   "stems": "1+2+1+2+1+2+1 (75s stems)",
   "license": "Generated locally with Meta audiocraft MusicGen-medium. Weights are CC-BY-NC 4.0 (research/non-commercial), released under audiocraft license. Generated audio is original output; the sidecar records the exact prompt + seed for reproducibility.",
   "generatedAt": "2026-05-31",
-  "trimmedTo": "420s",
+  "trimmedTo": "409s",
   "outputFormat": "44.1 kHz / 128 kbps / stereo MP3 (upmixed from mono 32 kHz)",
-  "notes": "Seven-segment alternation of two MusicGen shimmer stems into a 420s loop bed. Exceeds 409s loopOffset + 5s crossfade. Quieter LUFS (-25) than the drone (-23) so the shimmer sits comfortably under the primary bowl drone. Mono->stereo upmix, 44.1 kHz 128 kbps stereo MP3.",
+  "notes": "Seven-segment alternation of two MusicGen shimmer stems into a 420s loop bed. Exceeds 409s loopOffset + 5s crossfade. Quieter LUFS (-25) than the drone (-23) so the shimmer sits comfortably under the primary bowl drone. Mono->stereo upmix, 44.1 kHz 128 kbps stereo MP3. Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless.",
   "promptHint": "prompt: crystal singing bowl, bright sustained overtones, slow shimmering harmonics, high airy timbre, meditation sound bath ambience, instrumental only, no percussion, no drums, no melody, no rhythm, steady, seamless"
 }

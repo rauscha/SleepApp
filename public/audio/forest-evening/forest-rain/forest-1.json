@@ -1,9 +1,9 @@
 {
   "source": "freetousesounds sound library",
   "originalFilename": "Tasmanian Forest Atmospheres - 08 (evening, birds chirping, rain dripping from leaves).ogg",
-  "license": "Free To Use Sounds paid library — derivative works permitted (including commercial), no attribution required. Original sounds may not be redistributed in their original form; the shipped MP3 is a derivative (transcoded + loudnorm-normalized). See https://freetousesounds.com/license-agreement",
+  "license": "Free To Use Sounds paid library \u2014 derivative works permitted (including commercial), no attribution required. Original sounds may not be redistributed in their original form; the shipped MP3 is a derivative (transcoded + loudnorm-normalized). See https://freetousesounds.com/license-agreement",
   "downloadedAt": "2026-05-28",
-  "trimmedTo": "271s",
+  "trimmedTo": "251s",
   "outputFormat": "44.1 kHz / 128 kbps / stereo MP3",
-  "notes": "Transcoded from a 192kHz/96kHz OGG source via tools/transcode-scene-audio.sh: stereo down-mix, loudnorm I=-20 LUFS TP=-1.0, 44.1 kHz 128 kbps MP3."
+  "notes": "Transcoded from a 192kHz/96kHz OGG source via tools/transcode-scene-audio.sh: stereo down-mix, loudnorm I=-20 LUFS TP=-1.0, 44.1 kHz 128 kbps MP3. Seamless-looped to 251s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
 }

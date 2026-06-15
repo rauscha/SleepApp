@@ -3,8 +3,8 @@
   "stems": "2+1+2+1+2+1+2 (75s stems)",
   "license": "Generated locally with Meta audiocraft MusicGen-medium. Weights are CC-BY-NC 4.0 (research/non-commercial), released under audiocraft license. Generated audio is original output; the sidecar records the exact prompt + seed for reproducibility.",
   "generatedAt": "2026-05-31",
-  "trimmedTo": "420s",
+  "trimmedTo": "409s",
   "outputFormat": "44.1 kHz / 128 kbps / stereo MP3 (upmixed from mono 32 kHz)",
-  "notes": "Same 7-segment alternation as shimmer-1, swapped starting stem so variant rotation begins with a different timbre.",
+  "notes": "Same 7-segment alternation as shimmer-1, swapped starting stem so variant rotation begins with a different timbre. Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless.",
   "promptHint": "prompt: set of small bronze singing bowls, gentle held tones, slow overtone beating, mid-high airy resonance, meditation ambient bed, instrumental only, no percussion, no drums, no melody, no rhythm, steady, seamless"
 }
