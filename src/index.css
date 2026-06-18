@@ -54,11 +54,15 @@
 }
 
 html, body, #root {
-  /* dvh keeps the viewport stable as mobile chrome (URL bar) shrinks/grows
-   * so we never leak content under the system bar. height:100% as a
-   * safety net for browsers that don't know about dvh. */
+  /* svh = the SMALLEST viewport height (never taller than the currently
+   * visible area). In a standalone PWA svh/dvh/lvh coincide, so there's no
+   * steady-state cost — but on a COLD PWA launch the dynamic viewport (dvh)
+   * can resolve taller than what's actually visible for the first paint,
+   * which pushed the shrink-0 bottom nav below the fold until a relaunch
+   * (B6). Sizing to svh keeps the app shell — and the nav with it — inside
+   * the visible region at all times. height:100% is the pre-svh fallback. */
   height: 100%;
-  height: 100dvh;
+  height: 100svh;
   margin: 0;
   padding: 0;
   /* Prevent Chrome/Android pull-to-refresh from wiping app state. Applied
