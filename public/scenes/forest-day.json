@@ -56,7 +56,7 @@
       "label": "Distant birds",
       "loopOffsetSeconds": 409,
       "crossfadeSeconds": 5,
-      "defaultVolume": 0.35,
+      "defaultVolume": 0.25,
       "variantRotation": "random",
       "variants": [
         {
