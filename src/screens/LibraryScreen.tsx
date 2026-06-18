@@ -14,7 +14,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isBedtime } from '../lib/bedtime';
 import { resolvePublicUrl } from '../lib/baseUrl';
 import { storyExcerpt } from '../lib/storyExcerpt';
-import { getStoryAudio, listStories, deleteStory } from '../storage';
+import {
+  getStoryAudio,
+  listStories,
+  deleteStory,
+  isStoragePersistent,
+} from '../storage';
 import type {
   BundledStoryMetadata,
   MeditationMetadata,
@@ -83,6 +88,16 @@ export function LibraryScreen({
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [storyError, setStoryError] = useState<{ id: string; message: string } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // Distinct from per-story playback errors: this is a failure to LIST the
+  // saved stories at all. It used to be swallowed (.catch(console.error)),
+  // so a transient IndexedDB read failure — e.g. right after the OS resumes a
+  // backgrounded PWA overnight — showed an empty list that looked like the
+  // stories had vanished (B7). Surface it with a retry instead.
+  const [storyListError, setStoryListError] = useState<string | null>(null);
+  // Whether this origin's storage is persistent. null = not yet checked.
+  // When false, saved stories can be evicted by the OS under storage
+  // pressure, so we warn and point at Export (B7).
+  const [persistent, setPersistent] = useState<boolean | null>(null);
 
   // Re-evaluate the bedtime window once a minute so the Generate CTA
   // flips disable state cleanly across the 21:00 / 06:00 boundaries
@@ -104,12 +119,52 @@ export function LibraryScreen({
   }, []);
 
   const refreshStories = useCallback(() => {
-    listStories().then(setStories).catch(console.error);
+    listStories()
+      .then((s) => {
+        setStories(s);
+        setStoryListError(null);
+      })
+      .catch((err) => {
+        // Don't clobber an already-loaded list with [] on a transient read
+        // failure — keep whatever we last showed and surface a retry. An
+        // empty list that's really empty still renders the EmptyState.
+        console.error('[LibraryScreen] listStories failed:', err);
+        setStoryListError(
+          err instanceof Error ? err.message : String(err)
+        );
+      });
   }, []);
 
   useEffect(() => {
     if (tab === 'stories') refreshStories();
   }, [tab, refreshStories]);
+
+  // Re-read the saved stories (and re-check storage persistence) whenever the
+  // app returns to the foreground. A PWA resumed after the OS suspended it
+  // overnight may have failed its initial read or had its IndexedDB connection
+  // dropped; without this the Stories tab can sit on a stale/empty list until
+  // a manual reload (B7, the "stories disappeared at night" report).
+  useEffect(() => {
+    const onForeground = () => {
+      if (document.visibilityState === 'visible' && tab === 'stories') {
+        refreshStories();
+        void isStoragePersistent().then(setPersistent);
+      }
+    };
+    document.addEventListener('visibilitychange', onForeground);
+    window.addEventListener('focus', onForeground);
+    return () => {
+      document.removeEventListener('visibilitychange', onForeground);
+      window.removeEventListener('focus', onForeground);
+    };
+  }, [tab, refreshStories]);
+
+  // Check storage persistence when the Stories tab is shown. If storage is
+  // not persistent, generated stories can be evicted under pressure, so we
+  // warn and steer the user toward Export.
+  useEffect(() => {
+    if (tab === 'stories') void isStoragePersistent().then(setPersistent);
+  }, [tab]);
 
   const handlePlayMeditation = useCallback(
     (m: MeditationMetadata) => {
@@ -300,7 +355,29 @@ export function LibraryScreen({
               </p>
             )}
           </div>
-          {bundledStories.length === 0 && stories.length === 0 && (
+          {storyListError && (
+            <div className="mb-4 px-1">
+              <p className="text-ember-400 body-text">
+                Couldn't load your saved stories. They're not gone — this is a
+                read error.
+              </p>
+              <button
+                onClick={refreshStories}
+                className="ui-label text-moon-300 hover:text-moon-200 mt-1"
+                style={{ minHeight: 44 }}
+              >
+                Try again
+              </button>
+            </div>
+          )}
+          {persistent === false && stories.length > 0 && (
+            <p className="ui-label text-stone-300 italic mb-4 px-1">
+              Your device hasn't granted permanent storage, so it may clear
+              generated stories to free space. Export the ones you want to keep
+              (↓ on each card).
+            </p>
+          )}
+          {bundledStories.length === 0 && stories.length === 0 && !storyListError && (
             <EmptyState
               heading="No stories yet"
               body="Add your ElevenLabs and Anthropic API keys in Settings, then generate a story."

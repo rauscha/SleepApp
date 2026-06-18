@@ -18,6 +18,7 @@ export {
   saveStoryAudio,
   getStoryAudio,
   requestPersistentStorage,
+  isStoragePersistent,
 } from './assets';
 export {
   getAnthropicApiKey,

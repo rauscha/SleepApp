@@ -12,6 +12,7 @@ import {
   deleteStory,
   getStory,
   getStoryAudio,
+  isStoragePersistent,
   listStories,
   requestPersistentStorage,
   saveStory,
@@ -115,5 +116,39 @@ describe('requestPersistentStorage', () => {
     setStorage({ persisted: async () => false, persist });
     expect(await requestPersistentStorage()).toBe(true);
     expect(persist).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('isStoragePersistent', () => {
+  const original = Object.getOwnPropertyDescriptor(navigator, 'storage');
+  function setStorage(value: unknown) {
+    Object.defineProperty(navigator, 'storage', { configurable: true, value });
+  }
+  afterEach(() => {
+    if (original) Object.defineProperty(navigator, 'storage', original);
+    else setStorage(undefined);
+  });
+
+  it('returns false when the StorageManager API is unavailable', async () => {
+    setStorage(undefined);
+    expect(await isStoragePersistent()).toBe(false);
+  });
+
+  it('reflects the persisted() result and never prompts', async () => {
+    const persist = vi.fn(async () => true);
+    setStorage({ persisted: async () => true, persist });
+    expect(await isStoragePersistent()).toBe(true);
+    setStorage({ persisted: async () => false, persist });
+    expect(await isStoragePersistent()).toBe(false);
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it('returns false (treats unknown as not-safe) when persisted() throws', async () => {
+    setStorage({
+      persisted: async () => {
+        throw new Error('nope');
+      },
+    });
+    expect(await isStoragePersistent()).toBe(false);
   });
 });

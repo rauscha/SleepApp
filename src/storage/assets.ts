@@ -44,6 +44,25 @@ export async function requestPersistentStorage(): Promise<boolean> {
   }
 }
 
+/**
+ * Report whether this origin's storage is currently PERSISTENT (i.e. exempt
+ * from best-effort eviction). Read-only — never prompts. Used to warn the
+ * user when a generated story is at risk of being reclaimed by the OS so we
+ * can nudge them to export it.
+ *
+ * Returns false when the API is unavailable (treat unknown as "not safe").
+ */
+export async function isStoragePersistent(): Promise<boolean> {
+  try {
+    const storage =
+      typeof navigator !== 'undefined' ? navigator.storage : undefined;
+    if (!storage?.persisted) return false;
+    return await storage.persisted();
+  } catch {
+    return false;
+  }
+}
+
 function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
   const promise = new Promise<IDBDatabase>((resolve, reject) => {

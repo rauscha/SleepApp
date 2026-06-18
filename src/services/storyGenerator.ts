@@ -32,7 +32,12 @@
 // would need ffmpeg.wasm — heavy, slow, and unnecessary for the seam
 // quality we need on a sleep story where the listener is drifting off.
 
-import { deleteStory, saveStory, saveStoryAudio } from '../storage';
+import {
+  deleteStory,
+  requestPersistentStorage,
+  saveStory,
+  saveStoryAudio,
+} from '../storage';
 import type { StoryMetadata } from '../storage/types';
 
 // ---------------------------------------------------------------------------
@@ -497,6 +502,15 @@ export async function generateStory(
 
   // --- Step 3: Save ---
   onProgress?.({ stage: 'saving', message: 'Saving…' });
+
+  // Ask for persistent storage at the moment we're about to commit critical,
+  // expensive data — and from within the generation gesture. This is the
+  // browser-recommended time to request it (web.dev): far likelier to be
+  // granted here than from the page-load bootstrap call, and a grant exempts
+  // the story audio below from best-effort eviction (the overnight
+  // disappearing-story bug, B7). Best-effort: never block a save on it.
+  await requestPersistentStorage().catch(() => false);
+
   const meta = buildStoryMetadata({
     id: makeStoryId(),
     theme,
