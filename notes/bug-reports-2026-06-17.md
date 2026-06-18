@@ -8,6 +8,29 @@ Status legend: `[ ]` open · `[~]` partially understood · `[x]` done.
 
 ---
 
+### Overnight build update — 2026-06-18
+
+Autonomous pass landed the safe, verifiable fixes; the audio bugs are
+blocked on assets we don't have in-repo.
+
+- **B5 — done.** Forest Day birds 0.35 → 0.25.
+- **B6 — fix shipped, needs device-verify.** Shell sized to `100svh` so the
+  nav can't fall off a cold launch.
+- **B7 — mitigations shipped, root-cause still device-dependent.** Stop
+  swallowing `listStories()` errors (+ retry + re-read on resume); request
+  persistence from the generate gesture; warn + steer to Export when storage
+  isn't persistent. The morning diagnostic (check the `storage-persist` log
+  value on the device) still decides whether eviction actually fired.
+- **B1–B4 — blocked on source audio.** The shipped scene MP3s are already
+  trimmed in place; there are **no untrimmed originals in the repo**, and
+  `loopify-scenes.py` skips files already at their prime. Removing the
+  Forest-Night drone (B1), re-cutting to similar A→B points (B3), and fixing
+  the Ocean swell seam (B4) all need the originals + ears. The equal-power
+  curve fix (B2) is specced and ready to apply to `loopify` once the sources
+  are located. **First morning step: find/restore the pre-trim source clips.**
+
+---
+
 ## B1 — Forest Night: "wind in leaves" has an incongruous car/plane sound `[ ]`
 
 **Symptom.** In *Forest, night* the `wind-in-leaves` layer contains a low
@@ -155,7 +178,7 @@ ear after re-looping.
 
 ---
 
-## B5 — Forest Day: birds too loud by default `[ ]` (quick win)
+## B5 — Forest Day: birds too loud by default `[x]` (done 2026-06-18 — 0.35→0.25)
 
 **Symptom.** In *Forest, midday* the `distant-birds` layer sits too hot at its
 default. Dial it down for the default mix.
