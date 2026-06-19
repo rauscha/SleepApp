@@ -1,61 +1,62 @@
-# Pending decisions
+# Pending decisions / queued actions
 
-Items waiting on your input or queued for the next session.
-Refreshed 2026-06-06 (evening).
+Refreshed 2026-06-16. Older pre-pivot items have been resolved or folded into
+the Howler pivot and the v1.1 roadmap — see the note at the bottom.
 
-## 0. ~~Regenerate stories on the chunked path~~ — DONE
-The chunked-TTS PCM normalization (this morning's `a2e0590`) turned out to
-have a deeper bug: `output_format` was sent in the request body instead of
-the URL query string, so stories came back as pure noise. Fixed in `ad46e7b`
-(query-param + a content-type guard). Regenerated a story after deploy →
-confirmed working. Any chunked-path story generated before `ad46e7b` is noise
-in IndexedDB — delete and regenerate if you still have one.
+## 1. Synthesize the expanded meditation catalogue (ACTION — needs your key)
 
-## 1. Device-test all three bed/story items (still pending)
-One overnight pass covers:
-- Story-gen sleep fix (`52ec0cc`): generate a story, screen sleeps mid-run —
-  should finish without hanging.
-- Content backgrounds + singing-bowl bed (`cd48c24` + `b766f8b`): bundled
-  story plays bed underneath; bed continues after narration ends; back-out
-  leaves bed running. Meditation bed stops with the meditation.
-- Background slider + bed-keeps-alive (`67eaabf`): fall asleep to a story —
-  bed should still be playing in the morning. Is 50% the right slider default?
-Smallest red flag is most informative — flag the symptom, don't self-diagnose.
+Scripts for all 10 meditations are written and committed (`a0decb7`). The
+audio is not generated yet. Set `ELEVEN_LABS_API_KEY`, then run these from the
+repo root (needs `npx tsx`). The tool writes each MP3, loudness-normalizes it,
+and updates `public/meditations/index.json`.
 
-## 2. ~~Check title on generated story~~ — RESOLVED
-Stories now get short Claude-supplied titles (the one regenerated this session,
-"The Last Light, Counted", is a proper title, not raw theme text). No action.
+Re-render the existing 3 (metadata preserved; `--voice` MUST match original):
+```
+npx tsx tools/gen-meditation.ts --id body-scan-01 --voice hush  --script public/meditations/body-scan-01.txt
+npx tsx tools/gen-meditation.ts --id breath-01    --voice ember --script public/meditations/breath-01.txt
+npx tsx tools/gen-meditation.ts --id forest-01    --voice glen  --script public/meditations/forest-01.txt
+```
 
-## 3. Residual wake-lock gap (follow-up commit, not blocking)
-If you back out of ContentPlayerScreen while a story-style continue-bed is
-still running, Library/Tonight don't own a wake lock. Fix: coordinator-owned
-keep-alive that engages whenever the coordinator has a current scene,
-independent of which screen is mounted. Queue for a quiet session.
+Generate the 7 new ones:
+```
+npx tsx tools/gen-meditation.ts --id tense-and-release  --title "Tense and release"  --style body-scan     --voice hush  --script public/meditations/tense-and-release.txt  --description "Each muscle pulls gently tight for a breath, then lets go all at once, until the body forgets how to hold on."
+npx tsx tools/gen-meditation.ts --id lake-at-dusk       --title "The lake at dusk"    --style visualization --voice ember --script public/meditations/lake-at-dusk.txt       --description "A mirror-still lake as the last light leaves it, the mist settling, the water holding everything quiet."
+npx tsx tools/gen-meditation.ts --id warm-room          --title "The warm room"       --style visualization --voice glen  --script public/meditations/warm-room.txt          --description "A low fire, a heavy blanket, the dark soft against the windows — and you, the last one awake, with nothing left to tend."
+npx tsx tools/gen-meditation.ts --id long-exhale        --title "The long exhale"     --style breath-focus  --voice hush  --script public/meditations/long-exhale.txt        --description "The out-breath stretches longer than the in, again and again, until letting go is the only thing left to do."
+npx tsx tools/gen-meditation.ts --id down-the-staircase --title "Down the staircase"  --style visualization --voice ember --script public/meditations/down-the-staircase.txt --description "A wide, soft staircase into the warm dark, one slow step down with every breath, until there is nowhere lower to go."
+npx tsx tools/gen-meditation.ts --id quiet-shuffle      --title "The quiet shuffle"   --style visualization --voice glen  --script public/meditations/quiet-shuffle.txt      --description "A slow drift of small, unrelated images with no thread to follow — the mind, given nothing to solve, finally lets go."
+npx tsx tools/gen-meditation.ts --id under-a-slow-sky   --title "Under a slow sky"    --style visualization --voice hush  --script public/meditations/under-a-slow-sky.txt   --description "Lying back beneath a vast, turning night sky, the ground letting go, the body growing weightless among the stars."
+```
 
-## 4. ~~Signal interruption hunting~~ — DROPPED
-User decision: edge case, not worth pursuing for personal use.
+After they're generated, ping me and I'll: bump `CACHE_VERSION` in
+`public/sw.js` (the re-rendered 3 reuse filenames, so the cache-first SW would
+otherwise serve stale audio), commit `public/meditations/`, and check off
+roadmap 6.5.
 
-## 5. ~~Singing-bowl bed for meditations~~ — DONE
-## 6. ~~Content backgrounds (stories)~~ — DONE
-## 7. ~~Secondary-button consolidation~~ — DONE
-## 8. ~~Singing-bowl card photo~~ — DONE
-## 9. ~~Story title from Claude~~ — DONE
-## 10. ~~Stop-all button in ContentPlayerScreen~~ — DONE
-## 13. ~~PWA bottom nav missing in Android standalone~~ — DONE (`7e1f3c2`)
-## 14. ~~Chunked-TTS stories play as noise~~ — DONE (`ad46e7b`)
+## 2. Remaining v1.0 roadmap items (your input / hardware)
+- **4.3 [ASK]** — replace 3 off-brief photos (singing-bowl Buddha statue,
+  daylight forest-day, near-white monsoon). You source/pick; I optimize +
+  tonal-grade + update NOTICES.md.
+- **5.2 [DEVICE]** — device pass (PWA install, iOS Safari, overnight on the
+  Howler engine), then bump `version` to `1.0.0`, tag, append DECISIONS.md.
 
-## 11. Litter to clear during "deferred clean-up work" (low priority)
-- **Worktree dirs**: `.git/worktrees/` can't be deleted (Drive holds handles)
-  — every git op prints ~16 "Permission denied" lines. Cosmetic.
-- **Remote-tracking refs bloated** to ~1000 duplicate `origin/main` entries.
-  `git branch -a` floods. Cosmetic; push/pull of main unaffected.
-- **3 stray local branches** (`claude/objective-kirch-e41ce1`,
-  `claude/optimistic-khayyam-1e864b`, `backup/pre-rebase-2026-05-30`),
-  all 0 commits ahead of main — safe to delete.
-- To clean: only when you say "deferred clean-up work" — pause Drive sync,
-  `git worktree prune`, `rm -rf .claude/worktrees/* .git/worktrees/*`,
-  `git remote prune origin`, delete stray branches.
+## 3. Self-voice clone (when ready)
+You're cloning your own voice in ElevenLabs to narrate these. Once you have
+the voice ID, I'll add it to `VOICE_IDS` in `tools/gen-meditation.ts` and the
+`VITE_VOICE_*` env so you can synthesize any meditation with `--voice <yours>`.
 
-## 12. Cleanup chore (whenever)
+## 4. Cleanup chores (low priority, only on "deferred clean-up work")
+- Worktree litter under `.git/worktrees/` + `.claude/worktrees/` (Drive holds
+  handles — `prune`/`rm` fail with Permission denied; cosmetic).
+- `git remote prune origin` (remote-tracking refs bloated); delete any stray
+  `claude/*` branches that are 0 ahead of main.
 - `rm public/meditations/*.pre-loudnorm.mp3 public/stories/*.pre-loudnorm.mp3`
-  — gitignored loudnorm backups, safe to delete.
+  (gitignored loudnorm backups, if present).
+
+---
+**Superseded (pre-pivot, 2026-06-06 list):** the old "device-test the bed/story
+items" and "residual wake-lock gap in ContentPlayerScreen" decisions were tied
+to the Web Audio overnight path that the Howler pivot replaced. Overnight
+survival is now confirmed (6h, PR #13); session-owned protections were
+rewritten in `HowlScenePlayer`. Any remaining device validation is folded into
+roadmap 5.2. See DECISIONS.md for the pivot record.
