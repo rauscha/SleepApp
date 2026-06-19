@@ -24,7 +24,21 @@
 - **Resolved roadmap 6.5**: invest in meditations (not cut). Hand-wrote 7 new
   sleep-meditation scripts (distinct techniques: PMR, 2 breath, 4
   visualization, 1 cognitive-shuffle), expanded all to ~8 min, committed
-  `a0decb7`. Existing 3 scripts left unchanged.
+  `bb4a046`. Existing 3 scripts left unchanged.
+
+## Also landed on main (overnight cloud build — not this session)
+While this session ran, an overnight listening/build batch pushed to
+`origin/main` (commits `210c363`..`56262df`); I rebased my two commits on top
+of it. Status (full notes in `notes/bug-reports-2026-06-17.md`):
+- **B5 done** (Forest Day birds 0.35→0.25). **B6** app-shell→`100svh` fix
+  shipped, needs device-verify (not a v1.0 blocker). **B7** story-durability
+  mitigations shipped — but root cause is device-dependent and it is a
+  *possible data loss* (a generated story, "astronomer", vanished overnight).
+- **B1–B4 are BLOCKED on source audio** — loop-seam/level defects (Forest-Night
+  plane artifact, linear→equal-power loop crossfade for `loopify`, mid-clip A→B
+  loop points, Ocean-Night swell seam) that need the original scene audio +
+  your ears. Branch `claude/forest-night-audio-crossfade-f5w5ws` exists for
+  this (no open PR). See PENDING-DECISIONS.
 
 ## Next up
 1. **Synthesize the meditations** (needs `ELEVEN_LABS_API_KEY`). Run the
@@ -48,5 +62,9 @@
   quiet-shuffle, whose per-image pauses the estimate ignores).
 - **SW cache bump is mandatory** when committing the re-rendered 3 (same
   filenames) or the old cached audio sticks on devices.
+- **B7 (overnight): possible story data loss** — mitigations shipped, root
+  cause device-dependent; watch whether generated stories vanish.
+- **B1–B4 audio-seam bugs need your source audio** — not fixable in-repo from
+  the trimmed MP3s. See PENDING-DECISIONS.
 - Worktree/Drive "Permission denied" spam on git ops is expected and
   cosmetic. Safe = committed + pushed on `main` (it is).

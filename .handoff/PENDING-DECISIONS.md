@@ -53,6 +53,23 @@ the voice ID, I'll add it to `VOICE_IDS` in `tools/gen-meditation.ts` and the
 - `rm public/meditations/*.pre-loudnorm.mp3 public/stories/*.pre-loudnorm.mp3`
   (gitignored loudnorm backups, if present).
 
+## 5. Overnight audio-seam bugs B1–B4 (blocked on your source audio)
+From the 2026-06-17 overnight listening session
+(`notes/bug-reports-2026-06-17.md`). Loop-seam/level defects in shipped scenes
+that need the **original source audio + your ears** — not fixable from the
+in-repo trimmed MP3s:
+- **B1** Forest Night "wind in leaves" has an incongruous car/plane sound —
+  pick A→B loop points that exclude it.
+- **B2** Loop wrap uses a LINEAR crossfade; should be EQUAL-POWER. Specced and
+  ready to apply to `tools/loopify-scenes.py` once sources are available.
+- **B3** Choose mid-clip A→B loop points that are sonically similar (makes B2's
+  crossfade inaudible and routes around B1).
+- **B4** Ocean Night: sharp cutoff at the loop end on the swelling wave — land
+  the seam in a quiet trough (B3) + equal-power wrap (B2).
+Branch `claude/forest-night-audio-crossfade-f5w5ws` exists for this (no open
+PR). B5 is done; B6/B7 mitigations shipped — **B7 is a possible-data-loss watch
+item** (a generated story vanished overnight).
+
 ---
 **Superseded (pre-pivot, 2026-06-06 list):** the old "device-test the bed/story
 items" and "residual wake-lock gap in ContentPlayerScreen" decisions were tied
