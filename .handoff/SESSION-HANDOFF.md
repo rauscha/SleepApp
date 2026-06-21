@@ -8,7 +8,10 @@
   two pieces of follow-up: reconciled `CLAUDE.md` to the new engine, and
   expanded the **meditation catalogue from 3 to 10** by hand-writing 7 new
   scripts. The scripts are committed; their **audio is not generated yet** —
-  that's the top next action and it needs your ElevenLabs key.
+  that's one open action (needs your ElevenLabs key). **Also queued and now top
+  priority:** a scene-audio re-cut batch — Andrew listened through all 44 layers
+  on 2026-06-21 and flagged 15 (incl. rebuilding singing-bowl from real
+  recordings); see PENDING-DECISIONS #0 + `notes/scene-audio-flags-2026-06-21.md`.
 
 ## Done this session
 - **Caught up on the Howler pivot** (PRs #12/#13): production scene bed now

@@ -38,8 +38,9 @@ All five layers bad; the locally-generated bed doesn't work:
 - bowl-drone / drone-3 (251s) — "ghost music"
 - bowl-shimmer / shimmer-1 (409s) — wrong character (asian flutes/pipes)
 - bowl-shimmer / shimmer-2 (409s) — old-school mp3 warble
-→ REBUILD from the 11 real singing-bowl recordings in the dump (decision pending),
-or cut the scene. NB: singing-bowl is the meditation sound-bath bed.
+→ **DECIDED 2026-06-21: REBUILD from the 11 real singing-bowl recordings in the
+dump** (audiocraft MusicGen bed rejected outright). NB: singing-bowl is the
+meditation sound-bath bed, so this also matters for the meditation work.
 
 ## Structural knock-ons
 - Scrapped variants (forest wind-2, forest-evening wind-2) need fresh

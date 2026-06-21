@@ -1,7 +1,27 @@
 # Pending decisions / queued actions
 
-Refreshed 2026-06-16. Older pre-pivot items have been resolved or folded into
+Refreshed 2026-06-21. Older pre-pivot items have been resolved or folded into
 the Howler pivot and the v1.1 roadmap — see the note at the bottom.
+
+## 0. Scene-audio re-cut batch — TOP of the next session (2026-06-21)
+Andrew listened through all 44 shipped scene layers in the audio-scope
+dashboard and flagged 15. **Full per-file plan: `notes/scene-audio-flags-2026-06-21.md`.**
+Sources are in the gitignored `raw-sounds/` dump (610 files).
+- **DECIDED:** rebuild the whole **singing-bowl** scene from the 11 real bowl
+  recordings in the dump (the audiocraft MusicGen bed was rejected outright).
+- The rest: RECUT clean regions avoiding the flagged artifacts (forest creek-2,
+  wind-1, forest-evening wind-1, birds-2, forest-rain forest-1); REPLACE two
+  scrapped winds (forest wind-2, forest-evening wind-2) from the dump; LEVEL
+  three dynamics fixes (ocean wave-1/wave-2, fireplace close-3).
+- **Workflow is a loop:** produce candidates → Andrew auditions in the dashboard
+  → confirm/re-flag (he caught these by ear; spectrograms alone won't verify).
+- Pipeline: `tools/transcode-scene-audio.sh` + `tools/loopify-scenes.py`; keep
+  each file on its element's prime offset. After re-renders: re-run
+  `sceneCatalogue.test.ts` and bump `CACHE_VERSION` in `public/sw.js`.
+- Audition dashboard to re-serve: `python -m http.server` rooted at the sibling
+  `SleepApp-audio-review/` + `tailscale serve` (was at
+  https://crane-desk.saiga-wage.ts.net/scope/dashboard.html). The local server
+  dies with the session — restart it next time.
 
 ## 1. Synthesize the expanded meditation catalogue (ACTION — needs your key)
 
