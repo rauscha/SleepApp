@@ -377,3 +377,39 @@ source to Opus; no MP3 generation in the scene path.
 - `CLAUDE.md` scene-authoring rule #3 — wording assumes MP3 frames.
 - Meditations/stories (`gen-meditation.ts`, MP3) are voice, not noise-critical —
   out of scope for now; revisit separately.
+
+## YouTube "throttle": a `--download-sections` artifact, NOT a real CDN limit (2026-06-30)
+
+**Corrected same day.** While bulk-sourcing George Vlad's free YouTube
+ambience, every quick test grab (using `--download-sections "*0-30"` etc., to
+keep tests short) landed at a hard ~29 KiB/s ceiling on a 123kbps stream.
+Spent real effort chasing it as a YouTube anti-bulk-download policy: updated
+yt-dlp to nightly, ruled out `web`/`mweb`/`tv` clients (blocked by SABR
+streaming regardless of speed — that part is real, see below), built the
+**bgutil PO-token provider from source** (no Docker — Desktop's credential
+helper doesn't work headless; built via `npx tsc` + `node build/main.js`,
+server on `:4416` — kept, it's useful infra), authenticated with real cookies
+(no help), and installed **Deno 2.9.0** as yt-dlp's JS-runtime for the `n`
+challenge (no help). Concluded — wrongly — that the throttle was baked
+server-side into the signed CDN URL itself, based on a raw `curl` GET on that
+URL also landing at ~30 KiB/s.
+
+**That conclusion was wrong.** The very next step — the real overnight grab
+script, using plain `yt-dlp -x --audio-format opus` with **no
+`--download-sections`** — downloaded all 10 curated videos (656 MB, including
+the *exact same video ID* hammered ~6 times in the slow tests) in under 2.5
+minutes, at 5–46 MiB/s. **The actual cause: `--download-sections` forces
+yt-dlp to pipe the stream through ffmpeg as a single sequential GET, and that
+request pattern (which my "proof" `curl` test also used) gets paced by
+googlevideo's CDN — it isn't a deliberate bulk-download block, it's the same
+pacing that smooths normal video playback.** yt-dlp's native whole-file
+downloader uses a different (ranged/chunked) request pattern that the CDN
+doesn't pace, and gets full speed.
+
+**Actual takeaway:** don't use `--download-sections` to "quickly test" a
+video — it silently produces a misleadingly slow result and wastes
+debugging time. For real grabs, full-file `-x`/`-f` downloads are fast with
+no special tooling needed. The SABR block on `web`/`mweb`/`tv` clients is
+still real (confirmed independently of the speed question) — `android_vr` is
+fine for whole-file downloads. Deno + the bgutil provider are harmless to
+have installed but turned out to be unnecessary for this; not removing them.

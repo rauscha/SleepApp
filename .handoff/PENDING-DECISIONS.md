@@ -13,11 +13,26 @@ DECISIONS.md (2026-06-30 entry) + memory:
 - **SleepApp is now personal-use / non-commercial, for now.** License stops
   being the driver (personal/Pixabay/RemArc all OK again); **audio QUALITY is
   the driver.** Revisit license only if a commercial ship returns.
-- **OPEN TASK:** find + audition a **large, clean, curated, well-tagged audio
-  source — ideally a single producer.** Candidate direction: long-form
-  single-recordist nature-ambience (e.g. George Vlad / Mindful Audio); validate
-  via a wide practitioner search before committing. Cleanliness (loops with
-  minimal surgery) is the pass/fail test klankbeeld flunked.
+- **SOURCE DECIDED 2026-06-30 — George Vlad / Mindful Audio.** Practitioner
+  search (deep-research, 102 agents) ranked him #1; full writeup in
+  `notes/audio-source-research-2026-06-30.md`. Single recordist, pristine
+  remote field recordings, 18+ paid libraries — but his **free YouTube
+  channel** (long-form, often 1-2h+, several explicit 12h "no loop" all-night
+  files) is the same recording quality and was judged not-worth-paying-for
+  for this app (see the Opus-format decision below — the thing that mattered,
+  cleanliness, doesn't improve with the paid 24/96 WAV for a downsampled
+  overnight loop bed). GAPS confirmed: no ocean surface waves, no fireplace,
+  no singing bowls — need a separate source for those three scenes.
+- **GRAB COMPLETE 2026-06-30 18:28** (took ~2.5 min, not overnight — see the
+  corrected throttle finding below). `raw-sounds/_sources/george-vlad/` has
+  all 10 curated long-form videos as **Opus** (656 MB total, no re-encode —
+  see "ship as Opus" decision below): monsoon/rain (2), forest-day (4),
+  forest-night (1), forest-evening (1), pure-wind (2). List/mapping in
+  `_grab-list.tsv` in that dir. **NEXT (not started):** loop-cut to prime
+  offsets via `loopify-scenes.py` (needs an Opus-output update, per decision
+  below), audition, then decide if more videos are needed for
+  ocean/fireplace/singing-bowl (separate source — confirmed gap) or
+  additional forest/wind variety.
 - **RESOLVED 2026-06-30:** the clean-source refresh **SUPERSEDES** the
   2026-06-21 re-cut batch entirely. We are redoing the audio from the new
   source, so:
@@ -43,6 +58,20 @@ DECISIONS.md (2026-06-30 entry) + memory:
   - **Disk watch:** C: is 98% full (~54 GB free); `raw-sounds/` is inside the
     Google-Drive-synced tree, so large grabs there sync up to Drive. Option to
     stage bulk downloads in a non-synced sibling folder instead.
+  - **yt-dlp DOES NOT need slow/overnight handling — DON'T use
+    `--download-sections` for quick tests, that's what caused the apparent
+    throttle.** Full story in DECISIONS.md (2026-06-30, corrected same day):
+    plain `-x`/`-f bestaudio` whole-file downloads hit full CDN speed
+    (5-46 MiB/s) with zero special setup; `--download-sections` (used to keep
+    *test* grabs short) forces an ffmpeg-piped sequential GET that googlevideo
+    paces to ~2x realtime — that's what looked like a hard throttle and burned
+    real debugging time. The `web`/`mweb`/`tv` clients ARE still genuinely
+    blocked (SABR streaming, no downloadable URL) — use the default
+    (`android_vr`) client for whole-file grabs. Leftover-but-harmless tooling
+    from the false trail: **Deno 2.9.0** at `C:\Users\andre\deno\deno.exe`,
+    **bgutil POT provider** at `C:\Users\andre\bgutil-prov\server`
+    (`node build/main.js`, port 4416), yt-dlp on **nightly**. Not needed for
+    normal grabs but harmless to leave installed.
 
 ## 0b. DECIDED — ship scene audio as Opus, not MP3 (2026-06-30)
 Evidence-based call (DECISIONS.md 2026-06-30 entry; A/B in
