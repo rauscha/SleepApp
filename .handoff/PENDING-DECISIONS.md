@@ -44,6 +44,18 @@ DECISIONS.md (2026-06-30 entry) + memory:
     Google-Drive-synced tree, so large grabs there sync up to Drive. Option to
     stage bulk downloads in a non-synced sibling folder instead.
 
+## 0b. DECIDED — ship scene audio as Opus, not MP3 (2026-06-30)
+Evidence-based call (DECISIONS.md 2026-06-30 entry; A/B in
+`raw-sounds/_yt-test/ab/`): MP3@128k brick-walls noise at ~16 kHz; Opus@96k
+(smaller) holds to ~20 kHz and degrades noise gracefully. Ship the new clean
+audio straight to **Opus**, no MP3 hop. Decision made; **implementation not
+started** — touches `tools/loopify-scenes.py` (emit Opus + synth beds),
+`sceneCatalogue.test.ts` (format/length check), scene JSON + `.json` sidecars
+(ext refs), `public/sw.js` (extensions + `CACHE_VERSION` bump), and CLAUDE.md
+rule #3 wording. Pick container (`.ogg`/`.webm`) + bitrate (~96–128k) at impl.
+iOS deferred, but verify Opus-in-`<audio>` before iOS ships. Meditations/stories
+(voice) out of scope for now.
+
 ## 0. Scene-audio re-cut batch — SUPERSEDED 2026-06-30 (kept only for the per-layer quality notes; see 0a)
 Andrew listened through all 44 shipped scene layers in the audio-scope
 dashboard and flagged 15. **Full per-file plan: `notes/scene-audio-flags-2026-06-21.md`.**

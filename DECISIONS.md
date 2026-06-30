@@ -339,3 +339,41 @@ people, cars, birds throughout — requiring so many cuts/edits per file that th
 **Status:** source not yet chosen. Candidate direction: single-producer
 long-form nature-ambience libraries (e.g. George Vlad / Mindful Audio) — to be
 validated by a wide practitioner search before committing.
+
+## Ship scene audio as Opus, not MP3 (2026-06-30)
+
+**Context.** While sourcing clean replacement audio (George Vlad's free YouTube
+catalogue, delivered as ~123k Opus), tested how the codecs handle our worst-case
+signal — broadband noise (rain, water, the synth bed). Evidence in
+`raw-sounds/_yt-test/ab/` (pink-noise + real-rain A/B, spectrograms in
+`notes/audio-source-research-2026-06-30.md` context):
+- The temporal "chunking/swishing" of old 128k MP3 is largely gone with modern
+  LAME — noise texture is smooth now.
+- BUT MP3 @128k still brick-wall lowpasses at **~16 kHz**, discarding the top
+  octave that gives noise its "air"/lushness. **Opus @96k (a smaller file)
+  preserves to ~20 kHz** and degrades noise gracefully (CELT codes band energy +
+  noise-fills rather than punching holes). AAC sits between. For noise the
+  hierarchy is Opus > AAC ≫ MP3, decisively.
+- Our pipeline currently ships MP3, so a clean Opus source would be re-encoded
+  through the weakest link (tandem encoding) right at the noise-critical step.
+
+**Decision.** Ship scene audio (element variants + the synth noise beds) as
+**Opus**, end-to-end, eliminating the MP3 hop. Encode straight from the clean
+source to Opus; no MP3 generation in the scene path.
+- **Target platforms support it:** Chrome, Android, and Howler `html5` all decode
+  Opus natively. (iOS is deferred per platform priority; **CAVEAT for when iOS
+  returns** — verify Opus-in-`<audio>` on the target Safari/iOS version before
+  shipping there; container choice ​— `.ogg`/`.webm`/`.caf` — to be settled then.)
+- Bitrate: ~96–128k Opus is transparent for this material; pick by ear during
+  implementation.
+
+**Implementation surface (follow-on, NOT done yet — decision only):**
+- `tools/loopify-scenes.py` — emit Opus for variants + `_bed/` synth beds
+  (was MP3); pick container (`.ogg`/`.webm`).
+- `src/audio/sceneCatalogue.test.ts` — the prime-length/format conformance check
+  assumes MP3 (frame slack); update for Opus.
+- Scene `.json` sidecars + `public/scenes/*.json` — filename/ext references.
+- `public/sw.js` — cache the new extensions + bump `CACHE_VERSION`.
+- `CLAUDE.md` scene-authoring rule #3 — wording assumes MP3 frames.
+- Meditations/stories (`gen-meditation.ts`, MP3) are voice, not noise-critical —
+  out of scope for now; revisit separately.
