@@ -11,10 +11,12 @@ commit) **built the LEVEL slice of that batch** and never recorded it. So:
   audition dashboard, sit in `raw-sounds/_candidates/scene-audio-2026-06-21/`
   (gitignored, intact — nothing lost). Built by untracked, not-for-commit
   `tools/_build-level-candidates.sh`.
-- **They are pending audition** — that's the immediate next action. Full detail
-  + promote-on-pass steps in `PENDING-DECISIONS.md` #0.
-- The RECUT/REPLACE/singing-bowl-REBUILD parts of the batch are still not
-  started.
+- **RETIRED 2026-06-30** — do NOT audition or promote them. The whole
+  2026-06-21 re-cut batch is superseded by the clean-source refresh (we're
+  redoing the audio wholesale from a new producer); these candidates and the
+  rest of `_candidates/` are now just cleanup litter. See `PENDING-DECISIONS.md`
+  #0a for the governing direction. Kept this note only so the build isn't
+  rediscovered and mistaken for live work.
 
 ## STATE (read this first)
 - Branch: `main`, clean, synced with `origin/main`. Ahead/behind 0/0.
@@ -60,9 +62,12 @@ of it. Status (full notes in `notes/bug-reports-2026-06-17.md`):
   this (no open PR). See PENDING-DECISIONS.
 
 ## Next up
-0. **(NOW TOP) Audition the 3 built scene-audio LEVEL candidates** — see the
-   "LEFTOVER WORK" block above + `PENDING-DECISIONS.md` #0. The batch is the
-   declared top priority and this slice is already built and waiting on ears.
+0. **(NOW TOP) Clean-source audio refresh** — replace the dirty scene layers
+   wholesale from a new large, clean, single-producer source. A practitioner
+   search (deep-research) is running to pick the source; Andrew has OK'd
+   downloading good candidates to `raw-sounds/`. This SUPERSEDES the 2026-06-21
+   re-cut batch (and its LEVEL candidates — retired). See `PENDING-DECISIONS.md`
+   #0a.
 1. **Synthesize the meditations** (needs `ELEVEN_LABS_API_KEY`). Run the
    `gen-meditation.ts --script ...` commands in `PENDING-DECISIONS.md` #1 —
    re-render the 3 existing + generate the 7 new — and QC the voices.

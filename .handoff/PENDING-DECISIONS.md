@@ -18,13 +18,22 @@ DECISIONS.md (2026-06-30 entry) + memory:
   single-recordist nature-ambience (e.g. George Vlad / Mindful Audio); validate
   via a wide practitioner search before committing. Cleanliness (loops with
   minimal surgery) is the pass/fail test klankbeeld flunked.
-- **OPEN QUESTION:** does this clean-source refresh **supersede** the 2026-06-21
-  re-cut batch below, or run alongside it? The batch's *license* rationale is
-  moot now, but its *quality* findings (15 dirty layers) still stand, and the
-  built LEVEL candidates may be usable stopgaps. Decide before spending more on
-  the batch.
+- **RESOLVED 2026-06-30:** the clean-source refresh **SUPERSEDES** the
+  2026-06-21 re-cut batch entirely. We are redoing the audio from the new
+  source, so:
+  - The built LEVEL candidates (ocean wave-1/wave-2, fireplace close-3) are
+    **retired** — not needed, don't audition or promote them. They can be
+    deleted with the rest of the `_candidates/` litter on a cleanup pass.
+  - The batch's RECUT/REPLACE/REBUILD plan is **dropped** as a plan; its only
+    lasting value is the per-layer *quality* notes in
+    `notes/scene-audio-flags-2026-06-21.md`, which document what each new
+    layer needs to beat.
+- **Andrew granted permission (2026-06-30) to download candidate audio to
+  disk** from the running practitioner search's recommendations — fetch good
+  candidates into the `raw-sounds/` dump (gitignored), then audition before
+  committing any into `public/audio/`.
 
-## 0. Scene-audio re-cut batch — (was TOP 2026-06-21; see 0a — rationale now partly superseded)
+## 0. Scene-audio re-cut batch — SUPERSEDED 2026-06-30 (kept only for the per-layer quality notes; see 0a)
 Andrew listened through all 44 shipped scene layers in the audio-scope
 dashboard and flagged 15. **Full per-file plan: `notes/scene-audio-flags-2026-06-21.md`.**
 Sources are in the gitignored `raw-sounds/` dump (610 files).
