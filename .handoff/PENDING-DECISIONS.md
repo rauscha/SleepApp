@@ -3,7 +3,28 @@
 Refreshed 2026-06-21. Older pre-pivot items have been resolved or folded into
 the Howler pivot and the v1.1 roadmap — see the note at the bottom.
 
-## 0. Scene-audio re-cut batch — TOP of the next session (2026-06-21)
+## 0a. GOVERNING DIRECTION — clean single-producer audio source (2026-06-30)
+Supersedes the licensing rationale below. Two pivots, both now recorded in
+DECISIONS.md (2026-06-30 entry) + memory:
+- **klankbeeld is REJECTED.** The plan to refresh every layer onto one clean
+  CC BY 4.0 source (klankbeeld, 22 files staged in GDrive `Personal-Apps-Sounds`)
+  failed on contact: the recordings were too dirty (people/cars/birds), needing
+  too many cuts per file. Premise collapsed.
+- **SleepApp is now personal-use / non-commercial, for now.** License stops
+  being the driver (personal/Pixabay/RemArc all OK again); **audio QUALITY is
+  the driver.** Revisit license only if a commercial ship returns.
+- **OPEN TASK:** find + audition a **large, clean, curated, well-tagged audio
+  source — ideally a single producer.** Candidate direction: long-form
+  single-recordist nature-ambience (e.g. George Vlad / Mindful Audio); validate
+  via a wide practitioner search before committing. Cleanliness (loops with
+  minimal surgery) is the pass/fail test klankbeeld flunked.
+- **OPEN QUESTION:** does this clean-source refresh **supersede** the 2026-06-21
+  re-cut batch below, or run alongside it? The batch's *license* rationale is
+  moot now, but its *quality* findings (15 dirty layers) still stand, and the
+  built LEVEL candidates may be usable stopgaps. Decide before spending more on
+  the batch.
+
+## 0. Scene-audio re-cut batch — (was TOP 2026-06-21; see 0a — rationale now partly superseded)
 Andrew listened through all 44 shipped scene layers in the audio-scope
 dashboard and flagged 15. **Full per-file plan: `notes/scene-audio-flags-2026-06-21.md`.**
 Sources are in the gitignored `raw-sounds/` dump (610 files).

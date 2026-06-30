@@ -305,3 +305,37 @@ engine instead.
 
 Re-run `tools/loopify-scenes.py` any time scene audio changes; it is idempotent
 (skips files already at their prime).
+
+## Audio sourcing: drop commercial ambition, go personal-use; klankbeeld rejected for dirtiness (2026-06-30)
+
+**Context.** Two-step evolution. (1) A 2026-06-23 licensing review concluded the
+shipped scene audio (freetousesounds / Pixabay / user "personal-use" files) was
+both amateur-quality AND license-unsafe for a *commercial* SleepApp — the real
+test for sound-as-product is "standalone redistribution OK," which Pixabay and
+freetousesounds both fail. The plan became: refresh every layer onto a single
+clean CC BY 4.0 source, **klankbeeld** (a professional field recordist on
+freesound). 22 files were staged in Google Drive `Personal-Apps-Sounds`.
+(2) On processing them, klankbeeld's recordings turned out **too dirty** —
+people, cars, birds throughout — requiring so many cuts/edits per file that the
+"single clean source" premise collapsed. klankbeeld is **rejected**.
+
+**Decision.**
+1. **SleepApp is now explicitly personal-use / non-commercial, for now.** This
+   deliberately relaxes the licensing constraint: the standalone-redistribution
+   prong no longer applies, so personal-use / BBC-RemArc / Pixabay / freetousesounds
+   sources are all license-OK again for a personal build. (Revisit if a
+   commercial ship is ever back on the table — the 2026-06-23 license analysis
+   still holds for that future.)
+2. **The driver is now QUALITY, not license.** Replace the dirty layers with a
+   **large, clean, curated, well-tagged source — ideally a single producer.**
+   The problem klankbeeld failed to solve (clean enough to loop with minimal
+   surgery) is still open; the next source must be auditioned for cleanliness
+   before committing, not just licensing.
+3. **Consequence for the 2026-06-21 re-cut batch:** its license rationale is now
+   moot (personal use), but its *quality* findings (15 flagged dirty layers)
+   still stand. Whether the new clean-source refresh supersedes the batch or
+   they run together is an OPEN question (see PENDING-DECISIONS #0).
+
+**Status:** source not yet chosen. Candidate direction: single-producer
+long-form nature-ambience libraries (e.g. George Vlad / Mindful Audio) — to be
+validated by a wide practitioner search before committing.
