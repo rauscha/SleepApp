@@ -31,7 +31,18 @@ DECISIONS.md (2026-06-30 entry) + memory:
 - **Andrew granted permission (2026-06-30) to download candidate audio to
   disk** from the running practitioner search's recommendations — fetch good
   candidates into the `raw-sounds/` dump (gitignored), then audition before
-  committing any into `public/audio/`.
+  committing any into `public/audio/`. Specifics:
+  - **yt-dlp grabs are pre-cleared up to ~10 GB total** (they're free); ask
+    Andrew before exceeding 10 GB. yt-dlp 2026.03.17 is installed; point it at
+    ffmpeg via `--ffmpeg-location "C:/Users/andre/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1-full_build/bin"`
+    (the WinGet `Links` shim is permission-denied under the bash tool).
+  - **Paid/purchase sources:** only flag them to Andrew if they're
+    *significantly* better than what's grabbable free / from YouTube.
+  - **Pixabay / freesound logins:** Andrew can provide on request — either via a
+    Claude-in-Chrome tab or a throwaway login to use-and-discard.
+  - **Disk watch:** C: is 98% full (~54 GB free); `raw-sounds/` is inside the
+    Google-Drive-synced tree, so large grabs there sync up to Drive. Option to
+    stage bulk downloads in a non-synced sibling folder instead.
 
 ## 0. Scene-audio re-cut batch — SUPERSEDED 2026-06-30 (kept only for the per-layer quality notes; see 0a)
 Andrew listened through all 44 shipped scene layers in the audio-scope
