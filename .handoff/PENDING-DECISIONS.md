@@ -13,6 +13,27 @@ Sources are in the gitignored `raw-sounds/` dump (610 files).
   wind-1, forest-evening wind-1, birds-2, forest-rain forest-1); REPLACE two
   scrapped winds (forest wind-2, forest-evening wind-2) from the dump; LEVEL
   three dynamics fixes (ocean wave-1/wave-2, fireplace close-3).
+
+### PROGRESS — LEVEL slice already BUILT, pending audition (reconciled 2026-06-30)
+The 6/16 hand-off was written *before* this batch was touched and never
+updated, so it under-reports. After the 18:02 hand-off commit on 2026-06-21, a
+session went on (18:26–18:31) and **built the entire LEVEL slice** — but never
+recorded it. State on disk (all in gitignored `raw-sounds/_candidates/scene-audio-2026-06-21/`):
+- **3 finished LEVEL candidates, verified at exactly 251.000s** (the ocean/
+  fireplace prime offset): `wave-1.cand.mp3` (level-drift fix), `wave-2.cand.mp3`
+  (volume match), `close-3.cand.mp3` (volume-disconnect fix). `*.level.mp3` are
+  the pre-loop intermediates.
+- **`AB/`** holds OLD-vs-NEW pairs and **`scope/`** is a pre-generated
+  audio-scope dashboard — ready to open and audition.
+- Built by **`tools/_build-level-candidates.sh`** (untracked, top of repo,
+  marked "TEMP / not for commit"; dynaudnorm long-window leveling → loudnorm →
+  seamless 251s wrap). Nothing is committed; nothing is lost — it's all intact
+  in the gitignored dump.
+- **NEXT for this slice:** audition the 3 candidates → if they pass, promote into
+  `public/audio/`, run `sceneCatalogue.test.ts`, bump `CACHE_VERSION`, commit.
+- **NOT started:** the RECUT (5), REPLACE (2), and singing-bowl REBUILD work —
+  only the LEVEL slice exists so far.
+
 - **Workflow is a loop:** produce candidates → Andrew auditions in the dashboard
   → confirm/re-flag (he caught these by ear; spectrograms alone won't verify).
 - Pipeline: `tools/transcode-scene-audio.sh` + `tools/loopify-scenes.py`; keep

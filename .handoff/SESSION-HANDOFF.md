@@ -1,4 +1,20 @@
 # Session hand-off — 2026-06-16 (machine: laptop)
+#   [reconciled 2026-06-30: see "LEFTOVER WORK" below — the scene-audio LEVEL
+#    slice was built after this hand-off was written and went unrecorded]
+
+## LEFTOVER WORK reconciled 2026-06-30 (read this first)
+This hand-off was written *before* the scene-audio re-cut batch was touched. A
+later stretch of the 2026-06-21 session (18:26–18:31, after the 18:02 hand-off
+commit) **built the LEVEL slice of that batch** and never recorded it. So:
+- 3 finished LEVEL candidates (ocean wave-1/wave-2, fireplace close-3), each a
+  verified 251.000s seamless loop, plus an `AB/` compare set and a `scope/`
+  audition dashboard, sit in `raw-sounds/_candidates/scene-audio-2026-06-21/`
+  (gitignored, intact — nothing lost). Built by untracked, not-for-commit
+  `tools/_build-level-candidates.sh`.
+- **They are pending audition** — that's the immediate next action. Full detail
+  + promote-on-pass steps in `PENDING-DECISIONS.md` #0.
+- The RECUT/REPLACE/singing-bowl-REBUILD parts of the batch are still not
+  started.
 
 ## STATE (read this first)
 - Branch: `main`, clean, synced with `origin/main`. Ahead/behind 0/0.
@@ -44,6 +60,9 @@ of it. Status (full notes in `notes/bug-reports-2026-06-17.md`):
   this (no open PR). See PENDING-DECISIONS.
 
 ## Next up
+0. **(NOW TOP) Audition the 3 built scene-audio LEVEL candidates** — see the
+   "LEFTOVER WORK" block above + `PENDING-DECISIONS.md` #0. The batch is the
+   declared top priority and this slice is already built and waiting on ears.
 1. **Synthesize the meditations** (needs `ELEVEN_LABS_API_KEY`). Run the
    `gen-meditation.ts --script ...` commands in `PENDING-DECISIONS.md` #1 —
    re-render the 3 existing + generate the 7 new — and QC the voices.
