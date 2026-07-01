@@ -1,6 +1,10 @@
 # Session hand-off — 2026-06-16 (machine: laptop)
 #   [reconciled 2026-06-30: see "LEFTOVER WORK" below — the scene-audio LEVEL
 #    slice was built after this hand-off was written and went unrecorded]
+#   [2026-07-01 (abroad, crane-desk): clean-source refresh in full swing —
+#    George Vlad (656MB) + fireplace (818MB) grabbed, Opus pipeline built and
+#    verified, a real playback bug found+fixed. See "Next up" #0 below for the
+#    current state — it supersedes the older #0 text underneath it.]
 
 ## LEFTOVER WORK reconciled 2026-06-30 (read this first)
 This hand-off was written *before* the scene-audio re-cut batch was touched. A
@@ -62,12 +66,20 @@ of it. Status (full notes in `notes/bug-reports-2026-06-17.md`):
   this (no open PR). See PENDING-DECISIONS.
 
 ## Next up
-0. **(NOW TOP) Clean-source audio refresh** — replace the dirty scene layers
-   wholesale from a new large, clean, single-producer source. A practitioner
-   search (deep-research) is running to pick the source; Andrew has OK'd
-   downloading good candidates to `raw-sounds/`. This SUPERSEDES the 2026-06-21
-   re-cut batch (and its LEVEL candidates — retired). See `PENDING-DECISIONS.md`
-   #0a.
+0. **(NOW TOP, updated 2026-07-01) Clean-source audio refresh — in progress.**
+   Sourced and downloaded: George Vlad forest/rain/wind (10 files, 656MB,
+   `raw-sounds/_sources/george-vlad/`) and a 12h fireplace source (818MB,
+   `raw-sounds/_sources/fireplace/`). Ocean waves still needs a source
+   (leading candidate: Earth.fm "Gentle Waves over Ancient Rocks" — not yet
+   fetched). Singing-bowl direction decided (ElevenLabs Music bed + the real
+   bowl recordings already in `raw-sounds/`) but not yet built.
+   **The Opus pipeline is ready** (`loopify-scenes.py` emits Opus, code
+   accepts it, beds regenerated, tests green) but **nothing has been loop-cut
+   into `public/audio/` yet** — that's the actual next mechanical step: place
+   source clips into the right scene/element folders and run
+   `loopify-scenes.py` per scene. Full detail in `PENDING-DECISIONS.md` #0a-0d.
+   This SUPERSEDES the 2026-06-21 re-cut batch (and its LEVEL candidates —
+   retired).
 1. **Synthesize the meditations** (needs `ELEVEN_LABS_API_KEY`). Run the
    `gen-meditation.ts --script ...` commands in `PENDING-DECISIONS.md` #1 —
    re-render the 3 existing + generate the 7 new — and QC the voices.

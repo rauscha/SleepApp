@@ -28,11 +28,23 @@ DECISIONS.md (2026-06-30 entry) + memory:
   all 10 curated long-form videos as **Opus** (656 MB total, no re-encode —
   see "ship as Opus" decision below): monsoon/rain (2), forest-day (4),
   forest-night (1), forest-evening (1), pure-wind (2). List/mapping in
-  `_grab-list.tsv` in that dir. **NEXT (not started):** loop-cut to prime
-  offsets via `loopify-scenes.py` (needs an Opus-output update, per decision
-  below), audition, then decide if more videos are needed for
-  ocean/fireplace/singing-bowl (separate source — confirmed gap) or
-  additional forest/wind variety.
+  `_grab-list.tsv` in that dir.
+- **Opus pipeline READY 2026-07-01** — `tools/loopify-scenes.py` now emits
+  Opus (libopus, 48kHz — 44.1kHz isn't a valid libopus rate, this tripped the
+  first attempt), accepts any input format, and migrates a scene's JSON +
+  sidecar to `.opus` in place when it converts a file. The 3 synth beds
+  (`public/audio/_bed/{brown,pink,white}.opus`) are already regenerated and
+  verified (887.0065s, 48kHz). `HowlScene.ts` and `sceneCatalogue.test.ts`
+  accept both `.mp3` and `.opus` during the migration. All 254 tests pass,
+  typecheck clean. **NOT YET RUN:** actually loop-cutting the George Vlad
+  grabs (or the new fireplace source below) into `public/audio/<scene>/...` —
+  that's manual placement + `loopify-scenes.py` per scene, still to do.
+- **Fireplace gap: ACQUIRED 2026-07-01** — 12h FOBOS PLANET fireplace source
+  in `raw-sounds/_sources/fireplace/` (818 MB Opus). **Ocean waves gap: still
+  open** — no source cleared the bar yet; singing-bowl gap: direction decided
+  (ElevenLabs Music + the real bowl recordings already in `raw-sounds/`), not
+  yet built. Full research + acquisition detail in DECISIONS.md's
+  "Ocean waves + fireplace sourcing" and "Singing-bowl bed" entries.
 - **RESOLVED 2026-06-30:** the clean-source refresh **SUPERSEDES** the
   2026-06-21 re-cut batch entirely. We are redoing the audio from the new
   source, so:
@@ -73,17 +85,52 @@ DECISIONS.md (2026-06-30 entry) + memory:
     (`node build/main.js`, port 4416), yt-dlp on **nightly**. Not needed for
     normal grabs but harmless to leave installed.
 
-## 0b. DECIDED — ship scene audio as Opus, not MP3 (2026-06-30)
+## 0b. DECIDED + IMPLEMENTED — ship scene audio as Opus, not MP3 (2026-06-30, done 2026-07-01)
 Evidence-based call (DECISIONS.md 2026-06-30 entry; A/B in
-`raw-sounds/_yt-test/ab/`): MP3@128k brick-walls noise at ~16 kHz; Opus@96k
-(smaller) holds to ~20 kHz and degrades noise gracefully. Ship the new clean
-audio straight to **Opus**, no MP3 hop. Decision made; **implementation not
-started** — touches `tools/loopify-scenes.py` (emit Opus + synth beds),
-`sceneCatalogue.test.ts` (format/length check), scene JSON + `.json` sidecars
-(ext refs), `public/sw.js` (extensions + `CACHE_VERSION` bump), and CLAUDE.md
-rule #3 wording. Pick container (`.ogg`/`.webm`) + bitrate (~96–128k) at impl.
-iOS deferred, but verify Opus-in-`<audio>` before iOS ships. Meditations/stories
-(voice) out of scope for now.
+`raw-sounds/_yt-test/ab/`): MP3@128k brick-walls noise at ~16 kHz; Opus@128k
+(smaller) holds to ~20 kHz and degrades noise gracefully. Container/extension
+settled: plain `.opus` (Ogg-Opus), sample rate **48kHz** (libopus rejects
+44.1kHz — the pipeline's old assumption — outright).
+**Implementation done 2026-07-01:** `tools/loopify-scenes.py` emits Opus and
+self-migrates a scene's JSON + sidecar when it converts a file;
+`HowlScene.ts`'s Howler format list + the hardcoded bed URLs are `.opus`; the
+3 synth beds are regenerated and verified; `sceneCatalogue.test.ts` accepts
+both extensions during the scene-by-scene migration; CLAUDE.md rule #3 +
+file-layout updated. 254/254 tests pass, typecheck clean.
+**Still not run:** actually loop-cutting any of the NEW source material
+(George Vlad / fireplace) into `public/audio/` — the tool is ready, hasn't
+been pointed at real scene content yet.
+**Meditations/stories (voice) — DECIDED to stay MP3/WAV, not just deferred**
+(DECISIONS.md 2026-07-01): Opus's advantage is specifically for broadband
+noise; voice has no content above ~8kHz where MP3 already loses nothing
+audible. No regeneration needed or planned. One indirect touchpoint: once
+singing-bowl (the meditation bed) is rebuilt, its bed layer will be Opus
+automatically via the same scene pipeline — the narration track is unaffected.
+iOS still deferred; verify Opus-in-`<audio>` on target Safari before it ships.
+
+## 0c. Story background "suddenly loud" bug — fixed, not fully confirmed (2026-07-01)
+Andrew reported a generated story's background scene jumping suddenly loud
+partway through playback (~2min mark / "48%" on-screen, most likely the
+Background-slider readout). Investigated by code reading (no device this
+session); traced Night Drift (40min, not 2min — ruled out), the
+`bedAttenuation` mount-time race (traced through, no bug found), SW
+keep-alive + wake-lock (don't touch volume — ruled out). Found and fixed one
+concrete, verifiable defect: `HowlLayer.onplay` (`src/audio/howl/HowlScene.ts`)
+re-ran the from-silence fade on **every** `'play'` event, not just the first —
+a spurious replay (OS audio-focus interruption resume, Howler's pooled
+html5-element reuse) would silently drop the layer to 0 and swell it back up
+over 5s, audible as "background suddenly got loud" once the swell completes.
+Fixed with a `hasFadedIn` guard; regression test added; DECISIONS.md entry
+records the reasoning and flags this as **not fully closed** — no device
+confirmation this was THE cause. An OS-level audio-focus ducking/release is
+a plausible secondary/alternate cause outside this codebase's control. Watch
+for recurrence.
+
+## 0d. Freesound login needed for one fireplace candidate
+`Christopher Courter "Crackling Fireplace"` (CC0, 6:43, clean single-burn
+take — good loop-pipeline fit) needs a Freesound account login to download
+at full quality. Andrew offered to provide a login (Claude-in-Chrome tab or
+throwaway use-and-discard) on request — ask if this file is wanted.
 
 ## 0. Scene-audio re-cut batch — SUPERSEDED 2026-06-30 (kept only for the per-layer quality notes; see 0a)
 Andrew listened through all 44 shipped scene layers in the audio-scope

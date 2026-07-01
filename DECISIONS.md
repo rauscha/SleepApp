@@ -413,3 +413,109 @@ no special tooling needed. The SABR block on `web`/`mweb`/`tv` clients is
 still real (confirmed independently of the speed question) — `android_vr` is
 fine for whole-file downloads. Deno + the bgutil provider are harmless to
 have installed but turned out to be unnecessary for this; not removing them.
+
+## Singing-bowl bed: ElevenLabs Music, not local MusicGen (2026-06-30)
+
+**Context.** The singing-bowl scene's audiocraft/MusicGen-generated bed was
+rejected in the 2026-06-21 listening pass ("screeching teapot", "industrial
+ghost music") — see `notes/scene-audio-flags-2026-06-21.md`. Needs a full
+rebuild; real bowl recordings exist in the `raw-sounds/` dump but a rebuilt
+synthetic bed layer is still wanted alongside them.
+
+**Decision.** Generate the replacement bed with **ElevenLabs Music**, not
+local MusicGen — Andrew has had noticeably better results with ElevenLabs on
+music-generation tasks generally. **The actual long-term answer is producing
+this himself on the OP-XY hardware synth**, but it's at home and he's abroad,
+so ElevenLabs Music is the interim path.
+
+## Fix: bed layer re-faded from silence on any replay of the element (2026-07-01)
+
+**Context.** Investigating a report of a story's background scene bed
+"suddenly cutting in loud" partway through playback. `HowlLayer`'s `onplay`
+handler (`src/audio/howl/HowlScene.ts`) ran `this.howl.fade(0, effective,
+fadeInMs)` on *every* `'play'` event from the underlying element, not just
+the first — guarded only by `disposed`. Howler's `fade()` sets the volume to
+`from` **immediately**, then ramps to `to`. So any second `'play'` event
+(e.g. a native html5 `<audio>` element resuming after an OS-level
+audio-focus interruption, or Howler reassigning a layer from its pooled
+element cache) would silently drop the layer to silence and swell it back
+up over `fadeInMs` (5s for a first scene start) — under narration, that
+reads as "the background suddenly got loud" once the swell completes,
+especially if the brief preceding dip goes unnoticed.
+
+Root cause not device-reproduced (no device access this session) — this is
+the one concrete, verifiable defect found by code inspection that produces
+exactly this symptom. An OS-level audio-focus ducking/release (a real
+Android/Chrome behavior when multiple simultaneous media streams compete)
+remains a possible secondary/contributing cause outside this codebase's
+control.
+
+**Fix.** Added a `hasFadedIn` flag to `HowlLayer`: the from-silence fade
+only runs on the true first successful play; any later replay of the same
+element re-asserts the current effective volume directly (`this.howl.volume
+(this.effective())`) instead of fading from 0. Regression test added in
+`HowlScene.test.ts` ("does not re-fade from silence if the underlying
+element replays"). All 254 tests pass.
+
+**Not fully closed** — no device to confirm this was THE actual cause of
+the reported incident. Watch for a recurrence; if it happens again with
+this fix in place, the OS-ducking hypothesis becomes the stronger lead.
+
+## Meditations/stories stay MP3 — Opus is scene-audio only (2026-07-01)
+
+**Decision.** The 2026-06-30 Opus decision does NOT extend to meditation/story
+narration audio (`tools/gen-meditation.ts`, `storyGenerator.ts`). Reasoning:
+Opus's advantage over MP3 is specifically that it doesn't brick-wall lowpass
+broadband noise around 16kHz — that matters for scene ambience (rain, wind,
+noise beds) where high-frequency "air" is audible content. Narrated voice has
+no meaningful energy above ~8kHz; MP3 128k is already perceptually
+transparent for speech, so switching would cost re-generation effort (ElevenLabs
+credits) for no audible benefit. No regeneration of existing meditations or
+stories is needed or planned.
+
+One indirect touchpoint: meditations play over the **singing-bowl** scene as
+a bed (same HowlScene path as standalone scenes). Once singing-bowl is
+rebuilt (real recordings + ElevenLabs Music bed, both per the 2026-06-30
+singing-bowl decision), that bed will be Opus automatically — the narration
+track itself stays MP3/WAV either way.
+
+## Ocean waves + fireplace sourcing (2026-07-01, research via deep-research)
+
+Practitioner search (102-agent run) for the two scene gaps klankbeeld/George
+Vlad don't cover. No candidate is BOTH single-producer AND fully meets every
+criterion for either scene — some judgment call was unavoidable.
+
+**Fireplace — ACQUIRED.** Downloaded via yt-dlp (opus, no re-encode):
+"Cozy Fireplace 4K (12 HOURS)" by FOBOS PLANET / Ilia Emelianov
+(`raw-sounds/_sources/fireplace/`, 818 MB, confirmed ~11.9h actual runtime).
+Long enough to cut multiple clean loop-length segments without stitching.
+**Caveat to log:** the video's description states "All rights reserved... any
+reproduction or republication... is prohibited" — a real restriction, currently
+irrelevant under the personal-use/non-commercial decision, but MUST be
+revisited if this project ever ships commercially or is redistributed
+standalone (same category as the Web Audio invariant: don't forget a decision
+made "for now" when the constraint that justified it changes).
+Runner-up not pursued: **Ivo Vicic "Fire: Campfire, Bonfire"** (paid,
+single-recordist via A Sound Effect, 42 clips ~68min total) — rejected as not
+"significantly better" than the free option: it's short clips needing the same
+stitching work as the free CC0 alternative, for a cost.
+Also available, not yet fetched — **Christopher Courter "Crackling Fireplace"**
+(Freesound, CC0, 6:43, intentionally-wet pine burned for "consistent popping"
+— good loop-pipeline fit): needs a Freesound login to download at full quality;
+Andrew offered to provide one on request.
+
+**Ocean waves — NOT YET ACQUIRED.** No single-producer source cleared the bar.
+Leading candidate: **Earth.fm "Gentle Waves over Ancient Rocks"** (Khristos
+Nizamis, 21:18, explicitly "smooth, consistent, and repetitive" — Earth.fm
+taxonomizes this separately from its "Crashing Surf" category) — free,
+non-profit platform, but Earth.fm is a multi-contributor aggregator, not a
+single recordist. Runner-up: **Boom Library "Ocean Shores"** (Gordon Hempton,
+single-recordist, paid) — NOT pursued yet: it mixes calm and windy/gull-noise
+takes per its own marketing, so it needs per-file audition before it's even
+confirmed clean, and price is unconfirmed — not clearly "significantly
+better" than the free Earth.fm track until that audition happens.
+BBC Sound Effects has a large "waves" catalogue (free, personal-use) but
+tops out ~4min — too short for this pipeline's long-form requirement.
+**Next action:** fetch the Earth.fm track directly (not YouTube — direct
+site download, method TBD) and audition; only pursue Boom Library if that
+doesn't clear the cleanliness bar.
