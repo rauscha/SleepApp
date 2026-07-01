@@ -552,3 +552,22 @@ meditations. Concrete single-producer source flagged: 99Sounds "Red Fog" free
 drone library (George-Vlad-model fit). **This supersedes, if accepted, the
 2026-06-30 "singing-bowl bed via ElevenLabs Music" decision** — hold that
 rebuild until Andrew rules. Full research in the wimb4sd39 workflow output.
+
+## DECIDED — warm pad/drone is the default meditation bed (2026-07-01)
+
+Andrew accepted the recommendation above, same day. Resolution:
+- **Default meditation bed = warm ambient pad/drone**, voiced to the
+  under-narration production guidance (HPF ~80–100 Hz rumble cut, 200–500 Hz
+  dip, keep 2–4 kHz clear for consonants, ~15 dB speech-over-bed SNR).
+- **Build route, in order of preference:** (1) audition the flagged
+  **99Sounds "Red Fog"** free drone library and loop-cut a bed from it via
+  the standard `loopify-scenes.py` pipeline; (2) fallback: DSP-synthesize a
+  pad in numpy/ffmpeg (slow detuned partials + filtered noise — same route as
+  the existing pre-rendered noise beds). **MusicGen stays rejected** — it
+  already failed on quality for the bowl bed (2026-06-21) and nothing changed.
+- **Singing bowls demoted to optional texture, not rebuilt now.** This
+  formally supersedes the 2026-06-30 "singing-bowl bed via ElevenLabs Music"
+  decision. The 11 real bowl recordings stay in `raw-sounds/` for a possible
+  later optional layer.
+- **Visualization-style meditations reuse the existing nature scene beds**
+  where the script's imagery matches (already built, loop-safe).

@@ -48,14 +48,15 @@ DECISIONS.md (2026-06-30 entry) + memory:
   paid catalogue); his free YouTube has it. Found via direct WebSearch after
   the harness rate-limited on that exact angle. Beats the paid/aggregator
   alternatives. See DECISIONS.md "Ocean waves + fireplace sourcing".
-- **Singing-bowl gap:** direction decided (ElevenLabs Music + the real bowl
-  recordings already in `raw-sounds/`), not yet built. **A design-question
-  research pass is running** (2026-07-01) on whether singing bowls are even
-  the right background for spoken meditations vs. ambient pads / reusing the
-  nature scene beds / etc. — result pending; revisit the singing-bowl build
-  after it lands. (The 2026-06-30 deep-research runs on both this and the
-  ocean gap hit an API rate-limit storm mid-verification; ocean was salvaged
-  by direct search, the meditation-sound one was re-run.)
+- **Singing-bowl gap: RESOLVED 2026-07-01 — replaced by pad/drone.** The
+  design-question research pass came back favoring a warm ambient pad/drone
+  as the default meditation bed (bowl evidence is passive standalone
+  listening only; failed adversarial verification for "bed under a voice").
+  **Andrew accepted same day** — see DECISIONS.md "DECIDED — warm pad/drone
+  is the default meditation bed". Build route: audition 99Sounds "Red Fog"
+  first, numpy/DSP synthesis fallback; MusicGen stays rejected. Singing
+  bowls demoted to optional later texture (real bowl recordings kept in
+  `raw-sounds/`); the ElevenLabs-Music bowl-bed plan is superseded.
 - **RESOLVED 2026-06-30:** the clean-source refresh **SUPERSEDES** the
   2026-06-21 re-cut batch entirely. We are redoing the audio from the new
   source, so:
