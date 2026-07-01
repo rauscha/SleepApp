@@ -525,3 +525,30 @@ paid catalogue — the two don't overlap. Prior leaders retained as fallback
 only if these two don't audition clean.
 BBC Sound Effects "waves" (free, personal-use) stays ruled out — ~4min max,
 too short for this pipeline.
+
+## OPEN RECOMMENDATION — meditation bed: pad/drone over singing bowls (2026-07-01)
+
+**Not yet decided — needs Andrew's call.** A deep-research pass on what
+background sound actually serves a *spoken* sleep-meditation best (vs. the
+current singing-bowl "sound bath" plan) came back favoring a warm ambient
+pad/drone, not bowls. Evidence summary:
+- **Pad/drone = best for voice-over.** The only evidence set that addresses a
+  bed *under narration* (production/intelligibility guidance: HPF ~80-100Hz,
+  200-500Hz dip, keep the 2-4kHz consonant band clear, ~15dB SNR) points at
+  pads/drones/textures — what Calm/Headspace actually use.
+- **Singing bowls: real but off-target evidence.** All bowl studies are
+  passive *standalone* listening, self-rated low-to-moderate certainty; the
+  claim that bowls beat other relaxation methods FAILED adversarial
+  verification. The evidence doesn't transfer to "bed under a voice."
+- **Nature beds: modest real evidence**, plus we already have them built and
+  loop-safe (reuse for visualization-style meditations).
+- **Binaural beats: weak/mixed, no consensus protocol — skip.** **Solfeggio
+  tones: no scientific basis — skip.**
+
+**Recommended (pending Andrew):** demote the singing-bowl rebuild from default
+to an optional texture; make a **warm ambient pad/drone the default**
+meditation bed, and reuse existing nature scene-beds for visualization
+meditations. Concrete single-producer source flagged: 99Sounds "Red Fog" free
+drone library (George-Vlad-model fit). **This supersedes, if accepted, the
+2026-06-30 "singing-bowl bed via ElevenLabs Music" decision** — hold that
+rebuild until Andrew rules. Full research in the wimb4sd39 workflow output.
