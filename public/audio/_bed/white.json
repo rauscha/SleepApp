@@ -1,7 +1,7 @@
 {
   "source": "Generated (ffmpeg anoisesrc)",
   "license": "Generated synthetic noise \u2014 no third-party rights.",
-  "outputFormat": "44.1 kHz / 192 kbps / stereo MP3",
+  "outputFormat": "44.1 kHz / 128k / stereo Opus",
   "trimmedTo": "887s",
   "notes": "white noise synth-bed carrier, loudnorm I=-23, seamless-looped to 887s (prime, coprime to the element offsets). Played by HowlScene as the spectral-glue bed under every scene of this color."
 }

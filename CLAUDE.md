@@ -94,8 +94,8 @@ minutes. This is core audio design, not an implementation detail.
    `src/audio/sceneCatalogue.test.ts` now enforces this for every scene, so
    a bad offset fails the suite — but still sanity-check by eye.)
 
-3. **Every variant MP3's length must EQUAL its element's
-   `loopOffsetSeconds`** (within ~2.5s MP3-frame slack). Under the Howler
+3. **Every variant file's length must EQUAL its element's
+   `loopOffsetSeconds`** (within ~2.5s encode-frame slack). Under the Howler
    `html5` engine (see "Audio engine invariants" below) each layer loops the
    *whole file* natively — the file **is** the loop, so its length sets the
    loop period. A file longer or shorter than its prime offset breaks the
@@ -110,13 +110,24 @@ minutes. This is core audio design, not an implementation detail.
    *within* a longer file. `tools/grow-out-scenes.sh` belonged to that era;
    loopify supersedes it.)
 
+   **Format: scene audio ships as Opus, not MP3** (2026-06-30 decision — see
+   DECISIONS.md "Ship scene audio as Opus, not MP3"). MP3's ~16kHz lowpass
+   strips the noise "air" that matters for this material; Opus preserves to
+   ~20kHz at a smaller size. `loopify-scenes.py` always emits `.opus` now —
+   feed it any source format (mp3/wav/opus/ogg) and it converts + rewrites
+   the scene JSON's variant URLs in place. Note libopus only encodes at
+   8/12/16/24/48kHz (not 44.1kHz) — the pipeline targets 48000 Hz throughout.
+   Migration is scene-by-scene, not a flag day: `sceneCatalogue.test.ts` and
+   `HowlScene`'s Howler `format` list accept both `.mp3` and `.opus` while
+   older scenes haven't been re-cut yet.
+
 4. **Voice the stack like a mix**, not like a flat sum: the closest /
    primary element rides loudest (~0.55–0.60), supporting layers sit at
    0.25–0.35, and the synth bed underneath at ~0.10–0.16 to glue the
    spectrum. Sparse "event" layers (distant thunder, occasional dockside)
    sit quieter still (~0.18–0.20) and use a long mostly-silent loop. The
    synth bed is no longer a live Web-Audio `NoiseGenerator`: it's a
-   pre-rendered 887s noise loop (`public/audio/_bed/<color>.mp3` — the 5th
+   pre-rendered 887s noise loop (`public/audio/_bed/<color>.opus` — the 5th
    prime, coprime to every element offset) that `HowlScene` plays as a quiet
    native layer under every scene. Tune its level by ear with the in-app
    "Synth bed" mixer slider; re-render it via `tools/loopify-scenes.py`.
@@ -181,8 +192,9 @@ user-facing path without re-deciding the pivot.
   test.
 - `public/scenes/` — scene JSON files served statically; `index.json` is
   the scene catalogue.
-- `public/audio/` — scene variant MP3s + `.json` sidecars; `_bed/` holds the
-  pre-rendered synth-bed noise loops.
+- `public/audio/` — scene variant audio (Opus; some scenes still MP3 pending
+  re-cut) + `.json` sidecars; `_bed/` holds the pre-rendered synth-bed noise
+  loops (`.opus`).
 - `tools/loopify-scenes.py` — idempotent; trims variants to their prime
   offset (gapless) and renders the synth beds. Re-run on any scene-audio
   change.

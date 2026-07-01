@@ -11,25 +11,31 @@
 // Hard failures (the contract): >=2 elements, every loopOffsetSeconds on the
 // PRIME_ADJACENT list, offsets distinct within a scene, every referenced
 // variant file present, and every variant's file length EQUAL to its offset
-// (within MP3-frame slack), plus volumes inside a sane range. Softer
+// (within encode-frame slack), plus volumes inside a sane range. Softer
 // mix-voicing guidance is surfaced as warnings, not failures.
 //
 // Why "equal to" and not "longer than": under the Howler html5 engine each
 // layer loops the WHOLE file natively, so the file *is* the loop — its length
 // must be the element's prime offset. (Pre-pivot, FileLayer crossfaded within
 // a longer file, so the rule was "longer than offset + crossfade".)
+//
+// Format: scene audio is migrating from MP3 to Opus (2026-06-30 — see
+// DECISIONS.md "Ship scene audio as Opus, not MP3"). Both extensions are
+// accepted here during the migration; `loopify-scenes.py` is what actually
+// converts a scene's files and rewrites its JSON to `.opus`, one scene at a
+// time — this test doesn't force the pace.
 
 import { describe, expect, it } from 'vitest';
 import { PRIME_ADJACENT_LOOP_OFFSETS_SECONDS } from './sceneFormat';
 import type { SceneDefinition } from './sceneFormat';
 
-// MP3 frame granularity means a file trimmed to N seconds lands within ~0.1s
-// of N; allow a little slack on top of that.
+// Frame/packet granularity means a file trimmed to N seconds lands within
+// ~0.1s of N; allow a little slack on top of that.
 const LENGTH_TOLERANCE_SECONDS = 2.5;
 const VALID_OFFSETS = new Set(PRIME_ADJACENT_LOOP_OFFSETS_SECONDS);
 
 // Eager glob: scene JSONs + every sidecar, keyed by project-root path.
-// Lazy glob for the mp3s — we only need the keys to assert existence.
+// Lazy glob for the audio files — we only need the keys to assert existence.
 const sceneModules = import.meta.glob<{ default: SceneDefinition }>(
   '/public/scenes/*.json',
   { eager: true }
@@ -42,7 +48,10 @@ const sidecarModules = import.meta.glob<{ default: { trimmedTo?: string } }>(
   '/public/audio/**/*.json',
   { eager: true }
 );
-const mp3Paths = new Set(Object.keys(import.meta.glob('/public/audio/**/*.mp3')));
+const audioPaths = new Set([
+  ...Object.keys(import.meta.glob('/public/audio/**/*.mp3')),
+  ...Object.keys(import.meta.glob('/public/audio/**/*.opus')),
+]);
 
 const sceneEntries = Object.entries(sceneModules)
   .filter(([path]) => !path.endsWith('/index.json'))
@@ -58,7 +67,7 @@ function publicKey(url: string): string {
 
 /** Variant duration from its sidecar `trimmedTo`, else null (warn-skip). */
 function sidecarDuration(url: string): number | null {
-  const sidecarKey = publicKey(url).replace(/\.mp3$/, '.json');
+  const sidecarKey = publicKey(url).replace(/\.(mp3|opus)$/, '.json');
   const mod = sidecarModules[sidecarKey];
   const trimmed = mod?.default.trimmedTo?.match(/(\d+(?:\.\d+)?)\s*s/);
   return trimmed ? parseFloat(trimmed[1]!) : null;
@@ -120,7 +129,7 @@ describe('scene catalogue conformance', () => {
         for (const el of scene.elements) {
           for (const variant of el.variants) {
             expect(
-              mp3Paths.has(publicKey(variant.url)),
+              audioPaths.has(publicKey(variant.url)),
               `${variant.url} missing on disk`
             ).toBe(true);
             const duration = sidecarDuration(variant.url);

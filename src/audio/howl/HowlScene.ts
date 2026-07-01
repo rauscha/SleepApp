@@ -69,9 +69,12 @@ export type HowlFactory = (opts: HowlFactoryOptions) => HowlLike;
 export const defaultHowlFactory: HowlFactory = (opts) =>
   new Howl({
     src: opts.src,
-    // Both formats: bundled scene audio is mp3; the format list keeps
-    // Howler's codec check honest if a wav source is ever used.
-    format: ['mp3', 'wav'],
+    // Scene audio ships as Opus (2026-06-30 — see DECISIONS.md "Ship scene
+    // audio as Opus, not MP3": MP3's ~16kHz lowpass strips noise "air" that
+    // matters for this material). mp3/wav stay in the format list during the
+    // migration — not every scene is re-cut to Opus yet — and as a generic
+    // safety net for any wav source.
+    format: ['opus', 'mp3', 'wav'],
     html5: true, // the whole point — OS-backed background playback
     loop: true,
     volume: 0, // start silent; the layer fades in on play
@@ -101,6 +104,8 @@ export class HowlLayer {
   private fadeInMs = 0;
   private started = false;
   private disposed = false;
+  /** Whether the from-silence fade-in has already run once. */
+  private hasFadedIn = false;
 
   constructor(
     id: string,
@@ -118,9 +123,23 @@ export class HowlLayer {
       src,
       onplay: () => {
         if (this.disposed) return;
+        if (this.hasFadedIn) {
+          // A native html5 <audio> element can re-fire 'play' after this
+          // layer's first start — e.g. the browser resuming it after an
+          // OS-level audio-focus interruption, or Howler reassigning it
+          // from its pooled-element cache. Re-running the from-zero fade
+          // here would silently drop the layer to silence and swell it
+          // back up over fadeInMs — audible under narration as a sudden
+          // "background got loud" moment. Only the true first play fades
+          // in; any later replay just re-asserts the current target so the
+          // layer stays exactly where the mixer/attenuation left it.
+          this.howl.volume(this.effective());
+          return;
+        }
         // Apply the fade-in only once playback actually starts: an html5
         // element may defer play() until it can play, and a fade issued
         // before then is a no-op (Howler only animates playing sounds).
+        this.hasFadedIn = true;
         this.howl.fade(0, this.effective(), this.fadeInMs);
       },
       onplayerror: (_id, err) =>
@@ -249,7 +268,7 @@ export class HowlScene {
         new HowlLayer(
           `${definition.id}:synth-bed`,
           'Synth bed',
-          [resolvePublicUrl(`/audio/_bed/${definition.synth.color}.mp3`)],
+          [resolvePublicUrl(`/audio/_bed/${definition.synth.color}.opus`)],
           definition.synth.defaultVolume,
           this.master,
           factory

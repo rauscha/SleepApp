@@ -25,6 +25,17 @@ wrap region in front of the clean middle [C:offset]. The file then ends where
 it began, so loop wrap is continuous. Three input handles avoid asplit
 buffering issues; no loudnorm on scene files (preserves their existing voiced
 levels).
+
+Output format (2026-06-30 decision, see DECISIONS.md "Ship scene audio as
+Opus, not MP3"): every file this script touches is emitted as **Opus**
+(libopus, OUTPUT_BITRATE), not MP3 — MP3's ~16kHz lowpass strips the noise
+"air" that matters for this material; Opus preserves to ~20kHz at a smaller
+size. Input can be any ffmpeg-readable format (mp3, wav, opus, ogg — e.g. the
+Opus files yt-dlp already hands back from YouTube); output is always
+`<stem>.opus`. When the input isn't already `.opus`, `loopify_in_place`
+renames: the old-extension file is removed and the scene JSON / sidecar are
+updated to point at the new `.opus` path, so re-running this script against
+an still-MP3 scene migrates it in place.
 """
 import glob
 import json
@@ -38,6 +49,13 @@ AUDIO = os.path.join(ROOT, "public", "audio")
 SCENES = os.path.join(ROOT, "public", "scenes")
 BED_LENGTH = 887
 BED_COLORS = ["brown", "pink", "white"]
+OUTPUT_BITRATE = "128k"  # transparent for field-recording ambience + noise beds
+# libopus only encodes at 8/12/16/24/48 kHz (it internally resamples to one of
+# these regardless of input) — our old MP3 pipeline standardized on 44.1kHz,
+# which libopus rejects outright. 48000 is its native/highest rate and what
+# our new sources (YouTube, mostly) already deliver, so all Opus output — loop
+# trims and synth beds alike — targets 48000 Hz now, not the source's rate.
+OPUS_SR = 48000
 
 # forest-day element dirs that forest-evening reuses at a different prime →
 # give forest-evening its own copies. (src basename → dst dir.)
@@ -54,19 +72,8 @@ def probe_duration(path):
     return float(out)
 
 
-def probe_sr(path):
-    try:
-        out = subprocess.check_output(
-            ["ffprobe", "-v", "error", "-select_streams", "a:0",
-             "-show_entries", "stream=sample_rate", "-of", "csv=p=0", path],
-            text=True).strip()
-        return int(out)
-    except Exception:
-        return 44100
-
-
 def seamless_loop(src, out, period, sr, loudnorm=None):
-    """Write `out`: a seamless loop of length `period` built from `src`."""
+    """Write `out`: a seamless Opus loop of length `period` built from `src`."""
     fmt = (f"aformat=sample_fmts=fltp:channel_layouts=stereo:"
            f"sample_rates={sr}")
     pre = f",{loudnorm}" if loudnorm else ""
@@ -81,40 +88,62 @@ def seamless_loop(src, out, period, sr, loudnorm=None):
         ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
          "-i", src, "-i", src, "-i", src,
          "-filter_complex", fc, "-map", "[out]",
-         "-ac", "2", "-ar", str(sr), "-b:a", "192k", out])
+         "-ac", "2", "-ar", str(sr), "-c:a", "libopus", "-b:a", OUTPUT_BITRATE, out])
 
 
 def loopify_in_place(path, period):
+    """Trim `path` to a seamless `period`-second loop, emitting Opus.
+
+    Returns the final path (unchanged if `path` was already `.opus`; a
+    sibling `<stem>.opus` — with the old file removed — otherwise), or None
+    if left as-is (already correct length, or too short to trim).
+    """
     d = probe_duration(path)
-    if abs(d - period) < 2:
+    stem, ext = os.path.splitext(path)
+    opus_path = stem + ".opus"
+    already_opus = ext.lower() == ".opus"
+    if already_opus and abs(d - period) < 2:
         print(f"    skip {os.path.relpath(path, ROOT)} ({d:.1f}s ≈ {period})")
-        return
+        return None
     if d < period + C:
         print(f"    WARN {os.path.relpath(path, ROOT)} too short "
               f"({d:.1f}s < {period + C}) — left as-is")
-        return
-    sr = probe_sr(path)
-    tmp = path + ".tmp.mp3"
-    seamless_loop(path, tmp, period, sr)
+        return None
+    tmp = opus_path + ".tmp.opus"
+    seamless_loop(path, tmp, period, OPUS_SR)
     nd = probe_duration(tmp)
-    os.replace(tmp, path)
-    print(f"    loop {os.path.relpath(path, ROOT)}: {d:.1f}s → {nd:.1f}s "
-          f"(prime {period})")
+    os.replace(tmp, opus_path)
+    if not already_opus:
+        os.remove(path)
+        print(f"    loop {os.path.relpath(path, ROOT)} → "
+              f"{os.path.relpath(opus_path, ROOT)}: {d:.1f}s → {nd:.1f}s "
+              f"(prime {period}, migrated to Opus)")
+    else:
+        print(f"    loop {os.path.relpath(opus_path, ROOT)}: {d:.1f}s → {nd:.1f}s "
+              f"(prime {period})")
+    return opus_path
 
 
-def update_sidecar(path, period):
-    sc = path[:-4] + ".json"
-    if not os.path.exists(sc):
+def update_sidecar(path, period, renamed_from=None):
+    stem, _ = os.path.splitext(path)
+    sc = stem + ".json"
+    old_sc = os.path.splitext(renamed_from)[0] + ".json" if renamed_from else sc
+    if not os.path.exists(old_sc):
         return
-    j = json.load(open(sc))
+    j = json.load(open(old_sc))
     j["trimmedTo"] = f"{period}s"
+    j["outputFormat"] = j.get("outputFormat", "").replace("MP3", "Opus") or "Opus"
     note = j.get("notes", "")
     tag = (f" Seamless-looped to {period}s (prime loopOffset) for native "
            f"Howler looping: {C}s fade-wrap of the post-loop tail over the "
-           f"head so the loop point is gapless.")
+           f"head so the loop point is gapless. Encoded as Opus "
+           f"({OUTPUT_BITRATE}) — see DECISIONS.md 'Ship scene audio as "
+           f"Opus, not MP3'.")
     if "Seamless-looped" not in note:
         j["notes"] = (note + tag).strip()
     json.dump(j, open(sc, "w"), indent=2)
+    if old_sc != sc and os.path.exists(old_sc):
+        os.remove(old_sc)
 
 
 def gen_beds():
@@ -122,27 +151,31 @@ def gen_beds():
     bed_dir = os.path.join(AUDIO, "_bed")
     os.makedirs(bed_dir, exist_ok=True)
     for color in BED_COLORS:
-        out = os.path.join(bed_dir, f"{color}.mp3")
-        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as t:
+        old_mp3 = os.path.join(bed_dir, f"{color}.mp3")
+        if os.path.exists(old_mp3):
+            os.remove(old_mp3)  # superseded by the .opus bed below
+        out = os.path.join(bed_dir, f"{color}.opus")
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as t:
             raw = t.name
         try:
             # Generate a bit more than 887+C of colored noise, normalized to a
             # quiet bed reference (-23 LUFS); the per-scene synth volume
-            # (0.08–0.16) sets the final level.
+            # (0.08–0.16) sets the final level. Raw intermediate is lossless
+            # WAV — seamless_loop() does the one lossy (Opus) encode.
             subprocess.check_call(
                 ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
                  "-f", "lavfi", "-i",
-                 f"anoisesrc=d={BED_LENGTH + C + 4}:c={color}:a=0.9:r=44100",
+                 f"anoisesrc=d={BED_LENGTH + C + 4}:c={color}:a=0.9:r={OPUS_SR}",
                  "-af", "loudnorm=I=-23:TP=-1.5:LRA=7",
-                 "-ac", "2", "-ar", "44100", "-b:a", "160k", raw])
-            seamless_loop(raw, out, BED_LENGTH, 44100)
+                 "-ac", "2", "-ar", str(OPUS_SR), raw])
+            seamless_loop(raw, out, BED_LENGTH, OPUS_SR)
         finally:
             os.path.exists(raw) and os.remove(raw)
-        sc = out[:-4] + ".json"
+        sc = os.path.splitext(out)[0] + ".json"
         json.dump({
             "source": "Generated (ffmpeg anoisesrc)",
             "license": "Generated synthetic noise — no third-party rights.",
-            "outputFormat": "44.1 kHz / 192 kbps / stereo MP3",
+            "outputFormat": f"44.1 kHz / {OUTPUT_BITRATE} / stereo Opus",
             "trimmedTo": f"{BED_LENGTH}s",
             "notes": (f"{color} noise synth-bed carrier, loudnorm I=-23, "
                       f"seamless-looped to {BED_LENGTH}s (prime, coprime to "
@@ -174,6 +207,7 @@ def loopify_scenes():
             continue
         d = json.load(open(f))
         print(f"## {d['id']}")
+        dirty = False
         for el in d["elements"]:
             period = el["loopOffsetSeconds"]
             for v in el["variants"]:
@@ -181,8 +215,19 @@ def loopify_scenes():
                 if not os.path.exists(path):
                     print(f"    MISSING {v['url']}")
                     continue
-                loopify_in_place(path, period)
-                update_sidecar(path, period)
+                new_path = loopify_in_place(path, period)
+                if new_path is None:
+                    continue
+                update_sidecar(new_path, period, renamed_from=path if new_path != path else None)
+                if new_path != path:
+                    # Extension changed (mp3 -> opus): point the scene JSON
+                    # at the new file so the app resolves the right URL.
+                    new_url = "/" + os.path.relpath(new_path, os.path.join(ROOT, "public")).replace(os.sep, "/")
+                    v["url"] = new_url
+                    dirty = True
+        if dirty:
+            json.dump(d, open(f, "w"), indent=2)
+            print(f"    updated {os.path.relpath(f, ROOT)} (variant URLs -> .opus)")
 
 
 if __name__ == "__main__":

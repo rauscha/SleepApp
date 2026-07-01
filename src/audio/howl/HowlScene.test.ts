@@ -116,6 +116,24 @@ describe('HowlScene', () => {
     expect(bed.fades.at(-1)).toEqual([0, 0.1, 5000]); // synth.defaultVolume
   });
 
+  it('does not re-fade from silence if the underlying element replays', () => {
+    // A native html5 <audio> element can re-fire 'play' after this layer's
+    // first start (OS audio-focus interruption resume, Howler's pooled-
+    // element reuse). A naive onplay handler would re-run the from-zero
+    // fade every time, audible as a sudden dip-then-swell under narration.
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    scene.start(5);
+    const rain = bySrc('rain-1');
+    expect(rain.fades).toHaveLength(1);
+    expect(rain.fades[0]).toEqual([0, 0.5, 5000]);
+
+    rain.play(); // simulate a spurious replay of the same element
+
+    // No second fade-from-zero: the volume is just re-asserted directly.
+    expect(rain.fades).toHaveLength(1);
+    expect(rain.volume()).toBe(0.5);
+  });
+
   it('plays the synth-bed carrier from the scene color', () => {
     const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
     const bedLayer = scene.getLayers().find((l) => l.id === 'test-scene:synth-bed');
