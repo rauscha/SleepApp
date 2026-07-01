@@ -1,10 +1,65 @@
-# Session hand-off — 2026-06-16 (machine: laptop)
-#   [reconciled 2026-06-30: see "LEFTOVER WORK" below — the scene-audio LEVEL
-#    slice was built after this hand-off was written and went unrecorded]
-#   [2026-07-01 (abroad, crane-desk): clean-source refresh in full swing —
-#    George Vlad (656MB) + fireplace (818MB) grabbed, Opus pipeline built and
-#    verified, a real playback bug found+fixed. See "Next up" #0 below for the
-#    current state — it supersedes the older #0 text underneath it.]
+# Session hand-off — 2026-07-01 (machine: crane-desk, abroad)
+# (Older 2026-06-16 / 2026-06-30 hand-off history is preserved below this
+#  block — but THIS block is the current state; read it first and treat the
+#  rest as backstory.)
+
+## STATE — 2026-07-01 (read this first)
+- Branch: `main`, clean, synced with `origin/main` (0/0). Only the main
+  worktree exists. All work below is committed + pushed.
+- The **clean-source audio refresh** is the active workstream. This session
+  built the Opus pipeline, sourced 2 of 3 remaining scene gaps, fixed a real
+  playback bug, and surfaced one decision that's waiting on Andrew.
+
+## Done this session (2026-07-01)
+- **Opus pipeline built + verified.** `tools/loopify-scenes.py` now emits Opus
+  (libopus @ 48kHz — 44.1kHz is invalid for libopus, which broke the first
+  run), converts any input format, and self-migrates a scene's JSON+sidecar
+  to `.opus`. `HowlScene.ts` + `sceneCatalogue.test.ts` accept both `.mp3` and
+  `.opus` for a scene-by-scene migration. 3 synth beds regenerated. 254/254
+  tests pass, typecheck clean. (DECISIONS.md "Ship scene audio as Opus".)
+- **Sourced 2 of 3 audio gaps** (both Opus, in `raw-sounds/_sources/`, gitignored):
+  - **Ocean** — 2× George Vlad ~1h calm recordings (sandy + rocky Madagascar),
+    `george-vlad-ocean/`. (Research wrongly said Vlad had no ocean — his *free
+    YouTube* has it; found by direct search.)
+  - **Fireplace** — 12h FOBOS PLANET source, `fireplace/` (818MB).
+  - (Earlier: 10× George Vlad forest/rain/wind, `george-vlad/`, 656MB.)
+- **Fixed a real playback bug** — `HowlLayer` re-faded from silence on every
+  element replay (not just first), which could read as "background suddenly
+  got loud." Guarded + regression test. NOT device-confirmed as THE cause of
+  Andrew's report (see DECISIONS.md 2026-07-01 entry).
+- **YouTube "throttle" was a false alarm** — it was `--download-sections` on
+  test grabs, not a real limit. Whole-file grabs are full-speed. (Corrected in
+  DECISIONS.md; don't re-investigate.)
+
+## Next up (2026-07-01)
+1. **[DECISION — Andrew] Meditation bed: singing bowls vs. warm pad/drone.**
+   Research recommends switching the *default* meditation bed from the
+   singing-bowl sound bath to a warm ambient pad/drone (bowl evidence is all
+   passive standalone listening; pad/drone is what serves voice-over). This
+   would supersede the 2026-06-30 singing-bowl-via-ElevenLabs-Music plan.
+   **Hold the singing-bowl rebuild until Andrew rules.** (DECISIONS.md
+   "OPEN RECOMMENDATION — meditation bed", PENDING-DECISIONS.)
+2. **Loop-cut the sourced audio into `public/audio/`.** The mechanical core of
+   the refresh, not yet started: place clips from `raw-sounds/_sources/` into
+   the right `<scene>/<element>/` folders and run `loopify-scenes.py` per
+   scene, then audition. Covers forest/rain/wind (Vlad), ocean (Vlad), and
+   fireplace (FOBOS). Bump `CACHE_VERSION` in `public/sw.js` after.
+3. **Audition everything by ear** before committing to `public/audio/` — the
+   whole point of this refresh is cleanliness that spectrograms don't verify.
+4. **Optional:** Freesound login if you want the CC0 Courter fireplace as a
+   second variant (Andrew offered).
+
+## Watch out for
+- Nothing is loop-cut into `public/audio/` yet — the pipeline is ready but
+  hasn't been pointed at the new source material. The app still plays the OLD
+  (dirty) scene audio until that happens.
+- `tools/_build-level-candidates.sh` (untracked) + `raw-sounds/_candidates/`
+  are RETIRED litter from the superseded 2026-06-21 batch — ignore/delete on a
+  cleanup pass; don't mistake for live work.
+- Opus is scene-audio only; meditations/stories stay MP3/WAV (decided, not a
+  TODO). iOS still deferred — verify Opus-in-`<audio>` before iOS ships.
+- Leftover tooling from the throttle false-trail (Deno, bgutil provider) is
+  harmless; leave installed.
 
 ## LEFTOVER WORK reconciled 2026-06-30 (read this first)
 This hand-off was written *before* the scene-audio re-cut batch was touched. A
