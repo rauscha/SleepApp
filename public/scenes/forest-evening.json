@@ -1,10 +1,10 @@
 {
   "id": "forest-evening",
   "label": "Forest, evening rain",
-  "description": "Light rain dripping from leaves in a Tasmanian forest at dusk — wind through the tree tops, a slow creek behind it, quiet birds settling for the night.",
+  "description": "Light rain dripping through a cloud forest at dusk \u2014 wind in the tree tops, a slow creek behind it, quiet birds settling for the night.",
   "synth": {
     "color": "brown",
-    "defaultVolume": 0.10
+    "defaultVolume": 0.1
   },
   "tinnitus": {
     "enabledByDefault": false,
@@ -21,13 +21,13 @@
       "variants": [
         {
           "id": "forest-1",
-          "url": "/audio/forest-evening/forest-rain/forest-1.mp3",
-          "attribution": "freetousesounds sound library — see /audio/forest-evening/forest-rain/forest-1.json for license."
+          "url": "/audio/forest-evening/forest-rain/forest-1.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-evening/forest-rain/forest-1.json for source + license."
         },
         {
-          "id": "forest-3",
-          "url": "/audio/forest-evening/forest-rain/forest-3.mp3",
-          "attribution": "freetousesounds sound library — see /audio/forest-evening/forest-rain/forest-3.json for license."
+          "id": "forest-2",
+          "url": "/audio/forest-evening/forest-rain/forest-2.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-evening/forest-rain/forest-2.json for source + license."
         }
       ]
     },
@@ -36,18 +36,18 @@
       "label": "Wind in leaves",
       "loopOffsetSeconds": 409,
       "crossfadeSeconds": 5,
-      "defaultVolume": 0.30,
+      "defaultVolume": 0.3,
       "variantRotation": "random",
       "variants": [
         {
           "id": "wind-1",
-          "url": "/audio/forest-evening/wind-in-leaves/wind-1.mp3",
-          "attribution": "Pixabay — see /audio/forest-evening/wind-in-leaves/wind-1.json for license. Scene-local copy of the forest-day wind, looped to forest-evening's 409s offset."
+          "url": "/audio/forest-evening/wind-in-leaves/wind-1.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-evening/wind-in-leaves/wind-1.json for source + license."
         },
         {
           "id": "wind-2",
-          "url": "/audio/forest-evening/wind-in-leaves/wind-2.mp3",
-          "attribution": "User-provided — see /audio/forest-evening/wind-in-leaves/wind-2.json for license. Scene-local copy of the forest-day wind, looped to forest-evening's 409s offset."
+          "url": "/audio/forest-evening/wind-in-leaves/wind-2.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-evening/wind-in-leaves/wind-2.json for source + license."
         }
       ]
     },
@@ -56,18 +56,18 @@
       "label": "Distant birds",
       "loopOffsetSeconds": 521,
       "crossfadeSeconds": 5,
-      "defaultVolume": 0.20,
+      "defaultVolume": 0.2,
       "variantRotation": "random",
       "variants": [
         {
           "id": "birds-1",
-          "url": "/audio/forest-evening/distant-birds/birds-1.mp3",
-          "attribution": "Pixabay — see /audio/forest-evening/distant-birds/birds-1.json for license. Scene-local copy of the forest-day birds, looped to forest-evening's 521s offset; quieter here to suit dusk."
+          "url": "/audio/forest-evening/distant-birds/birds-1.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-evening/distant-birds/birds-1.json for source + license."
         },
         {
           "id": "birds-2",
-          "url": "/audio/forest-evening/distant-birds/birds-2.mp3",
-          "attribution": "Pixabay — see /audio/forest-evening/distant-birds/birds-2.json. Scene-local copy; looped to 521s. Flagged for replacement (24 kHz source)."
+          "url": "/audio/forest-evening/distant-birds/birds-2.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-evening/distant-birds/birds-2.json for source + license."
         }
       ]
     },
@@ -82,12 +82,12 @@
         {
           "id": "creek-1",
           "url": "/audio/forest-evening/creek-trickle/creek-1.mp3",
-          "attribution": "freetousesounds sound library — see /audio/forest-evening/creek-trickle/creek-1.json for license. Acrossfade-extension of the forest-day creek MP3s into ~750s variants so loopOffset 691 holds."
+          "attribution": "freetousesounds sound library \u00e2\u20ac\u201d see /audio/forest-evening/creek-trickle/creek-1.json for license. Acrossfade-extension of the forest-day creek MP3s into ~750s variants so loopOffset 691 holds."
         },
         {
           "id": "creek-2",
           "url": "/audio/forest-evening/creek-trickle/creek-2.mp3",
-          "attribution": "freetousesounds sound library — see /audio/forest-evening/creek-trickle/creek-2.json for license. Reverse-order acrossfade companion to creek-1."
+          "attribution": "freetousesounds sound library \u00e2\u20ac\u201d see /audio/forest-evening/creek-trickle/creek-2.json for license. Reverse-order acrossfade companion to creek-1."
         }
       ]
     }

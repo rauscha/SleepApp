@@ -1,9 +1,9 @@
 {
-  "source": "freetousesounds sound library",
-  "originalFilename": "Ocean Ambience At Night From Hotel Windo - 01 + 02 (Korea, coastal town hotel window).ogg",
-  "license": "Free To Use Sounds paid library \u2014 derivative works permitted (including commercial), no attribution required. Original sounds may not be redistributed in their original form; the shipped MP3 is a derivative (transcoded + loudnorm-normalized). See https://freetousesounds.com/license-agreement",
-  "downloadedAt": "2026-05-29",
+  "source": "George Vlad / Mindful Audio \u2014 free YouTube release: \u201cSandy Beach Waves, Madagascar\u201d (YouTube i7ds-DhM89I)",
+  "sourceUrl": "https://www.youtube.com/watch?v=i7ds-DhM89I",
+  "license": "Free YouTube release used in a personal, non-commercial build (see DECISIONS.md 2026-06-30 'personal-use' entry). Not redistributed standalone; shipped file is a short processed excerpt (cut + loudnorm + Opus).",
+  "downloadedAt": "2026-07-01",
+  "notes": "Clean-source refresh 2026-07-01: cut @1000s of the source recording, stereo, 48 kHz, loudnorm I=-20 LUFS TP=-1.0. FLAC intermediate; loopify-scenes.py trims to the element's prime loopOffset and encodes Opus. Seamless-looped to 251s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless. Encoded as Opus (128k) \u2014 see DECISIONS.md 'Ship scene audio as Opus, not MP3'.",
   "trimmedTo": "251s",
-  "outputFormat": "44.1 kHz / 128 kbps / stereo MP3",
-  "notes": "Two adjacent 183s Korea-hotel-window OGGs acrossfaded into one ~290s constant-roar variant so loopOffset can sit on prime 251 rather than the off-list 175. Acrossfade duration 20s, triangular curves. Loudnorm I=-20 LUFS, 44.1 kHz 128 kbps stereo MP3. Seamless-looped to 251s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
+  "outputFormat": "Opus"
 }

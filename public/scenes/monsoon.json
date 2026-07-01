@@ -1,10 +1,10 @@
 {
   "id": "monsoon",
   "label": "Monsoon",
-  "description": "Heavy nighttime downpour on a metal garage roof in Chiang Mai, softer rain on canvas a little farther off, and the muffled rumble of distant thunder behind it all.",
+  "description": "Steady rain deep in the rainforest, softer rain a little farther off, muffled thunder behind it all.",
   "synth": {
     "color": "brown",
-    "defaultVolume": 0.10
+    "defaultVolume": 0.1
   },
   "tinnitus": {
     "enabledByDefault": false,
@@ -21,18 +21,18 @@
       "variants": [
         {
           "id": "rain-1",
-          "url": "/audio/monsoon/rain/rain-1.mp3",
-          "attribution": "freetousesounds sound library — see /audio/monsoon/rain/rain-1.json for license."
+          "url": "/audio/monsoon/rain/rain-1.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/monsoon/rain/rain-1.json for source + license."
         },
         {
           "id": "rain-2",
-          "url": "/audio/monsoon/rain/rain-2.mp3",
-          "attribution": "freetousesounds sound library — see /audio/monsoon/rain/rain-2.json for license."
+          "url": "/audio/monsoon/rain/rain-2.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/monsoon/rain/rain-2.json for source + license."
         },
         {
           "id": "rain-3",
-          "url": "/audio/monsoon/rain/rain-3.mp3",
-          "attribution": "freetousesounds sound library — see /audio/monsoon/rain/rain-3.json for license."
+          "url": "/audio/monsoon/rain/rain-3.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/monsoon/rain/rain-3.json for source + license."
         }
       ]
     },
@@ -41,18 +41,18 @@
       "label": "Rain, farther off",
       "loopOffsetSeconds": 409,
       "crossfadeSeconds": 5,
-      "defaultVolume": 0.30,
+      "defaultVolume": 0.3,
       "variantRotation": "random",
       "variants": [
         {
           "id": "distant-1",
-          "url": "/audio/monsoon/rain-distant/distant-1.mp3",
-          "attribution": "freetousesounds sound library — see /audio/monsoon/rain-distant/distant-1.json for license."
+          "url": "/audio/monsoon/rain-distant/distant-1.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/monsoon/rain-distant/distant-1.json for source + license."
         },
         {
           "id": "distant-2",
-          "url": "/audio/monsoon/rain-distant/distant-2.mp3",
-          "attribution": "freetousesounds sound library — see /audio/monsoon/rain-distant/distant-2.json for license."
+          "url": "/audio/monsoon/rain-distant/distant-2.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/monsoon/rain-distant/distant-2.json for source + license."
         }
       ]
     },
@@ -61,18 +61,18 @@
       "label": "Distant thunder (rumble only)",
       "loopOffsetSeconds": 521,
       "crossfadeSeconds": 5,
-      "defaultVolume": 0.20,
+      "defaultVolume": 0.2,
       "variantRotation": "sequential",
       "variants": [
         {
           "id": "rumble-1",
           "url": "/audio/monsoon/thunder-rumble/rumble-1.mp3",
-          "attribution": "freetousesounds sound library — see /audio/monsoon/thunder-rumble/rumble-1.json for license. Low-passed at 600 Hz, sparse event layer."
+          "attribution": "freetousesounds sound library \u00e2\u20ac\u201d see /audio/monsoon/thunder-rumble/rumble-1.json for license. Low-passed at 600 Hz, sparse event layer."
         },
         {
           "id": "rumble-2",
           "url": "/audio/monsoon/thunder-rumble/rumble-2.mp3",
-          "attribution": "freetousesounds sound library — see /audio/monsoon/thunder-rumble/rumble-2.json for license. Low-passed at 600 Hz, sparse event layer."
+          "attribution": "freetousesounds sound library \u00e2\u20ac\u201d see /audio/monsoon/thunder-rumble/rumble-2.json for license. Low-passed at 600 Hz, sparse event layer."
         }
       ]
     }

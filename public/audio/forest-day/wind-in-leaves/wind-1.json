@@ -1,10 +1,9 @@
 {
-  "source": "Pixabay",
-  "originalFilename": "freesound_community-poplar_wind-53373.mp3",
-  "license": "Pixabay Content License \u2014 free, no attribution required, commercial use OK",
-  "downloadedAt": "2026-05-12",
+  "source": "George Vlad / Mindful Audio \u2014 free YouTube release: \u201cSoft Wind and Snow\u201d (YouTube iH4zn2-FWxA)",
+  "sourceUrl": "https://www.youtube.com/watch?v=iH4zn2-FWxA",
+  "license": "Free YouTube release used in a personal, non-commercial build (see DECISIONS.md 2026-06-30 'personal-use' entry). Not redistributed standalone; shipped file is a short processed excerpt (cut + loudnorm + Opus).",
+  "downloadedAt": "2026-06-30",
+  "notes": "Clean-source refresh 2026-07-01: cut @1200s of the source recording, stereo, 48 kHz, loudnorm I=-20 LUFS TP=-1.0. FLAC intermediate; loopify-scenes.py trims to the element's prime loopOffset and encodes Opus. Seamless-looped to 521s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless. Encoded as Opus (128k) \u2014 see DECISIONS.md 'Ship scene audio as Opus, not MP3'.",
   "trimmedTo": "521s",
-  "outputFormat": "48 kHz / 192 kbps / stereo MP3",
-  "notes": "Re-encoded from Pixabay source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3. Seamless-looped to 521s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless.",
-  "edits": "2026-05-30: excised two muffled background-voice blips at ~45.0-45.7s (audible as faint talking from another room). Cut [44.80-45.90s] and equal-power (qsin) crossfaded the surrounding wind with a 0.30s overlap; seamless on stationary noise. Duration 590s -> 588.6s (still > loopOffset 521 + crossfade 5). Original backed up off-repo."
+  "outputFormat": "Opus"
 }

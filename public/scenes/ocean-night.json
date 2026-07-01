@@ -21,18 +21,18 @@
       "variants": [
         {
           "id": "wave-1",
-          "url": "/audio/ocean-night/waves/wave-1.mp3",
-          "attribution": "freetousesounds sound library — see /audio/ocean-night/waves/wave-1.json for license."
+          "url": "/audio/ocean-night/waves/wave-1.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/ocean-night/waves/wave-1.json for source + license."
         },
         {
           "id": "wave-2",
-          "url": "/audio/ocean-night/waves/wave-2.mp3",
-          "attribution": "freetousesounds sound library — see /audio/ocean-night/waves/wave-2.json for license."
+          "url": "/audio/ocean-night/waves/wave-2.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/ocean-night/waves/wave-2.json for source + license."
         },
         {
           "id": "wave-3",
-          "url": "/audio/ocean-night/waves/wave-3.mp3",
-          "attribution": "freetousesounds sound library — see /audio/ocean-night/waves/wave-3.json for license."
+          "url": "/audio/ocean-night/waves/wave-3.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/ocean-night/waves/wave-3.json for source + license."
         }
       ]
     },
@@ -41,18 +41,18 @@
       "label": "Surf, further out",
       "loopOffsetSeconds": 409,
       "crossfadeSeconds": 5,
-      "defaultVolume": 0.30,
+      "defaultVolume": 0.3,
       "variantRotation": "random",
       "variants": [
         {
           "id": "far-1",
-          "url": "/audio/ocean-night/waves-far/far-1.mp3",
-          "attribution": "freetousesounds sound library — see /audio/ocean-night/waves-far/far-1.json for license."
+          "url": "/audio/ocean-night/waves-far/far-1.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/ocean-night/waves-far/far-1.json for source + license."
         },
         {
           "id": "far-2",
-          "url": "/audio/ocean-night/waves-far/far-2.mp3",
-          "attribution": "freetousesounds sound library — see /audio/ocean-night/waves-far/far-2.json for license."
+          "url": "/audio/ocean-night/waves-far/far-2.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/ocean-night/waves-far/far-2.json for source + license."
         }
       ]
     },
@@ -67,12 +67,12 @@
         {
           "id": "dock-1",
           "url": "/audio/ocean-night/dockside-distant/dock-1.mp3",
-          "attribution": "freetousesounds sound library — see /audio/ocean-night/dockside-distant/dock-1.json for license. Sparse event layer: one ~3-min dockside ambience per ~9-min loop, otherwise silence under the wave layers."
+          "attribution": "freetousesounds sound library \u00e2\u20ac\u201d see /audio/ocean-night/dockside-distant/dock-1.json for license. Sparse event layer: one ~3-min dockside ambience per ~9-min loop, otherwise silence under the wave layers."
         },
         {
           "id": "dock-2",
           "url": "/audio/ocean-night/dockside-distant/dock-2.mp3",
-          "attribution": "freetousesounds sound library — see /audio/ocean-night/dockside-distant/dock-2.json for license. Sparse event layer."
+          "attribution": "freetousesounds sound library \u00e2\u20ac\u201d see /audio/ocean-night/dockside-distant/dock-2.json for license. Sparse event layer."
         }
       ]
     }

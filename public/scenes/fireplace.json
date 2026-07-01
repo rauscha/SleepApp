@@ -21,18 +21,18 @@
       "variants": [
         {
           "id": "close-1",
-          "url": "/audio/fireplace/fire-close/close-1.mp3",
-          "attribution": "Pixabay — see /audio/fireplace/fire-close/close-1.json for license."
+          "url": "/audio/fireplace/fire-close/close-1.opus",
+          "attribution": "FOBOS PLANET (YouTube) \u2014 see /audio/fireplace/fire-close/close-1.json for source + license."
         },
         {
           "id": "close-2",
-          "url": "/audio/fireplace/fire-close/close-2.mp3",
-          "attribution": "User-provided — see /audio/fireplace/fire-close/close-2.json for license."
+          "url": "/audio/fireplace/fire-close/close-2.opus",
+          "attribution": "FOBOS PLANET (YouTube) \u2014 see /audio/fireplace/fire-close/close-2.json for source + license."
         },
         {
           "id": "close-3",
-          "url": "/audio/fireplace/fire-close/close-3.mp3",
-          "attribution": "User-provided — see /audio/fireplace/fire-close/close-3.json for license."
+          "url": "/audio/fireplace/fire-close/close-3.opus",
+          "attribution": "FOBOS PLANET (YouTube) \u2014 see /audio/fireplace/fire-close/close-3.json for source + license."
         }
       ]
     },
@@ -46,13 +46,13 @@
       "variants": [
         {
           "id": "distant-1",
-          "url": "/audio/fireplace/fire-distant/distant-1.mp3",
-          "attribution": "Pixabay — see /audio/fireplace/fire-distant/distant-1.json for license."
+          "url": "/audio/fireplace/fire-distant/distant-1.opus",
+          "attribution": "FOBOS PLANET (YouTube) \u2014 see /audio/fireplace/fire-distant/distant-1.json for source + license."
         },
         {
           "id": "distant-2",
-          "url": "/audio/fireplace/fire-distant/distant-2.mp3",
-          "attribution": "User-provided — see /audio/fireplace/fire-distant/distant-2.json for license."
+          "url": "/audio/fireplace/fire-distant/distant-2.opus",
+          "attribution": "FOBOS PLANET (YouTube) \u2014 see /audio/fireplace/fire-distant/distant-2.json for source + license."
         }
       ]
     }

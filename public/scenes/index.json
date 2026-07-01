@@ -9,13 +9,13 @@
     {
       "id": "forest-night",
       "label": "Forest, night",
-      "description": "Wind through dark canopy, a slow creek behind it. No birds.",
+      "description": "Wind through dark canopy, night insects far off, a slow creek behind it. No birds.",
       "url": "/scenes/forest-night.json"
     },
     {
       "id": "forest-evening",
       "label": "Forest, evening rain",
-      "description": "Light rain dripping from leaves at dusk, wind in the tree tops, a slow creek, quiet birds settling.",
+      "description": "Light rain dripping through a cloud forest at dusk, wind in the tree tops, a slow creek, quiet birds settling.",
       "url": "/scenes/forest-evening.json"
     },
     {
@@ -27,7 +27,7 @@
     {
       "id": "monsoon",
       "label": "Monsoon",
-      "description": "Heavy downpour on a metal roof, softer rain a little farther off, muffled thunder behind it all.",
+      "description": "Steady rain deep in the rainforest, softer rain farther off, muffled thunder behind it all.",
       "url": "/scenes/monsoon.json"
     },
     {

@@ -1,0 +1,9 @@
+{
+  "source": "George Vlad / Mindful Audio \u2014 free YouTube release: \u201cAfrican Night Ambience\u201d (YouTube qlC5Ulrh4g4)",
+  "sourceUrl": "https://www.youtube.com/watch?v=qlC5Ulrh4g4",
+  "license": "Free YouTube release used in a personal, non-commercial build (see DECISIONS.md 2026-06-30 'personal-use' entry). Not redistributed standalone; shipped file is a short processed excerpt (cut + loudnorm + Opus).",
+  "downloadedAt": "2026-06-30",
+  "notes": "Clean-source refresh 2026-07-01: cut @1700s of the source recording, stereo, 48 kHz, loudnorm I=-20 LUFS TP=-1.0. FLAC intermediate; loopify-scenes.py trims to the element's prime loopOffset and encodes Opus. Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless. Encoded as Opus (128k) \u2014 see DECISIONS.md 'Ship scene audio as Opus, not MP3'.",
+  "trimmedTo": "409s",
+  "outputFormat": "Opus"
+}
