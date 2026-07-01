@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 """loopify-scenes.py — restore the brief in the Howler (native-loop) engine.
 
-Three jobs, all idempotent (re-runnable):
+Two jobs, both idempotent (re-runnable):
 
   1. Synth-bed carrier: generate a seamless, quiet noise loop per color
      (brown / pink / white) at 887s — the 5th canonical prime, so the bed is
      incommensurate with the element offsets (251/409/521/691). HowlScene
      plays it as a looping layer under every scene.
 
-  2. forest-evening owns scene-local copies of the two forest-day elements it
-     reuses at DIFFERENT primes (wind-in-leaves @409, distant-birds @521), so
-     each physical file has exactly one native loop length.
-
-  3. Seamless loops: trim every scene variant to its element's
+  2. Seamless loops: trim every scene variant to its element's
      loopOffsetSeconds with a gapless wrap, so native HTML5 looping has no
      periodic seam/tick. Because each element in a scene sits on a distinct
      prime, the combined pattern's repeat period is the LCM of the primes —
@@ -57,14 +53,6 @@ OUTPUT_BITRATE = "128k"  # transparent for field-recording ambience + noise beds
 # trims and synth beds alike — targets 48000 Hz now, not the source's rate.
 OPUS_SR = 48000
 
-# forest-day element dirs that forest-evening reuses at a different prime →
-# give forest-evening its own copies. (src basename → dst dir.)
-FE_LOCAL_COPIES = [
-    ("forest-day/wind-in-leaves", "forest-evening/wind-in-leaves"),
-    ("forest-day/distant-birds", "forest-evening/distant-birds"),
-]
-
-
 def probe_duration(path):
     out = subprocess.check_output(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
@@ -103,7 +91,7 @@ def loopify_in_place(path, period):
     opus_path = stem + ".opus"
     already_opus = ext.lower() == ".opus"
     if already_opus and abs(d - period) < 2:
-        print(f"    skip {os.path.relpath(path, ROOT)} ({d:.1f}s ≈ {period})")
+        print(f"    skip {os.path.relpath(path, ROOT)} ({d:.1f}s ~= {period})")
         return None
     if d < period + C:
         print(f"    WARN {os.path.relpath(path, ROOT)} too short "
@@ -113,13 +101,15 @@ def loopify_in_place(path, period):
     seamless_loop(path, tmp, period, OPUS_SR)
     nd = probe_duration(tmp)
     os.replace(tmp, opus_path)
+    # NB: plain ASCII in prints — a fancy arrow here crashed the whole run
+    # mid-migration on Windows' default cp1252 console (2026-07-01).
     if not already_opus:
         os.remove(path)
-        print(f"    loop {os.path.relpath(path, ROOT)} → "
-              f"{os.path.relpath(opus_path, ROOT)}: {d:.1f}s → {nd:.1f}s "
+        print(f"    loop {os.path.relpath(path, ROOT)} -> "
+              f"{os.path.relpath(opus_path, ROOT)}: {d:.1f}s -> {nd:.1f}s "
               f"(prime {period}, migrated to Opus)")
     else:
-        print(f"    loop {os.path.relpath(opus_path, ROOT)}: {d:.1f}s → {nd:.1f}s "
+        print(f"    loop {os.path.relpath(opus_path, ROOT)}: {d:.1f}s -> {nd:.1f}s "
               f"(prime {period})")
     return opus_path
 
@@ -186,21 +176,6 @@ def gen_beds():
               f"({probe_duration(out):.1f}s)")
 
 
-def make_fe_copies():
-    print("## forest-evening scene-local copies")
-    import shutil
-    for src_rel, dst_rel in FE_LOCAL_COPIES:
-        src_dir = os.path.join(AUDIO, src_rel)
-        dst_dir = os.path.join(AUDIO, dst_rel)
-        os.makedirs(dst_dir, exist_ok=True)
-        for fn in os.listdir(src_dir):
-            dst = os.path.join(dst_dir, fn)
-            if os.path.exists(dst):
-                continue  # don't clobber an already-trimmed local copy
-            shutil.copy2(os.path.join(src_dir, fn), dst)
-            print(f"    copy {dst_rel}/{fn}")
-
-
 def loopify_scenes():
     for f in sorted(glob.glob(os.path.join(SCENES, "*.json"))):
         if f.endswith("index.json"):
@@ -232,6 +207,5 @@ def loopify_scenes():
 
 if __name__ == "__main__":
     gen_beds()
-    make_fe_copies()
     loopify_scenes()
     print("done.")
