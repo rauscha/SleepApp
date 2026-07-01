@@ -40,11 +40,22 @@ DECISIONS.md (2026-06-30 entry) + memory:
   grabs (or the new fireplace source below) into `public/audio/<scene>/...` —
   that's manual placement + `loopify-scenes.py` per scene, still to do.
 - **Fireplace gap: ACQUIRED 2026-07-01** — 12h FOBOS PLANET fireplace source
-  in `raw-sounds/_sources/fireplace/` (818 MB Opus). **Ocean waves gap: still
-  open** — no source cleared the bar yet; singing-bowl gap: direction decided
-  (ElevenLabs Music + the real bowl recordings already in `raw-sounds/`), not
-  yet built. Full research + acquisition detail in DECISIONS.md's
-  "Ocean waves + fireplace sourcing" and "Singing-bowl bed" entries.
+  in `raw-sounds/_sources/fireplace/` (818 MB Opus).
+- **Ocean gap: ACQUIRED 2026-07-01** — two ~1h George Vlad calm-ocean
+  recordings (sandy-beach + rocky-beach Madagascar) in
+  `raw-sounds/_sources/george-vlad-ocean/` (~55 MB each, Opus). The
+  deep-research passes wrongly said Vlad had no ocean (they only checked his
+  paid catalogue); his free YouTube has it. Found via direct WebSearch after
+  the harness rate-limited on that exact angle. Beats the paid/aggregator
+  alternatives. See DECISIONS.md "Ocean waves + fireplace sourcing".
+- **Singing-bowl gap:** direction decided (ElevenLabs Music + the real bowl
+  recordings already in `raw-sounds/`), not yet built. **A design-question
+  research pass is running** (2026-07-01) on whether singing bowls are even
+  the right background for spoken meditations vs. ambient pads / reusing the
+  nature scene beds / etc. — result pending; revisit the singing-bowl build
+  after it lands. (The 2026-06-30 deep-research runs on both this and the
+  ocean gap hit an API rate-limit storm mid-verification; ocean was salvaged
+  by direct search, the meditation-sound one was re-run.)
 - **RESOLVED 2026-06-30:** the clean-source refresh **SUPERSEDES** the
   2026-06-21 re-cut batch entirely. We are redoing the audio from the new
   source, so:

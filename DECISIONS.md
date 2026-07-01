@@ -504,18 +504,24 @@ Also available, not yet fetched — **Christopher Courter "Crackling Fireplace"*
 — good loop-pipeline fit): needs a Freesound login to download at full quality;
 Andrew offered to provide one on request.
 
-**Ocean waves — NOT YET ACQUIRED.** No single-producer source cleared the bar.
-Leading candidate: **Earth.fm "Gentle Waves over Ancient Rocks"** (Khristos
-Nizamis, 21:18, explicitly "smooth, consistent, and repetitive" — Earth.fm
-taxonomizes this separately from its "Crashing Surf" category) — free,
-non-profit platform, but Earth.fm is a multi-contributor aggregator, not a
-single recordist. Runner-up: **Boom Library "Ocean Shores"** (Gordon Hempton,
-single-recordist, paid) — NOT pursued yet: it mixes calm and windy/gull-noise
-takes per its own marketing, so it needs per-file audition before it's even
-confirmed clean, and price is unconfirmed — not clearly "significantly
-better" than the free Earth.fm track until that audition happens.
-BBC Sound Effects has a large "waves" catalogue (free, personal-use) but
-tops out ~4min — too short for this pipeline's long-form requirement.
-**Next action:** fetch the Earth.fm track directly (not YouTube — direct
-site download, method TBD) and audition; only pursue Boom Library if that
-doesn't clear the cleanliness bar.
+**Ocean waves — ACQUIRED 2026-07-01 (from George Vlad after all).** The
+102-agent research pass, and a follow-up deepening pass, both wrongly
+concluded George Vlad's catalogue had no ocean — because they only checked
+his *commercial* Mindful Audio catalogue (which indeed lists no ocean).
+His **free YouTube channel does**, and a direct targeted search (2 WebSearches
++ yt-dlp probe, not the harness — which had rate-limited out on exactly this
+"George-Vlad-style YouTube channel" angle) found two ~1-hour calm recordings:
+- `ocean-night__sandy-beach-madagascar__i7ds-DhM89I.opus` — "Relaxing sounds
+  of ocean waves on a sandy beach", 1:04:18.
+- `ocean-night__rocky-beach-masoala__SNgELhR1v2k.opus` — "The calm sounds of
+  waves on a rocky beach" (Masoala Peninsula), 1:03:14.
+Both in `raw-sounds/_sources/george-vlad-ocean/` (~55 MB each, Opus, no
+re-encode). This **beats both prior leaders** (Earth.fm multi-contributor,
+Boom Library paid): same already-trusted recordist as our forest/rain/wind
+scenes, free, long-form, yt-dlp-able, and gives two natural variants (sandy +
+rocky) for the ocean-night rotation pool. Lesson logged: when checking whether
+a recordist "has" a sound, check their free YouTube/SoundCloud, not just the
+paid catalogue — the two don't overlap. Prior leaders retained as fallback
+only if these two don't audition clean.
+BBC Sound Effects "waves" (free, personal-use) stays ruled out — ~4min max,
+too short for this pipeline.
