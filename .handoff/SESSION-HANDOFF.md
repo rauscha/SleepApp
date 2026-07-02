@@ -1,9 +1,81 @@
-# Session hand-off — 2026-07-01 (machine: crane-desk, abroad)
-# (Older 2026-06-16 / 2026-06-30 hand-off history is preserved below this
+# Session hand-off — 2026-07-02 (machine: crane-desk, abroad)
+# (Older 2026-06-16 → 2026-07-01 hand-off history is preserved below this
 #  block — but THIS block is the current state; read it first and treat the
 #  rest as backstory.)
 
-## STATE — 2026-07-01 (read this first)
+## STATE — 2026-07-02 (read this first)
+- Branch: `main`, clean, synced with `origin/main` (0/0). Only the main
+  worktree exists. Everything below is committed + pushed (HEAD `1369e5d`).
+- The **clean-source audio refresh is CUT and LIVE on main**: 28 new George
+  Vlad / FOBOS cuts across 6 scenes, all Opus on their prime offsets, tests
+  254/254 green, SW cache bumped v7→v8. The one gate left is **Andrew's ear
+  audition** (dashboard ready, see Next up #1). Also decided this session:
+  **warm pad/drone is the default meditation bed** (supersedes singing bowls).
+
+## Done this session (2026-07-01 → 02)
+- **Pad/drone decision recorded** (`149d951`, DECISIONS.md + PENDING-DECISIONS
+  0a): default meditation bed = warm ambient pad/drone. Build route: audition
+  **99Sounds "Red Fog"** (free drone library) first, numpy/ffmpeg DSP synthesis
+  as fallback; MusicGen stays rejected (failed by ear on bowls 2026-06-21).
+  Bowls demoted to optional later texture (11 real recordings kept in
+  `raw-sounds/`).
+- **Loop-cut the sourced audio** (`ae3c357`): 28 cuts from
+  `raw-sounds/_sources/` into `public/audio/<scene>/<element>/` — forest-day,
+  forest-night (gained a proper 3rd element: night insects @409, African night
+  source), forest-evening, monsoon (re-described as rainforest), ocean-night,
+  fireplace. Pipeline: ffmpeg region cut → loudnorm I=-20 (distant layers also
+  lowpassed 2800/3500 Hz) → FLAC intermediate → `loopify-scenes.py` → Opus at
+  exact prime lengths. Sidecars written, 26 replaced MP3s deleted,
+  `CACHE_VERSION` v8. Kept unchanged (no clean source yet): creeks, thunder,
+  dockside, rain-on-window, singing-bowl.
+- **loopify tool fixes** (`20bca82`): dropped the obsolete forest-evening copy
+  job (was littering unreferenced files); ASCII-only prints (a `→` crashed the
+  run mid-migration on Windows' cp1252 console).
+- **Removed orphaned fireplace `distant-3`** (`1369e5d`) — unreferenced since
+  May, surfaced when the audition dashboard counted 29 tracks instead of 28.
+- **Audition dashboard built + opened**:
+  `raw-sounds/_scope-refresh-2026-07-01/index.html` (28 tracks, spectrogram +
+  scrubber each).
+
+## Next up (2026-07-02)
+1. **[ANDREW — the gate] Audition the 28 cuts** in the dashboard above. Ears
+   only — spectrograms looked clean. One thing to listen for: forest-night
+   `night-1`/`night-2` carry a steady single-frequency cricket line (authentic,
+   but could read as "whine" at low volume). Flags → re-cut different regions
+   from the same sources (they're 1–12 h long, plenty of material).
+2. **Run `/code-review` over the recent changes** (Andrew asked for this,
+   not yet run): `tools/loopify-scenes.py`, the `HowlScene.ts` `hasFadedIn`
+   fix, `sceneCatalogue.test.ts`, this session's scene-JSON edits. Known item
+   to weigh: `gen_beds()` regenerates the noise beds UNSEEDED on every run —
+   pure binary churn when nothing changed (this session discarded it via
+   `git checkout -- public/audio/_bed/`). Consider seeding or a skip-if-exists.
+3. **Build the pad/drone meditation bed**: download/audition 99Sounds
+   "Red Fog" → pick a candidate → voice it (HPF 80–100 Hz, 200–500 Hz dip,
+   keep 2–4 kHz clear, ~15 dB under narration) → cut to a prime offset via
+   the loopify pipeline → Andrew auditions.
+4. Then back to the v1.0 roadmap `[ASK]`/`[DEVICE]` items: photos (4.3),
+   meditation catalogue synthesis (6.5), device pass + tag (5.2).
+
+## Watch out for (2026-07-02)
+- **The app is already playing the NEW audio** — the refresh shipped before
+  the ear audition (fine for a personal-use app; the dashboard is the formal
+  gate, and re-cuts are cheap).
+- **B1–B4 loop-seam bugs (2026-06-17) are probably mooted** by this refresh —
+  forest-night wind and all ocean waves were replaced wholesale with new
+  sources and the gapless fade-wrap method. Confirm during the audition, then
+  close them in PENDING-DECISIONS §5.
+- `gen_beds()` non-idempotency (Next up #2) — if you re-run
+  `loopify-scenes.py` and only `public/audio/_bed/` shows as modified, that's
+  the unseeded-noise churn; safe to `git checkout --` it.
+- `tools/_build-level-candidates.sh` (untracked) + `raw-sounds/_candidates/`
+  are still the retired 2026-06-21 litter — delete on a cleanup pass.
+- Mixed `.mp3`/`.opus` in `public/audio/` is expected and supported during the
+  scene-by-scene migration; don't "fix" it.
+
+---
+# ARCHIVED hand-off — 2026-07-01 (crane-desk, abroad)
+
+## STATE — 2026-07-01 (superseded by the block above)
 - Branch: `main`, clean, synced with `origin/main` (0/0). Only the main
   worktree exists. All work below is committed + pushed.
 - The **clean-source audio refresh** is the active workstream. This session

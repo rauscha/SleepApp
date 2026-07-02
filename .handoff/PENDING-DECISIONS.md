@@ -36,9 +36,16 @@ DECISIONS.md (2026-06-30 entry) + memory:
   (`public/audio/_bed/{brown,pink,white}.opus`) are already regenerated and
   verified (887.0065s, 48kHz). `HowlScene.ts` and `sceneCatalogue.test.ts`
   accept both `.mp3` and `.opus` during the migration. All 254 tests pass,
-  typecheck clean. **NOT YET RUN:** actually loop-cutting the George Vlad
-  grabs (or the new fireplace source below) into `public/audio/<scene>/...` —
-  that's manual placement + `loopify-scenes.py` per scene, still to do.
+  typecheck clean.
+- **LOOP-CUT COMPLETE 2026-07-02** (commit `ae3c357`): 28 cuts from the Vlad /
+  FOBOS sources across 6 scenes (forest-day/night/evening, monsoon,
+  ocean-night, fireplace), all Opus on their prime offsets, loudnorm I=-20,
+  sidecars written, 26 replaced MP3s deleted, `CACHE_VERSION` → v8, 254/254
+  tests green. Forest-night gained a 3rd element (night insects @409). Kept
+  unchanged (no clean source yet): creeks, thunder, dockside, rain-on-window,
+  singing-bowl. **REMAINING GATE: Andrew's ear audition** — dashboard at
+  `raw-sounds/_scope-refresh-2026-07-01/index.html` (28 tracks); flags → re-cut
+  other regions from the same long sources.
 - **Fireplace gap: ACQUIRED 2026-07-01** — 12h FOBOS PLANET fireplace source
   in `raw-sounds/_sources/fireplace/` (818 MB Opus).
 - **Ocean gap: ACQUIRED 2026-07-01** — two ~1h George Vlad calm-ocean
@@ -109,9 +116,8 @@ self-migrates a scene's JSON + sidecar when it converts a file;
 3 synth beds are regenerated and verified; `sceneCatalogue.test.ts` accepts
 both extensions during the scene-by-scene migration; CLAUDE.md rule #3 +
 file-layout updated. 254/254 tests pass, typecheck clean.
-**Still not run:** actually loop-cutting any of the NEW source material
-(George Vlad / fireplace) into `public/audio/` — the tool is ready, hasn't
-been pointed at real scene content yet.
+**Loop-cut of the new source material: DONE 2026-07-02** (`ae3c357`, see 0a) —
+28 Opus cuts live in `public/audio/`, pending Andrew's ear audition.
 **Meditations/stories (voice) — DECIDED to stay MP3/WAV, not just deferred**
 (DECISIONS.md 2026-07-01): Opus's advantage is specifically for broadband
 noise; voice has no content above ~8kHz where MP3 already loses nothing
@@ -235,7 +241,13 @@ the voice ID, I'll add it to `VOICE_IDS` in `tools/gen-meditation.ts` and the
 - `rm public/meditations/*.pre-loudnorm.mp3 public/stories/*.pre-loudnorm.mp3`
   (gitignored loudnorm backups, if present).
 
-## 5. Overnight audio-seam bugs B1–B4 (blocked on your source audio)
+## 5. Overnight audio-seam bugs B1–B4 — PROBABLY MOOTED 2026-07-02, confirm at audition
+The clean-source refresh (`ae3c357`) replaced forest-night wind and all
+ocean-night waves wholesale (new sources, gapless fade-wrap loops), which
+should moot B1/B3/B4 outright; B2's linear-vs-equal-power wrap concern applies
+to the new `loopify-scenes.py` wrap too but hasn't been audible so far. Close
+these after Andrew's audition of the new cuts passes. Original report kept
+below for reference:
 From the 2026-06-17 overnight listening session
 (`notes/bug-reports-2026-06-17.md`). Loop-seam/level defects in shipped scenes
 that need the **original source audio + your ears** — not fixable from the
