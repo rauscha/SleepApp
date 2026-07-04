@@ -1,9 +1,83 @@
-# Session hand-off — 2026-07-02 (machine: crane-desk, abroad)
-# (Older 2026-06-16 → 2026-07-01 hand-off history is preserved below this
+# Session hand-off — 2026-07-04 (machine: crane-desk)
+# (Older 2026-06-16 → 2026-07-02 hand-off history is preserved below this
 #  block — but THIS block is the current state; read it first and treat the
 #  rest as backstory.)
 
-## STATE — 2026-07-02 (read this first)
+## STATE — 2026-07-04 (read this first)
+- Branch: `main`, clean, synced with `origin/main` (0/0). Only the main
+  worktree exists. Everything is committed + pushed (HEAD `64c02ee`).
+- **The `/code-review` is DONE and its fix plan is written to disk** —
+  `notes/code-review-2026-07-02/fix-plan.md`. That closes the "run the code
+  review" action from the last hand-off. The review found **10 verified
+  issues** (9 confirmed, 1 latent) in the audio-refresh commits; none are
+  shipped-audio-breaking today, but one (the `hasFadedIn` fade-snap) defeats
+  the sleep timer and should land before the v1.0 tag.
+- **Nothing has been fixed yet** — this session only *planned* the fixes. The
+  plan is built to be executed by a fresh session with no context, and is
+  **split into two phases with a hard STOP POINT between them**: Phase 1
+  (S1–S7) is mechanical, sized for Sonnet; Phase 2 (O1–O3) needs judgment,
+  sized for Opus. The model was switched to Opus at the end of this session.
+- Andrew's **ear audition of the 28 refreshed cuts is still the open gate**
+  (unchanged from 2026-07-02) — dashboard at
+  `raw-sounds/_scope-refresh-2026-07-01/index.html`.
+
+## Done this session (2026-07-04)
+- **Ran `/code-review` (high effort)** over the audio-refresh range
+  `9321c55..1369e5d`: `tools/loopify-scenes.py`, the `HowlScene.ts`
+  `hasFadedIn` fix, `sceneCatalogue.test.ts`, and the scene-JSON edits.
+  8 finder angles → dedup → verify → **10 findings** (9 CONFIRMED, 1
+  PLAUSIBLE). Nothing committed as a fix — findings only.
+- **Wrote the fix plan** (`64c02ee`): `notes/code-review-2026-07-02/fix-plan.md`.
+  Every finding has a file:line anchor, the exact fix, and acceptance checks;
+  ground rules (commit style, auto-push, CACHE_VERSION-on-audio, worktree spam,
+  scene invariants) are restated inline so a context-free session can run it.
+  Two findings are **coupled** — fixing the loopify too-short guard (O3-A)
+  without the cross-scene URL rewrite (O3-B) would break forest-night's creek;
+  the plan forces them into one step.
+
+## Next up (2026-07-04)
+1. **Execute the fix plan** — `notes/code-review-2026-07-02/fix-plan.md`.
+   - **Phase 1 (Sonnet):** switch model to Sonnet, say "execute Phase 1 of
+     the fix plan." It STOPS itself at the barrier after S1–S7.
+   - **Phase 2 (Opus):** then switch to Opus and say "execute Phase 2."
+   - Most-severe items: O1 (`hasFadedIn` cancels a running sleep-timer fade →
+     full-volume snap + hard cut), S1+S4 (cp1252 mojibake, already committed in
+     5 scene JSONs), O2 (Howler `format` list is positional, not fallback →
+     every layer silent on iOS Safari — ambushes roadmap 5.2).
+2. **[ANDREW — the gate] Audition the 28 cuts** (dashboard above). Listen for
+   the steady cricket line in forest-night `night-1`/`night-2`. Flags → re-cut
+   from the same long sources.
+3. **Build the pad/drone meditation bed** — audition 99Sounds "Red Fog" →
+   voice it (HPF 80–100 Hz, 200–500 Hz dip, keep 2–4 kHz clear, ~15 dB under
+   narration) → loopify to a prime offset → Andrew auditions.
+   (`PENDING-DECISIONS.md` #0a.)
+4. Then the v1.0 roadmap `[ASK]`/`[DEVICE]` items: photos (4.3), meditation
+   catalogue synthesis (6.5), device pass + tag (5.2).
+
+## Watch out for (2026-07-04)
+- **The fix plan's O3 re-encodes shipped audio** for the 7 scenes still on MP3
+  (21 variant URLs — the review's "19" undercounted). It does NOT touch the 28
+  fresh audition cuts (already Opus), so it won't collide with Andrew's ear
+  pass — but if unsure, land O3's tool fixes and ask before running the
+  migration.
+- **Phase 1 → Phase 2 is a real gate, not a formality.** Phase 2's O1/O2
+  involve subtle Howler-internals semantics (a `volume()` call cancels a
+  running fade; the `format` array pairs positionally with `src`) that are easy
+  to get wrong — don't let a small model wander past the STOP POINT.
+- Everything the previous hand-off flagged still holds: the app already plays
+  the NEW audio (refresh shipped ahead of the audition — fine for personal
+  use); mixed `.mp3`/`.opus` in `public/audio/` is expected during migration;
+  `gen_beds()` churn is real (the plan's S2 fixes it).
+- `tools/_build-level-candidates.sh` (untracked) is still retired 2026-06-21
+  litter — leave it or delete on a cleanup pass; not live work. A stray
+  `NEXT_STEPS.md` also sits in an orphaned `.claude/worktrees/` dir (Drive
+  litter, not a registered worktree — `git worktree list` shows only `main`);
+  ignore it, don't hand-edit it.
+
+---
+# ARCHIVED hand-off — 2026-07-02 (crane-desk, abroad)
+
+## STATE — 2026-07-02 (superseded by the block above)
 - Branch: `main`, clean, synced with `origin/main` (0/0). Only the main
   worktree exists. Everything below is committed + pushed (HEAD `1369e5d`).
 - The **clean-source audio refresh is CUT and LIVE on main**: 28 new George
