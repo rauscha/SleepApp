@@ -106,6 +106,15 @@ export class HowlLayer {
   private disposed = false;
   /** Whether the from-silence fade-in has already run once. */
   private hasFadedIn = false;
+  /**
+   * Wall-clock ms at which an in-flight fade-to-silence (sleep timer or
+   * crossfade-out) is scheduled to reach 0; 0 means no such fade is active.
+   * While it is set, a spurious element replay or an outer-gain change must
+   * NOT snap the layer back up via volume() — that call cancels Howler's
+   * running fade (_stopFade), which is exactly the "full-volume snap then
+   * hard cut" the sleep timer must never produce.
+   */
+  private silenceFadeEndsAt = 0;
 
   constructor(
     id: string,
@@ -126,13 +135,27 @@ export class HowlLayer {
         if (this.hasFadedIn) {
           // A native html5 <audio> element can re-fire 'play' after this
           // layer's first start — e.g. the browser resuming it after an
-          // OS-level audio-focus interruption, or Howler reassigning it
-          // from its pooled-element cache. Re-running the from-zero fade
-          // here would silently drop the layer to silence and swell it
-          // back up over fadeInMs — audible under narration as a sudden
-          // "background got loud" moment. Only the true first play fades
-          // in; any later replay just re-asserts the current target so the
-          // layer stays exactly where the mixer/attenuation left it.
+          // OS-level audio-focus interruption, a lock-screen resume via the
+          // media-session play handler, or Howler reassigning it from its
+          // pooled-element cache. Re-running the from-zero fade here would
+          // drop the layer to silence and swell it back up over fadeInMs —
+          // audible under narration as a sudden "background got loud" moment.
+          if (this.silenceFadeEndsAt > 0) {
+            // A sleep-timer / crossfade fade-to-silence is in flight. The
+            // user's intent (fall asleep) outranks the OS replay event, so
+            // keep heading to silence over the REMAINING wall-clock time
+            // rather than re-asserting full mix via volume() — which would
+            // cancel the fade and snap the layer loud, then hard-cut when the
+            // timer's stop lands. A paused element's own clock stopped, so
+            // recompute the remaining time from wall time; this errs toward
+            // finishing on the user's schedule.
+            const remaining = this.silenceFadeEndsAt - Date.now();
+            if (remaining > 0) this.howl.fade(this.currentVolume(), 0, remaining);
+            else this.howl.volume(0);
+            return;
+          }
+          // Normal replay: just re-assert the current target so the layer
+          // stays exactly where the mixer/attenuation left it.
           this.howl.volume(this.effective());
           return;
         }
@@ -175,6 +198,9 @@ export class HowlLayer {
 
   /** Mixer slider — set this layer's mix level. */
   setVolume(v: number): void {
+    // An explicit mixer action is a deliberate user choice: it supersedes any
+    // in-flight fade-to-silence, so clear the guard before applying.
+    this.silenceFadeEndsAt = 0;
     this.target = clamp01(v);
     if (this.started && !this.disposed) this.howl.volume(this.effective());
   }
@@ -182,18 +208,28 @@ export class HowlLayer {
   /** Master / scene-gain change — re-apply the outer multiplier. */
   setOuter(outer: number): void {
     this.outer = clamp01(outer);
-    if (this.started && !this.disposed) this.howl.volume(this.effective());
+    // Record the new multiplier so a later restore() recomputes effective()
+    // from it, but do NOT apply it live while a fade-to-silence is running —
+    // volume() would cancel that fade (e.g. a Night Drift gain change firing
+    // mid sleep-timer fade would otherwise snap the bed back up).
+    if (this.started && !this.disposed && this.silenceFadeEndsAt === 0) {
+      this.howl.volume(this.effective());
+    }
   }
 
   /** Fade to silence over `seconds` (sleep-timer fire / crossfade-out). */
   fadeToSilence(seconds: number): void {
     if (!this.started || this.disposed) return;
-    this.howl.fade(this.currentVolume(), 0, Math.max(0, Math.round(seconds * 1000)));
+    const ms = Math.max(0, Math.round(seconds * 1000));
+    this.silenceFadeEndsAt = Date.now() + ms;
+    this.howl.fade(this.currentVolume(), 0, ms);
   }
 
   /** Restore to the mix level after a cancelled fade. */
   restore(): void {
     if (!this.started || this.disposed) return;
+    // The user cancelled the sleep timer / is staying awake: the fade is off.
+    this.silenceFadeEndsAt = 0;
     this.howl.fade(
       this.currentVolume(),
       this.effective(),
@@ -213,7 +249,12 @@ export class HowlLayer {
   fadeAndDispose(seconds: number): void {
     if (this.disposed) return;
     const ms = Math.max(0, Math.round(seconds * 1000));
-    if (this.started) this.howl.fade(this.currentVolume(), 0, ms);
+    if (this.started) {
+      // Same guard as fadeToSilence: a replay during this fade-out must keep
+      // heading to silence, not snap back up a layer that is being disposed.
+      this.silenceFadeEndsAt = Date.now() + ms;
+      this.howl.fade(this.currentVolume(), 0, ms);
+    }
     setTimeout(() => this.dispose(), ms + DISPOSE_BUFFER_MS);
   }
 

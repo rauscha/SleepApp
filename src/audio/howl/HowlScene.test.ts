@@ -19,6 +19,8 @@ class FakeHowl implements HowlLike {
   stopped = false;
   unloaded = false;
   paused = false;
+  /** Models Howler: a fade() is "running" until volume()/stop() cancels it. */
+  fadeActive = false;
   fades: Array<[number, number, number]> = [];
 
   constructor(opts: HowlFactoryOptions) {
@@ -46,11 +48,16 @@ class FakeHowl implements HowlLike {
   fade(from: number, to: number, durationMs: number): unknown {
     this.fades.push([from, to, durationMs]);
     this.vol = to;
+    this.fadeActive = true;
     return this;
   }
   volume(level?: number): number {
     if (level === undefined) return this.vol;
+    // Howler's volume() setter cancels any running fade (_stopFade). Model
+    // that here so tests can catch a stray volume() that kills a sleep-timer
+    // fade — the O1 regression.
     this.vol = level;
+    this.fadeActive = false;
     return level;
   }
   playing(): boolean {
@@ -132,6 +139,58 @@ describe('HowlScene', () => {
     // No second fade-from-zero: the volume is just re-asserted directly.
     expect(rain.fades).toHaveLength(1);
     expect(rain.volume()).toBe(0.5);
+  });
+
+  it('re-enters a running sleep-timer fade on replay instead of snapping loud (O1)', () => {
+    // The sleep timer starts a long fade-to-silence; partway through, the OS
+    // re-fires 'play' on the element (lock-screen resume / audio-focus
+    // return). The layer must keep heading to silence over the remaining
+    // time, NOT snap back to full mix (which cancels the fade, then hard-cuts
+    // when the timer's stop lands) — directly against "let me stay asleep".
+    vi.useFakeTimers();
+    try {
+      const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+      scene.start(0); // no fade-in; rain sits at its 0.5 mix level
+      const rain = bySrc('rain-1');
+      expect(rain.vol).toBe(0.5);
+
+      scene.fadeToSilence(90); // sleep timer fires: 90s ramp to 0
+      expect(rain.fades.at(-1)).toEqual([0.5, 0, 90_000]);
+      expect(rain.fadeActive).toBe(true);
+
+      vi.advanceTimersByTime(30_000); // 30s in, 60s of fade left
+      rain.play(); // spurious replay mid-fade
+
+      // Fixed behaviour: a fresh fade toward 0 over the REMAINING wall time,
+      // and no volume() snap to full mix.
+      expect(rain.fadeActive).toBe(true); // the fade was NOT cancelled
+      expect(rain.volume()).toBe(0); // still heading to silence, not 0.5
+      const last = rain.fades.at(-1)!;
+      expect(last[1]).toBe(0); // target silence
+      expect(last[2]).toBe(60_000); // remaining wall time, not the full 90s
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('an outer-gain change mid-fade does not cancel the sleep-timer fade (O1)', () => {
+    // Night Drift lowers the scene gain via setMaster while the sleep-timer
+    // fade is running. setOuter must not call volume() (which would cancel
+    // the fade); it records the new multiplier for a later restore() instead.
+    vi.useFakeTimers();
+    try {
+      const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+      scene.start(0);
+      const rain = bySrc('rain-1');
+      scene.fadeToSilence(90);
+      expect(rain.fadeActive).toBe(true);
+
+      scene.setMaster(0.5); // Night Drift gain change mid-fade
+      expect(rain.fadeActive).toBe(true); // still fading to silence
+      expect(rain.vol).toBe(0); // not snapped to 0.5*0.5 = 0.25
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('plays the synth-bed carrier from the scene color', () => {
