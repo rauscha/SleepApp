@@ -84,8 +84,11 @@ def loopify_in_place(path, period):
     """Trim `path` to a seamless `period`-second loop, emitting Opus.
 
     Returns the final path (unchanged if `path` was already `.opus`; a
-    sibling `<stem>.opus` — with the old file removed — otherwise), or None
-    if left as-is (already correct length, or too short to trim).
+    sibling `<stem>.opus` otherwise — the old-extension source is left in
+    place for the *caller* to remove, and only after the caller has
+    rewritten and persisted the referencing scene JSON, so a crash can
+    never strand the JSON pointing at a deleted file). Returns None if left
+    as-is (already correct length, or too short to trim).
     """
     d = probe_duration(path)
     stem, ext = os.path.splitext(path)
@@ -96,7 +99,7 @@ def loopify_in_place(path, period):
         return None
     if d < period + C:
         print(f"    WARN {os.path.relpath(path, ROOT)} too short "
-              f"({d:.1f}s < {period + C}) — left as-is")
+              f"({d:.1f}s < {period + C}) -- left as-is")
         return None
     tmp = opus_path + ".tmp.opus"
     seamless_loop(path, tmp, period, OPUS_SR)
@@ -105,7 +108,9 @@ def loopify_in_place(path, period):
     # NB: plain ASCII in prints — a fancy arrow here crashed the whole run
     # mid-migration on Windows' default cp1252 console (2026-07-01).
     if not already_opus:
-        os.remove(path)
+        # Old-extension source is intentionally NOT removed here — the caller
+        # deletes it only after rewriting + persisting the scene JSON that
+        # references it (crash-safe ordering).
         print(f"    loop {os.path.relpath(path, ROOT)} -> "
               f"{os.path.relpath(opus_path, ROOT)}: {d:.1f}s -> {nd:.1f}s "
               f"(prime {period}, migrated to Opus)")
@@ -210,15 +215,23 @@ def loopify_scenes():
                 new_path = loopify_in_place(path, period)
                 if new_path is None:
                     continue
-                update_sidecar(new_path, period, renamed_from=path if new_path != path else None)
-                if new_path != path:
-                    # Extension changed (mp3 -> opus): point the scene JSON
-                    # at the new file so the app resolves the right URL.
-                    new_url = "/" + os.path.relpath(new_path, os.path.join(ROOT, "public")).replace(os.sep, "/")
+                renamed = new_path != path
+                update_sidecar(new_path, period, renamed_from=path if renamed else None)
+                if renamed:
+                    # Extension changed (mp3 -> opus). Crash-safe ordering:
+                    # point the scene JSON at the new file and persist it
+                    # BEFORE deleting the old file, so the on-disk JSON never
+                    # references a path that doesn't exist. A crash / Ctrl-C /
+                    # ffmpeg failure at any point still leaves the app pointing
+                    # at a file that is present (the new .opus once the dump
+                    # lands, the old file until then).
+                    new_url = "/" + os.path.relpath(
+                        new_path, os.path.join(ROOT, "public")).replace(os.sep, "/")
                     v["url"] = new_url
+                    json.dump(d, open(f, "w", encoding="utf-8"), indent=2)
+                    os.remove(path)  # old-extension source, now unreferenced
                     dirty = True
         if dirty:
-            json.dump(d, open(f, "w", encoding="utf-8"), indent=2)
             print(f"    updated {os.path.relpath(f, ROOT)} (variant URLs -> .opus)")
 
 
