@@ -80,23 +80,51 @@ def seamless_loop(src, out, period, sr, loudnorm=None):
          "-ac", "2", "-ar", str(sr), "-c:a", "libopus", "-b:a", OUTPUT_BITRATE, out])
 
 
-def loopify_in_place(path, period):
-    """Trim `path` to a seamless `period`-second loop, emitting Opus.
+def transcode_to_opus(src, out, sr):
+    """Plain format transcode to Opus — no re-loop. For a source that is
+    already an exact, seamless, prime-length loop (every shipped MP3 variant
+    is): re-trimming it would needlessly re-cut a clean loop, so just convert
+    the container/codec."""
+    subprocess.check_call(
+        ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+         "-i", src, "-ac", "2", "-ar", str(sr),
+         "-c:a", "libopus", "-b:a", OUTPUT_BITRATE, out])
 
-    Returns the final path (unchanged if `path` was already `.opus`; a
-    sibling `<stem>.opus` otherwise — the old-extension source is left in
-    place for the *caller* to remove, and only after the caller has
-    rewritten and persisted the referencing scene JSON, so a crash can
-    never strand the JSON pointing at a deleted file). Returns None if left
-    as-is (already correct length, or too short to trim).
+
+def loopify_in_place(path, period):
+    """Make `path` a seamless `period`-second Opus loop.
+
+    Returns the final path (unchanged if `path` was already a correct-length
+    `.opus`; a sibling `<stem>.opus` otherwise — the old-extension source is
+    left in place for the *caller* to remove, and only after the caller has
+    rewritten and persisted the referencing scene JSON(s), so a crash can
+    never strand a JSON pointing at a deleted file). Returns None if left
+    as-is (already correct length + already Opus, or too short to trim).
     """
     d = probe_duration(path)
     stem, ext = os.path.splitext(path)
     opus_path = stem + ".opus"
     already_opus = ext.lower() == ".opus"
-    if already_opus and abs(d - period) < 2:
-        print(f"    skip {os.path.relpath(path, ROOT)} ({d:.1f}s ~= {period})")
-        return None
+    # NB: plain ASCII in prints — a fancy arrow here crashed the whole run
+    # mid-migration on Windows' default cp1252 console (2026-07-01).
+    if abs(d - period) < 2:
+        # Already exactly one prime-length loop.
+        if already_opus:
+            print(f"    skip {os.path.relpath(path, ROOT)} ({d:.1f}s ~= {period})")
+            return None
+        # Non-opus but already the right length (all shipped MP3 variants are
+        # exact prime-length seamless loops): a straight transcode migrates it
+        # to Opus without re-cutting the loop. This is what makes the
+        # documented in-place MP3->Opus migration actually reachable — the
+        # too-short guard below used to fire for every one of these.
+        tmp = opus_path + ".tmp.opus"
+        transcode_to_opus(path, tmp, OPUS_SR)
+        nd = probe_duration(tmp)
+        os.replace(tmp, opus_path)
+        print(f"    xcode {os.path.relpath(path, ROOT)} -> "
+              f"{os.path.relpath(opus_path, ROOT)}: {d:.1f}s -> {nd:.1f}s "
+              f"(prime {period}, already looped; migrated to Opus)")
+        return opus_path
     if d < period + C:
         print(f"    WARN {os.path.relpath(path, ROOT)} too short "
               f"({d:.1f}s < {period + C}) -- left as-is")
@@ -105,8 +133,6 @@ def loopify_in_place(path, period):
     seamless_loop(path, tmp, period, OPUS_SR)
     nd = probe_duration(tmp)
     os.replace(tmp, opus_path)
-    # NB: plain ASCII in prints — a fancy arrow here crashed the whole run
-    # mid-migration on Windows' default cp1252 console (2026-07-01).
     if not already_opus:
         # Old-extension source is intentionally NOT removed here — the caller
         # deletes it only after rewriting + persisting the scene JSON that
@@ -199,40 +225,63 @@ def gen_beds(force=False):
 
 
 def loopify_scenes():
+    print("## scene variants")
+    # Load every scene JSON up front and map each on-disk audio path to ALL
+    # the variants that reference it, across scenes. A file can be shared
+    # (forest-day's creek is reused by forest-night); it must be processed
+    # ONCE and its URL rewritten in EVERY referencing scene. Iterating scene
+    # by scene and rewriting only the current one — as before — would migrate
+    # forest-day's creek, delete the .mp3, and leave forest-night 404ing.
+    refs = {}  # abs audio path -> list of (scene_file, scene_dict, variant, period)
     for f in sorted(glob.glob(os.path.join(SCENES, "*.json"))):
         if f.endswith("index.json"):
             continue
         d = json.load(open(f, encoding="utf-8"))
-        print(f"## {d['id']}")
-        dirty = False
         for el in d["elements"]:
             period = el["loopOffsetSeconds"]
             for v in el["variants"]:
-                path = os.path.join(ROOT, "public" + v["url"])
-                if not os.path.exists(path):
-                    print(f"    MISSING {v['url']}")
-                    continue
-                new_path = loopify_in_place(path, period)
-                if new_path is None:
-                    continue
-                renamed = new_path != path
-                update_sidecar(new_path, period, renamed_from=path if renamed else None)
-                if renamed:
-                    # Extension changed (mp3 -> opus). Crash-safe ordering:
-                    # point the scene JSON at the new file and persist it
-                    # BEFORE deleting the old file, so the on-disk JSON never
-                    # references a path that doesn't exist. A crash / Ctrl-C /
-                    # ffmpeg failure at any point still leaves the app pointing
-                    # at a file that is present (the new .opus once the dump
-                    # lands, the old file until then).
-                    new_url = "/" + os.path.relpath(
-                        new_path, os.path.join(ROOT, "public")).replace(os.sep, "/")
-                    v["url"] = new_url
-                    json.dump(d, open(f, "w", encoding="utf-8"), indent=2)
-                    os.remove(path)  # old-extension source, now unreferenced
-                    dirty = True
-        if dirty:
-            print(f"    updated {os.path.relpath(f, ROOT)} (variant URLs -> .opus)")
+                path = os.path.normpath(os.path.join(ROOT, "public" + v["url"]))
+                refs.setdefault(path, []).append((f, d, v, period))
+
+    updated_scene_files = set()
+    for path in sorted(refs):
+        holders = refs[path]
+        period = holders[0][3]
+        periods = {h[3] for h in holders}
+        if len(periods) > 1:
+            # Shared files must agree on their loop period (they're the same
+            # bytes). Don't guess — flag it and skip so a mistake is visible.
+            print(f"    WARN {os.path.relpath(path, ROOT)} referenced with "
+                  f"differing offsets {sorted(periods)} -- skipped")
+            continue
+        if not os.path.exists(path):
+            print(f"    MISSING {os.path.relpath(path, ROOT)}")
+            continue
+        new_path = loopify_in_place(path, period)
+        if new_path is None:
+            continue
+        if new_path == path:
+            # In-place opus re-trim (no rename): sidecar only.
+            update_sidecar(new_path, period)
+            continue
+        # Extension changed (mp3 -> opus). Crash-safe global rewrite: point
+        # EVERY referencing scene at the new file and persist each of them
+        # BEFORE deleting the old file, so no on-disk scene JSON ever
+        # references a path that doesn't exist (S6 ordering, now across
+        # scenes). A crash between any two statements still leaves every scene
+        # pointing at a present file — the old one until its dump lands, the
+        # new .opus after.
+        update_sidecar(new_path, period, renamed_from=path)
+        new_url = "/" + os.path.relpath(
+            new_path, os.path.join(ROOT, "public")).replace(os.sep, "/")
+        for (_sf, _sd, variant, _p) in holders:
+            variant["url"] = new_url
+        for scene_file, scene_dict in {h[0]: h[1] for h in holders}.items():
+            json.dump(scene_dict, open(scene_file, "w", encoding="utf-8"), indent=2)
+            updated_scene_files.add(scene_file)
+        os.remove(path)  # old-extension source, now unreferenced anywhere
+    for scene_file in sorted(updated_scene_files):
+        print(f"    updated {os.path.relpath(scene_file, ROOT)} (variant URLs -> .opus)")
 
 
 if __name__ == "__main__":
