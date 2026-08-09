@@ -1,3 +1,62 @@
+# Session hand-off — 2026-08-09 (machine: laptop)
+# (The 2026-07-04 block below is STILL the accurate project state and the real
+#  priority list. Today changed NOTHING in the repo and was source research only
+#  — read this block, then treat the 07-04 block as the live plan.)
+
+## STATE — 2026-08-09 (read this first)
+- Branch: `main`, clean, synced with `origin/main` (0/0). Single worktree.
+  HEAD `29f8991`, unchanged since the 2026-07-04 hand-off. **Nothing stranded;
+  nothing new committed this session.**
+- Today was an **audio-source exploration only**, done entirely OUTSIDE the repo.
+  Durable output is on Drive (not git): `file-transfers/Sounds/klankbeeld-descriptions.md`
+  — a 21-file klankbeeld catalogue stripped from the raw docx, with a scene-mapping
+  table + analysis-derived clean-loop windows. Proof loops + audio-scope pages are
+  under `%TEMP%/klank/` (laptop-local — will NOT reach the desktop).
+- ⚠ **Much of today is superseded.** The project pivoted to **personal-use /
+  non-commercial** (2026-06-30, memory `reference-audio-licensing`), which relaxes
+  the commercial-license constraint today's CC-BY analysis was built around; and a
+  **George Vlad / FOBOS clean-source refresh (28 cuts) already shipped** (`ae3c357`).
+  Treat today's klankbeeld/CC-BY work as *supplementary* source research, not a new
+  front. Active driver = audio QUALITY, not license.
+
+## Done this session (2026-08-09)
+- Reviewed the Free To Use Sounds license (commercial standalone → needs a paid
+  Developer License). Moot under the personal-use stance; analysis retained in
+  memory `reference-audio-licensing` in case commercial returns.
+- Built `file-transfers/Sounds/klankbeeld-descriptions.md`: 21 klankbeeld cuts
+  (all creator-labelled **CC BY 4.0**), durations/loop-fit, artifact watch-outs, a
+  proposed scene map (incl. a new **Dockside/harbour** scene from the marina rigging
+  clip), and clean-loop windows from an envelope/event + bird-density analysis.
+- Located clean windows around flagged artifacts (the "laughing man" 17:14 in
+  859878 → clean 22:44–27:03; bird-sparse forest 857747 @ 1:14–5:33) and rendered
+  5 proof loops (LRA 3.6–7.3, far steadier than the old amateur files).
+- Gap sourcing (CC0/CC-BY): **fireplace = visionear 501417 (CC0, 11:54, 48k/24)**;
+  singing-bowl = real-CC0 layering (hollandm 573805 + strikes), synthetic drones
+  rejected. NB the meditation bed has since moved to a **pad/drone** (PENDING #0a),
+  so the bowl work is optional.
+
+## Next up (2026-08-09) — unchanged from 2026-07-04
+1. **Execute the code-review fix plan** — `notes/code-review-2026-07-02/fix-plan.md`
+   (Phase 1 Sonnet → hard STOP → Phase 2 Opus). Most-severe: O1 `hasFadedIn`
+   sleep-timer snap, O2 Howler positional `format` (iOS-silent), S1/S4 mojibake.
+2. **[ANDREW — the gate] Audition the 28 refreshed cuts** —
+   `raw-sounds/_scope-refresh-2026-07-01/index.html`. Listen for the cricket line
+   in forest-night night-1/night-2.
+3. **Build the pad/drone meditation bed** (PENDING #0a) — not singing bowls.
+4. v1.0 roadmap `[ASK]`/`[DEVICE]`: photos (4.3), meditation synthesis (6.5),
+   device pass + tag (5.2).
+
+## Watch out for (2026-08-09)
+- Untracked `tools/_build-level-candidates.sh` — a throwaway from the superseded
+  freetousesounds LEVEL-fix batch; its logic already lives in `tools/loopify-scenes.py`.
+  Safe to delete; left untracked (not committed, not discarded).
+- Today's proof loops + audio-scope live under `%TEMP%/klank/` on the LAPTOP only.
+  The durable artifact is `file-transfers/Sounds/klankbeeld-descriptions.md` (on Drive).
+- Don't re-open the commercial-license thread unless the personal-use decision
+  reverses (memory `reference-audio-licensing`).
+
+---
+
 # Session hand-off — 2026-07-04 (machine: crane-desk)
 # (Older 2026-06-16 → 2026-07-02 hand-off history is preserved below this
 #  block — but THIS block is the current state; read it first and treat the
