@@ -123,7 +123,10 @@ def update_sidecar(path, period, renamed_from=None):
         return
     j = json.load(open(old_sc, encoding="utf-8"))
     j["trimmedTo"] = f"{period}s"
-    j["outputFormat"] = j.get("outputFormat", "").replace("MP3", "Opus") or "Opus"
+    # The file at this point IS a 48 kHz stereo Opus render — state it
+    # outright rather than string-patching whatever stale rate text was there
+    # (the old "MP3"->"Opus" swap left "44.1 kHz" claims on 48 kHz files).
+    j["outputFormat"] = f"{OPUS_SR // 1000} kHz / {OUTPUT_BITRATE} / stereo Opus"
     note = j.get("notes", "")
     tag = (f" Seamless-looped to {period}s (prime loopOffset) for native "
            f"Howler looping: {C}s fade-wrap of the post-loop tail over the "
@@ -179,7 +182,7 @@ def gen_beds(force=False):
         json.dump({
             "source": "Generated (ffmpeg anoisesrc)",
             "license": "Generated synthetic noise — no third-party rights.",
-            "outputFormat": f"44.1 kHz / {OUTPUT_BITRATE} / stereo Opus",
+            "outputFormat": f"{OPUS_SR // 1000} kHz / {OUTPUT_BITRATE} / stereo Opus",
             "trimmedTo": f"{BED_LENGTH}s",
             "notes": (f"{color} noise synth-bed carrier, loudnorm I=-23, "
                       f"seamless-looped to {BED_LENGTH}s (prime, coprime to "
