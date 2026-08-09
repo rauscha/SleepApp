@@ -1,3 +1,37 @@
+# Session hand-off — 2026-08-09 (later: code-review fix plan EXECUTED)
+# This block supersedes the two below for REPO STATE. The 2026-07-02 code-review
+# fix plan is now fully done and pushed. Everything below is prior history.
+
+## STATE — code-review fix plan complete (read this first)
+- Branch `main`, synced with `origin/main` (0/0), single worktree. All work
+  committed + pushed; nothing stranded.
+- Executed `notes/code-review-2026-07-02/fix-plan.md` end to end, both phases
+  (all 18 checkboxes ticked):
+  - Phase 1 (S1–S7): UTF-8 on every open() in loopify-scenes.py; bed-churn skip
+    guard + seeded anoisesrc; truthful 48 kHz sidecar metadata; repaired em-dash
+    mojibake in 5 scene JSONs; corrected forest-night wind attributions to George
+    Vlad; crash-safe migration write-ordering; hard "missing sidecar fails" scene
+    test (+ backfilled fireplace close-1 sidecar).
+  - Phase 2 (O1–O3): O1 — a running sleep-timer fade is no longer cancelled by an
+    element replay or a gain change (re-enters the fade over remaining wall time;
+    +2 regression tests). O2 — Howler `format` derived per-src (howlFormats) so
+    `.mp3` layers aren't opus-gated / iOS-silent (+3 tests). O3 — unblocked and
+    RAN the MP3→Opus migration: all 7 remaining MP3 scenes now Opus (19 files
+    transcoded, cross-scene forest-night creek rewrite intact), `public/sw.js`
+    CACHE_VERSION v8→v9.
+  - Fix commits `3c23660..883e47e` (10) + this bookkeeping commit.
+  - Green: `npx tsc --noEmit` clean; `npx vitest run` 259/259 (was 254; +5 new
+    regression tests). `python tools/loopify-scenes.py` is idempotent (all skip,
+    clean tree, beds skipped).
+  - O3 step 5 (drop `mp3` from accepted formats) intentionally LEFT during the
+    ear-audition window — no `.mp3` remain, so the tolerance is harmless.
+- **Remaining v1.0 gates UNCHANGED**: [ANDREW] audition the 28 refreshed cuts;
+  pad/drone meditation bed (PENDING #0a); roadmap photos (4.3), meditation
+  synthesis (6.5), device pass + tag (5.2).
+- Untracked `tools/_build-level-candidates.sh` still left as-is (retired litter).
+
+---
+
 # Session hand-off — 2026-08-09 (machine: laptop)
 # (The 2026-07-04 block below is STILL the accurate project state and the real
 #  priority list. Today changed NOTHING in the repo and was source research only

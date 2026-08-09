@@ -56,7 +56,7 @@ and immune to future encoding accidents; the bug was on the **read** side.
 through the same open pattern preserves it; or simply verify after S4 + the Phase-1
 idempotency check that no `â` sequences reappear.
 
-- [ ] S1 committed + pushed
+- [x] S1 committed + pushed
 
 ### S2. gen_beds(): skip when beds exist; seed the noise source
 
@@ -81,7 +81,7 @@ new bed files and the `CACHE_VERSION` bump in this commit. If you'd rather avoid
 touching audio bytes, add the skip guard first so the seeded path never runs — but
 then the seed is unverified; prefer the one-time regeneration.)
 
-- [ ] S2 committed + pushed (with CACHE_VERSION bump if bed bytes changed)
+- [x] S2 committed + pushed (with CACHE_VERSION bump if bed bytes changed)
 
 ### S3. Truthful sidecar metadata (48 kHz, not 44.1)
 
@@ -106,7 +106,7 @@ stereo Opus"` (line 168), and the three committed sidecars
 **Acceptance:** grep from step 4 returns no `.opus`-sidecar hits; `npx vitest run`
 green.
 
-- [ ] S3 committed + pushed
+- [x] S3 committed + pushed
 
 ### S4. Repair the committed mojibake (12 occurrences, 5 scene JSONs)
 
@@ -131,7 +131,7 @@ re-corrupt.
 **Acceptance:** `grep -rn 'u00e2' public/` returns nothing; `npx vitest run` green.
 May share a commit with S5 (same repair-of-ae3c357 rationale) or land separately.
 
-- [ ] S4 committed + pushed
+- [x] S4 committed + pushed
 
 ### S5. Fix stale attributions on forest-night's wind variants
 
@@ -151,7 +151,7 @@ renders attribution — but it's a licensing record and must be true.)
 
 **Acceptance:** attributions agree with sidecar `source` fields; `npx vitest run` green.
 
-- [ ] S5 committed + pushed
+- [x] S5 committed + pushed
 
 ### S6. Crash-safe write ordering in loopify_scenes()
 
@@ -177,7 +177,7 @@ is no self-repair (a re-run sees `MISSING` and skips).
 (all skips, no churn); `npx vitest run` green. Reason through the crash windows: at
 every point between two statements, the scene JSON must reference an existing file.
 
-- [ ] S6 committed + pushed
+- [x] S6 committed + pushed
 
 ### S7. Contract test: missing sidecar must fail, not warn
 
@@ -198,17 +198,17 @@ the test back.
 
 **Acceptance:** `npx vitest run` green with the hard assertion in place.
 
-- [ ] S7 committed + pushed
+- [x] S7 committed + pushed
 
 ### Phase-1 exit check
 
-- [ ] `python tools/loopify-scenes.py` run twice back-to-back: second run is all
+- [x] `python tools/loopify-scenes.py` run twice back-to-back: second run is all
       `skip` lines and `git status` is clean (no churn — this proves S1/S2/S6
       together).
-- [ ] `npx vitest run` and `npx tsc --noEmit` green.
-- [ ] `grep -rn 'u00e2' public/` empty; `grep -rn "44.1" public/audio/**/*.json`
+- [x] `npx vitest run` and `npx tsc --noEmit` green.
+- [x] `grep -rn 'u00e2' public/` empty; `grep -rn "44.1" public/audio/**/*.json`
       has no `.opus`-sidecar hits.
-- [ ] All Phase-1 commits pushed: `git rev-list --left-right --count
+- [x] All Phase-1 commits pushed: `git rev-list --left-right --count
       origin/main...HEAD` shows `0 0`.
 
 ---
@@ -259,7 +259,7 @@ when a silence-fade is active.
   `HowlFactory` — model the fade-cancel-on-volume() semantics in the fake, else the
   test can't catch this class of bug).
 
-- [ ] O1 committed + pushed
+- [x] O1 committed + pushed
 
 ### O2. Howler `format` array is positional, not a fallback list  ⟶ every layer silent on iOS Safari
 
@@ -283,7 +283,7 @@ mp3 + opus until the migration (O3) completes.
 an `.mp3` src and an `.opus` src; `npx vitest run` green. Real verification lands
 with roadmap 5.2 on-device.
 
-- [ ] O2 committed + pushed
+- [x] O2 committed + pushed
 
 ### O3. Unblock the MP3→Opus migration — two coupled fixes that MUST land together
 
@@ -330,15 +330,15 @@ still on MP3. It does not touch the 28 fresh audition cuts (already Opus), so it
 not conflict with Andrew's pending ear audition — but if in doubt, land fixes 1-2 and
 ask before running step 3.
 
-- [ ] O3 tool fixes committed + pushed
-- [ ] O3 migration run + committed (with CACHE_VERSION bump) + pushed
+- [x] O3 tool fixes committed + pushed
+- [x] O3 migration run + committed (with CACHE_VERSION bump) + pushed
 
 ### Phase-2 exit check
 
-- [ ] `npx vitest run` + `npx tsc --noEmit` green; all commits pushed (`git rev-list
+- [x] `npx vitest run` + `npx tsc --noEmit` green; all commits pushed (`git rev-list
       --left-right --count origin/main...HEAD` → `0 0`).
-- [ ] `python tools/loopify-scenes.py` idempotent (all skip, no churn).
-- [ ] Update `.handoff/SESSION-HANDOFF.md` / `NEXT_STEPS.md` (if present) to reflect
+- [x] `python tools/loopify-scenes.py` idempotent (all skip, no churn).
+- [x] Update `.handoff/SESSION-HANDOFF.md` / `NEXT_STEPS.md` (if present) to reflect
       review-fix completion; remaining v1.0 gates are unchanged: ear audition,
       photos (4.3), meditation catalogue (6.5), device pass + tag (5.2).
 
