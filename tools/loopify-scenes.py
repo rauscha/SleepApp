@@ -120,7 +120,7 @@ def update_sidecar(path, period, renamed_from=None):
     old_sc = os.path.splitext(renamed_from)[0] + ".json" if renamed_from else sc
     if not os.path.exists(old_sc):
         return
-    j = json.load(open(old_sc))
+    j = json.load(open(old_sc, encoding="utf-8"))
     j["trimmedTo"] = f"{period}s"
     j["outputFormat"] = j.get("outputFormat", "").replace("MP3", "Opus") or "Opus"
     note = j.get("notes", "")
@@ -131,7 +131,7 @@ def update_sidecar(path, period, renamed_from=None):
            f"Opus, not MP3'.")
     if "Seamless-looped" not in note:
         j["notes"] = (note + tag).strip()
-    json.dump(j, open(sc, "w"), indent=2)
+    json.dump(j, open(sc, "w", encoding="utf-8"), indent=2)
     if old_sc != sc and os.path.exists(old_sc):
         os.remove(old_sc)
 
@@ -171,7 +171,7 @@ def gen_beds():
                       f"seamless-looped to {BED_LENGTH}s (prime, coprime to "
                       f"the element offsets). Played by HowlScene as the "
                       f"spectral-glue bed under every scene of this color."),
-        }, open(sc, "w"), indent=2)
+        }, open(sc, "w", encoding="utf-8"), indent=2)
         print(f"    bed {os.path.relpath(out, ROOT)} "
               f"({probe_duration(out):.1f}s)")
 
@@ -180,7 +180,7 @@ def loopify_scenes():
     for f in sorted(glob.glob(os.path.join(SCENES, "*.json"))):
         if f.endswith("index.json"):
             continue
-        d = json.load(open(f))
+        d = json.load(open(f, encoding="utf-8"))
         print(f"## {d['id']}")
         dirty = False
         for el in d["elements"]:
@@ -201,7 +201,7 @@ def loopify_scenes():
                     v["url"] = new_url
                     dirty = True
         if dirty:
-            json.dump(d, open(f, "w"), indent=2)
+            json.dump(d, open(f, "w", encoding="utf-8"), indent=2)
             print(f"    updated {os.path.relpath(f, ROOT)} (variant URLs -> .opus)")
 
 
