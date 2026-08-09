@@ -37,6 +37,7 @@ import glob
 import json
 import os
 import subprocess
+import sys
 import tempfile
 
 C = 6  # wrap crossfade seconds
@@ -136,7 +137,7 @@ def update_sidecar(path, period, renamed_from=None):
         os.remove(old_sc)
 
 
-def gen_beds():
+def gen_beds(force=False):
     print("## synth-bed carriers")
     bed_dir = os.path.join(AUDIO, "_bed")
     os.makedirs(bed_dir, exist_ok=True)
@@ -145,17 +146,30 @@ def gen_beds():
         if os.path.exists(old_mp3):
             os.remove(old_mp3)  # superseded by the .opus bed below
         out = os.path.join(bed_dir, f"{color}.opus")
+        # Skip guard: the beds are pure generated noise. Regenerating a bed
+        # that already exists at the right length only rewrites ~10 MB of
+        # fresh random bytes per color on a Drive-synced, git-tracked repo —
+        # audible change zero, churn large. Re-render only on --force-beds
+        # (the fixed seed below makes even that deterministic).
+        if not force and os.path.exists(out):
+            existing = probe_duration(out)
+            if abs(existing - BED_LENGTH) < 2:
+                print(f"    skip {os.path.relpath(out, ROOT)} "
+                      f"({existing:.1f}s ~= {BED_LENGTH})")
+                continue
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as t:
             raw = t.name
         try:
             # Generate a bit more than 887+C of colored noise, normalized to a
             # quiet bed reference (-23 LUFS); the per-scene synth volume
             # (0.08–0.16) sets the final level. Raw intermediate is lossless
-            # WAV — seamless_loop() does the one lossy (Opus) encode.
+            # WAV — seamless_loop() does the one lossy (Opus) encode. Fixed
+            # seed so a forced regeneration is byte-deterministic.
             subprocess.check_call(
                 ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
                  "-f", "lavfi", "-i",
-                 f"anoisesrc=d={BED_LENGTH + C + 4}:c={color}:a=0.9:r={OPUS_SR}",
+                 f"anoisesrc=d={BED_LENGTH + C + 4}:c={color}:a=0.9:"
+                 f"r={OPUS_SR}:seed=471102",
                  "-af", "loudnorm=I=-23:TP=-1.5:LRA=7",
                  "-ac", "2", "-ar", str(OPUS_SR), raw])
             seamless_loop(raw, out, BED_LENGTH, OPUS_SR)
@@ -206,6 +220,6 @@ def loopify_scenes():
 
 
 if __name__ == "__main__":
-    gen_beds()
+    gen_beds(force="--force-beds" in sys.argv)
     loopify_scenes()
     print("done.")
