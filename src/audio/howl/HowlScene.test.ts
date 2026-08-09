@@ -3,7 +3,7 @@
 // DOM media element.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { HowlScene } from './HowlScene';
+import { HowlScene, howlFormats } from './HowlScene';
 import type { HowlLike, HowlFactory, HowlFactoryOptions } from './HowlScene';
 import {
   HowlScenePlayer,
@@ -103,6 +103,21 @@ function makeDef(overrides: Partial<SceneDefinition> = {}): SceneDefinition {
 beforeEach(() => {
   FakeHowl.all = [];
   __resetHowlScenePlayerForTests();
+});
+
+describe('howlFormats (O2 — Howler format is positional, not a fallback list)', () => {
+  it('derives the format from each src extension, so an .mp3 is not opus-gated', () => {
+    expect(howlFormats(['/audio/x/rain-1.mp3'])).toEqual(['mp3']);
+    expect(howlFormats(['/audio/x/rain-1.opus'])).toEqual(['opus']);
+    expect(howlFormats(['/audio/_bed/brown.wav'])).toEqual(['wav']);
+  });
+  it('pairs each src with its own format positionally', () => {
+    expect(howlFormats(['/a.opus', '/b.mp3'])).toEqual(['opus', 'mp3']);
+  });
+  it('ignores a query string / hash on the url', () => {
+    expect(howlFormats(['/audio/x/rain-1.opus?v=9'])).toEqual(['opus']);
+    expect(howlFormats(['/audio/x/rain-1.mp3#frag'])).toEqual(['mp3']);
+  });
 });
 
 describe('HowlScene', () => {

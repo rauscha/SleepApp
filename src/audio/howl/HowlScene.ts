@@ -65,16 +65,30 @@ export interface HowlFactoryOptions {
 
 export type HowlFactory = (opts: HowlFactoryOptions) => HowlLike;
 
+/**
+ * The `format` array Howler should use for a set of srcs. Howler pairs
+ * format[i] with src[i] (howler.js `_load`) — it is POSITIONAL, NOT a
+ * fallback chain. Passing a fixed `['opus','mp3','wav']` with a single src
+ * therefore tells Howler that src is *opus*, so every layer — including the
+ * `.mp3` ones — gets gated on `canPlayType('audio/ogg; codecs="opus"')`.
+ * Chromium/Firefox pass, but Safari/iOS returns "" and the scene starts
+ * silent. Deriving the format from each src's own extension is what makes an
+ * .mp3 layer play as mp3. A query/hash is stripped first so a cache-busted or
+ * CDN URL still resolves its real extension.
+ */
+export function howlFormats(src: string[]): string[] {
+  return src.map((s) => s.split(/[?#]/)[0]!.split('.').pop()!.toLowerCase());
+}
+
 /** Default factory — a real looping html5 Howl. */
 export const defaultHowlFactory: HowlFactory = (opts) =>
   new Howl({
     src: opts.src,
-    // Scene audio ships as Opus (2026-06-30 — see DECISIONS.md "Ship scene
-    // audio as Opus, not MP3": MP3's ~16kHz lowpass strips noise "air" that
-    // matters for this material). mp3/wav stay in the format list during the
-    // migration — not every scene is re-cut to Opus yet — and as a generic
-    // safety net for any wav source.
-    format: ['opus', 'mp3', 'wav'],
+    // Scene audio is migrating to Opus (2026-06-30 — see DECISIONS.md "Ship
+    // scene audio as Opus, not MP3"); mp3 and opus both still ship. The
+    // format MUST be derived per-src (see howlFormats) — a fixed list is
+    // positional, not a fallback, and would opus-gate the .mp3 layers.
+    format: howlFormats(opts.src),
     html5: true, // the whole point — OS-backed background playback
     loop: true,
     volume: 0, // start silent; the layer fades in on play
