@@ -133,16 +133,18 @@ describe('scene catalogue conformance', () => {
               `${variant.url} missing on disk`
             ).toBe(true);
             const duration = sidecarDuration(variant.url);
-            if (duration === null) {
-              warnings.push(
-                `${scene.id}/${el.id}/${variant.id}: no sidecar duration to verify`
-              );
-              continue;
-            }
+            // A missing / duration-less sidecar is a HARD failure, not a soft
+            // warn. A wrong-length file breaks the incommensurate-loops math
+            // (the core audio design); it must not pass the suite merely by
+            // lacking a sidecar. Every variant needs a sidecar with trimmedTo.
+            expect(
+              duration,
+              `${scene.id}/${el.id}/${variant.id}: no sidecar duration — every variant needs a sidecar with trimmedTo`
+            ).not.toBeNull();
             // The file IS the loop: its length must equal the element's prime
             // offset so native looping doesn't tick or resync early.
             expect(
-              Math.abs(duration - el.loopOffsetSeconds),
+              Math.abs(duration! - el.loopOffsetSeconds),
               `${scene.id}/${el.id}/${variant.id}: ${duration}s != offset ${el.loopOffsetSeconds}s`
             ).toBeLessThanOrEqual(LENGTH_TOLERANCE_SECONDS);
           }
