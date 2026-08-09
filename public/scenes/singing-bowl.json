@@ -21,18 +21,18 @@
       "variants": [
         {
           "id": "drone-1",
-          "url": "/audio/singing-bowl/bowl-drone/drone-1.mp3",
-          "attribution": "Locally generated with audiocraft MusicGen-medium — see /audio/singing-bowl/bowl-drone/drone-1.json for prompt + license."
+          "url": "/audio/singing-bowl/bowl-drone/drone-1.opus",
+          "attribution": "Locally generated with audiocraft MusicGen-medium \u2014 see /audio/singing-bowl/bowl-drone/drone-1.json for prompt + license."
         },
         {
           "id": "drone-2",
-          "url": "/audio/singing-bowl/bowl-drone/drone-2.mp3",
-          "attribution": "Locally generated with audiocraft MusicGen-medium — see /audio/singing-bowl/bowl-drone/drone-2.json for prompt + license."
+          "url": "/audio/singing-bowl/bowl-drone/drone-2.opus",
+          "attribution": "Locally generated with audiocraft MusicGen-medium \u2014 see /audio/singing-bowl/bowl-drone/drone-2.json for prompt + license."
         },
         {
           "id": "drone-3",
-          "url": "/audio/singing-bowl/bowl-drone/drone-3.mp3",
-          "attribution": "Locally generated with audiocraft MusicGen-medium — see /audio/singing-bowl/bowl-drone/drone-3.json for prompt + license."
+          "url": "/audio/singing-bowl/bowl-drone/drone-3.opus",
+          "attribution": "Locally generated with audiocraft MusicGen-medium \u2014 see /audio/singing-bowl/bowl-drone/drone-3.json for prompt + license."
         }
       ]
     },
@@ -46,13 +46,13 @@
       "variants": [
         {
           "id": "shimmer-1",
-          "url": "/audio/singing-bowl/bowl-shimmer/shimmer-1.mp3",
-          "attribution": "Locally generated with audiocraft MusicGen-medium — see /audio/singing-bowl/bowl-shimmer/shimmer-1.json for prompt + license."
+          "url": "/audio/singing-bowl/bowl-shimmer/shimmer-1.opus",
+          "attribution": "Locally generated with audiocraft MusicGen-medium \u2014 see /audio/singing-bowl/bowl-shimmer/shimmer-1.json for prompt + license."
         },
         {
           "id": "shimmer-2",
-          "url": "/audio/singing-bowl/bowl-shimmer/shimmer-2.mp3",
-          "attribution": "Locally generated with audiocraft MusicGen-medium — see /audio/singing-bowl/bowl-shimmer/shimmer-2.json for prompt + license."
+          "url": "/audio/singing-bowl/bowl-shimmer/shimmer-2.opus",
+          "attribution": "Locally generated with audiocraft MusicGen-medium \u2014 see /audio/singing-bowl/bowl-shimmer/shimmer-2.json for prompt + license."
         }
       ]
     }

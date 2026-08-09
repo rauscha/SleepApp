@@ -4,7 +4,7 @@
   "license": "Generated locally with Meta audiocraft MusicGen-medium. Weights are CC-BY-NC 4.0 (research/non-commercial), released under audiocraft license. Generated audio is original output; the sidecar records the exact prompt + seed for reproducibility.",
   "generatedAt": "2026-05-31",
   "trimmedTo": "251s",
-  "outputFormat": "44.1 kHz / 128 kbps / stereo MP3 (upmixed from mono 32 kHz)",
+  "outputFormat": "48 kHz / 128k / stereo Opus",
   "notes": "Five 75s MusicGen-medium drone stems acrossfaded into a 300s loop bed. Cycle starts with drone-1, lets variantRotation 'random' give materially different starts. Exceeds 251s loopOffset + 5s crossfade by ~45s headroom. Mono->stereo upmix, loudnorm I=-23 LUFS, 44.1 kHz 128 kbps stereo MP3. Seamless-looped to 251s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless.",
   "promptHint": "prompt: deep Tibetan singing bowl drone, sustained bronze resonance, long sustain, low fundamental with warm overtones, meditation sound bath, instrumental only, no percussion, no drums, no melody, no rhythm, steady dynamics, seamless ambient"
 }

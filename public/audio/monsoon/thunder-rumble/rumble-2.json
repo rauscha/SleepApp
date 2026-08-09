@@ -4,6 +4,6 @@
   "license": "Free To Use Sounds paid library \u2014 derivative works permitted (including commercial), no attribution required. Original sounds may not be redistributed in their original form; the shipped MP3 is a derivative (transcoded + loudnorm-normalized). See https://freetousesounds.com/license-agreement",
   "downloadedAt": "2026-05-29",
   "trimmedTo": "521s",
-  "outputFormat": "44.1 kHz / 128 kbps / stereo MP3",
+  "outputFormat": "48 kHz / 128k / stereo Opus",
   "notes": "Second rumble variant \u2014 events at 90s and 380s. Same pipeline as rumble-1. Seamless-looped to 521s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
 }

@@ -21,12 +21,12 @@
       "variants": [
         {
           "id": "creek-1",
-          "url": "/audio/forest-day/creek-trickle/creek-1.mp3",
+          "url": "/audio/forest-day/creek-trickle/creek-1.opus",
           "attribution": "Pixabay \u2014 see /audio/forest-day/creek-trickle/creek-1.json for license + replace-when notes. Reused across forest-day and forest-night."
         },
         {
           "id": "creek-2",
-          "url": "/audio/forest-day/creek-trickle/creek-2.mp3",
+          "url": "/audio/forest-day/creek-trickle/creek-2.opus",
           "attribution": "User-provided \u2014 see /audio/forest-day/creek-trickle/creek-2.json for license. Reused across forest-day and forest-night."
         }
       ]

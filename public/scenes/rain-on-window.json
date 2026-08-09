@@ -1,7 +1,7 @@
 {
   "id": "rain-on-window",
   "label": "Rain on the window",
-  "description": "Steady rain against glass, distant rain on pavement, occasional far-off rumble. No thunder cracks — only the bass of weather a few miles off.",
+  "description": "Steady rain against glass, distant rain on pavement, occasional far-off rumble. No thunder cracks \u2014 only the bass of weather a few miles off.",
   "synth": {
     "color": "brown",
     "defaultVolume": 0.16
@@ -21,13 +21,13 @@
       "variants": [
         {
           "id": "glass-1",
-          "url": "/audio/rain-on-window/rain-on-glass/glass-1.mp3",
-          "attribution": "Pixabay — see /audio/rain-on-window/rain-on-glass/glass-1.json. Flagged for replacement (mono source)."
+          "url": "/audio/rain-on-window/rain-on-glass/glass-1.opus",
+          "attribution": "Pixabay \u2014 see /audio/rain-on-window/rain-on-glass/glass-1.json. Flagged for replacement (mono source)."
         },
         {
           "id": "glass-2",
-          "url": "/audio/rain-on-window/rain-on-glass/glass-2.mp3",
-          "attribution": "Pixabay — see /audio/rain-on-window/rain-on-glass/glass-2.json. Flagged for replacement (24 kHz source, most-used variant)."
+          "url": "/audio/rain-on-window/rain-on-glass/glass-2.opus",
+          "attribution": "Pixabay \u2014 see /audio/rain-on-window/rain-on-glass/glass-2.json. Flagged for replacement (24 kHz source, most-used variant)."
         }
       ]
     },
@@ -41,13 +41,13 @@
       "variants": [
         {
           "id": "pavement-1",
-          "url": "/audio/rain-on-window/rain-pavement/pavement-1.mp3",
-          "attribution": "Pixabay — see /audio/rain-on-window/rain-pavement/pavement-1.json for license."
+          "url": "/audio/rain-on-window/rain-pavement/pavement-1.opus",
+          "attribution": "Pixabay \u2014 see /audio/rain-on-window/rain-pavement/pavement-1.json for license."
         },
         {
           "id": "pavement-2",
-          "url": "/audio/rain-on-window/rain-pavement/pavement-2.mp3",
-          "attribution": "User-provided — see /audio/rain-on-window/rain-pavement/pavement-2.json for license."
+          "url": "/audio/rain-on-window/rain-pavement/pavement-2.opus",
+          "attribution": "User-provided \u2014 see /audio/rain-on-window/rain-pavement/pavement-2.json for license."
         }
       ]
     },
@@ -61,13 +61,13 @@
       "variants": [
         {
           "id": "rumble-1",
-          "url": "/audio/rain-on-window/distant-thunder-rumble/rumble-1.mp3",
-          "attribution": "Pixabay — see /audio/rain-on-window/distant-thunder-rumble/rumble-1.json. Low-passed at 600 Hz during processing — rumble only, no cracks."
+          "url": "/audio/rain-on-window/distant-thunder-rumble/rumble-1.opus",
+          "attribution": "Pixabay \u2014 see /audio/rain-on-window/distant-thunder-rumble/rumble-1.json. Low-passed at 600 Hz during processing \u2014 rumble only, no cracks."
         },
         {
           "id": "rumble-2",
-          "url": "/audio/rain-on-window/distant-thunder-rumble/rumble-2.mp3",
-          "attribution": "Pixabay — see /audio/rain-on-window/distant-thunder-rumble/rumble-2.json. Low-passed at 600 Hz during processing."
+          "url": "/audio/rain-on-window/distant-thunder-rumble/rumble-2.opus",
+          "attribution": "Pixabay \u2014 see /audio/rain-on-window/distant-thunder-rumble/rumble-2.json. Low-passed at 600 Hz during processing."
         }
       ]
     }

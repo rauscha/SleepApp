@@ -4,6 +4,6 @@
   "license": "Free To Use Sounds paid library \u2014 derivative works permitted (including commercial), no attribution required. Original sounds may not be redistributed in their original form; the shipped MP3 is a derivative (transcoded + loudnorm-normalized). See https://freetousesounds.com/license-agreement",
   "downloadedAt": "2026-05-29",
   "trimmedTo": "691s",
-  "outputFormat": "44.1 kHz / 128 kbps / stereo MP3",
+  "outputFormat": "48 kHz / 128k / stereo Opus",
   "notes": "Two forest-day creek MP3s (460s + 540s, Pixabay + user-provided) acrossfaded into one ~750s creek-trickle variant so loopOffset 691 holds. 20s triangular crossfade. Loudnorm I=-20 LUFS, 44.1 kHz 128 kbps stereo MP3. Seamless-looped to 691s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
 }

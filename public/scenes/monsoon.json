@@ -66,12 +66,12 @@
       "variants": [
         {
           "id": "rumble-1",
-          "url": "/audio/monsoon/thunder-rumble/rumble-1.mp3",
+          "url": "/audio/monsoon/thunder-rumble/rumble-1.opus",
           "attribution": "freetousesounds sound library \u2014 see /audio/monsoon/thunder-rumble/rumble-1.json for license. Low-passed at 600 Hz, sparse event layer."
         },
         {
           "id": "rumble-2",
-          "url": "/audio/monsoon/thunder-rumble/rumble-2.mp3",
+          "url": "/audio/monsoon/thunder-rumble/rumble-2.opus",
           "attribution": "freetousesounds sound library \u2014 see /audio/monsoon/thunder-rumble/rumble-2.json for license. Low-passed at 600 Hz, sparse event layer."
         }
       ]
