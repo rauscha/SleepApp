@@ -67,12 +67,12 @@
         {
           "id": "dock-1",
           "url": "/audio/ocean-night/dockside-distant/dock-1.mp3",
-          "attribution": "freetousesounds sound library \u00e2\u20ac\u201d see /audio/ocean-night/dockside-distant/dock-1.json for license. Sparse event layer: one ~3-min dockside ambience per ~9-min loop, otherwise silence under the wave layers."
+          "attribution": "freetousesounds sound library \u2014 see /audio/ocean-night/dockside-distant/dock-1.json for license. Sparse event layer: one ~3-min dockside ambience per ~9-min loop, otherwise silence under the wave layers."
         },
         {
           "id": "dock-2",
           "url": "/audio/ocean-night/dockside-distant/dock-2.mp3",
-          "attribution": "freetousesounds sound library \u00e2\u20ac\u201d see /audio/ocean-night/dockside-distant/dock-2.json for license. Sparse event layer."
+          "attribution": "freetousesounds sound library \u2014 see /audio/ocean-night/dockside-distant/dock-2.json for license. Sparse event layer."
         }
       ]
     }
