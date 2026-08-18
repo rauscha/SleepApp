@@ -67,7 +67,7 @@ export interface SceneElementDefinition {
    * Per-layer loop offset in seconds. Use a different true prime per layer
    * in a scene so the combined pattern is incommensurate (Music for
    * Airports). MUST be one of `PRIME_ADJACENT_LOOP_OFFSETS_SECONDS` below —
-   * 251 / 409 / 521 / 691 / 887. (The old "prime-adjacent" suggestions
+   * 199 / 251 / 409 / 521 / 691 / 887. (The old "prime-adjacent" suggestions
    * 253 / 407 / 511 / 689 / 893 were NOT pairwise coprime — 253 = 11·23 and
    * 407 = 11·37 share gcd 11 — so they repeated within ~2.6 h. The
    * conformance test enforces the on-list values.)
@@ -100,14 +100,22 @@ export interface SceneVariantDefinition {
  * many hours (Brian Eno *Music for Airports* technique).
  *
  * All values are exact primes — pairwise gcd is 1, so the LCM of any
- * subset is their product. Even the smallest pair (251 × 409 = 102,659 s
- * ≈ 28.5 hours) won't repeat within an overnight session.
+ * subset is their product. Even the smallest pair (199 × 251 = 49,949 s
+ * ≈ 13.9 hours) won't repeat within an overnight session.
  *
  * (The previous values 253, 407, 511, 689, 893 were "prime-adjacent" — but
  * 253 = 11·23 and 407 = 11·37 share gcd 11, giving an LCM of only ~2.6 h,
- * which IS audible across an 8-hour sleep. These five are true primes.)
+ * which IS audible across an 8-hour sleep. These are all true primes.)
+ *
+ * 199 was added 2026-08-18 for dense-texture beds whose best source
+ * recordings run 3:20–4:15 (the FTUS bundle's cricket choruses — see
+ * notes/personal-sounds-selection-2026-08-17.md). A 3:19 loop is short, so
+ * reserve it for featureless textures with no landmark events; anything
+ * with a one-off transient (a crow caw, a distant horn) belongs on a
+ * longer prime or out of the pool.
  */
 export const PRIME_ADJACENT_LOOP_OFFSETS_SECONDS: readonly number[] = [
+  199, // 3:19 — dense featureless beds only (crickets); see note above
   251, // 4:11
   409, // 6:49
   521, // 8:41
