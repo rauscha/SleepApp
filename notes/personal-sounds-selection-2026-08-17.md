@@ -67,9 +67,20 @@ Format: `#RecID (length)` — all IDs are the CSV `RecID` column.
 ### forest-night
 - **creek-trickle (251 s)** — share `#709`/`#701` (same files as forest-day,
   same reuse pattern as today).
-- **night-ambience (409 s) / wind (521 s)** — **no fit.** The bundle's lovely
-  dense-cricket beds (`#612` 214 s, `#611` 180 s, `#235` 251 s) all land *just
-  under* the smallest prime + wrap (≥257 s needed). Keep current variants.
+- **night-ambience — fits if we add prime 199.** The bundle's cricket beds
+  all land under the current smallest prime + wrap (≥257 s needed): pure
+  chorus `#612` 3:34 / `#611` 3:00 / `#613` 2:00, and cricket-forward
+  grassland evening `#233` 3:46 / `#234` 3:39 / `#235` 4:11 (crows). Even
+  the 4:11 one misses 251 s by ~6 s. The unlock, per the scene-authoring
+  rule's own escape hatch: add **199** (true prime, automatically pairwise
+  coprime; LCM with 251 ≈ 13.9 h) to `PRIME_ADJACENT_LOOP_OFFSETS_SECONDS`
+  and re-key `night-ambience` 409 → 199. Then `#612` + `#233`/`#234` form a
+  real 3-variant pool (everything ≥205 s qualifies). Trade-off to audition:
+  a 199 s loop repeats every 3:19 — fine for a dense featureless chorus
+  (`#612`, the safest anchor), but a single distinctive crow caw in
+  `#233`/`#234` would become a metronome at that period. `#235` has the
+  most crow activity; treat it as last resort.
+- **wind (521 s)** — **no fit**; keep current variants.
 
 ### forest-evening
 - **forest-rain (251 s)** — `#643 (391s)` rain on garden leaves at varying
@@ -197,6 +208,9 @@ Durations are mm:ss from the bundle metadata. Filenames are verbatim
 - **#612** (03:34) `ANMLInsc-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Animals, Insect, Dense Cricket Chorus, Grass Habitat, Evening Insect Bed, Rhythmic Chirping, Calm Night Atmosphere, Natural Wildlife Ambience, Geelong, Victoria, 02.wav`
 - **#611** (03:00) `ANMLInsc-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Animals, Insect, Dense Cricket Chorus, Grass Habitat, Evening Insect Bed, Rhythmic Chirping, Calm Night Atmosphere, Natural Wildlife Ambience, Geelong, Victoria, 01.wav`
 - **#235** (04:11) `AMBGras-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Ambience, Grassland, Evening Field Atmosphere, Crickets in Grass, Crows Cawing, Flies Buzzing, Distant Wind in Trees, Calm Rural Setting, Tasmania, 03.wav`
+- **#233** (03:46) `AMBGras-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Ambience, Grassland, Evening Field Atmosphere, Crickets in Grass, Crows Cawing, Flies Buzzing, Distant Wind in Trees, Calm Rural Setting, Tasmania, 01.wav`
+- **#234** (03:39) `AMBGras-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Ambience, Grassland, Evening Field Atmosphere, Crickets in Grass, Crows Cawing, Flies Buzzing, Distant Wind in Trees, Calm Rural Setting, Tasmania, 02.wav`
+- **#613** (02:00) `ANMLInsc-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Animals, Insect, Dense Cricket Chorus, Grass Habitat, Evening Insect Bed, Rhythmic Chirping, Calm Night Atmosphere, Natural Wildlife Ambience, Geelong, Victoria, 03.wav`
 - **#264** (06:50) `AMBLake-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Ambience, Lakeside, Early Morning After Rain, Cold Fresh Air, Calm Breeze, Birds Chirping, Mountain Valley Setting, Quiet Natural Atmosphere, Undisturbed Nature, Tasmania.WAV`
 - **#255** (05:03) `AMBLake-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Ambience, Lakeside, Calm Morning Ambience, Gentle Lake Waves on Shore, Birds Chirping, Crickets, Quiet Natural Atmosphere, Lush Green Hills, Campsite, Tasmania.wav`
 - **#256** (05:31) `AMBLake-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Ambience, Lakeside, Calm Shore Waves, Wind in Trees, Birds Chirping, Flies Buzzing, Cloudy Day Atmosphere, Natural Lakeside Ambience, Geelong, Victoria.wav`
