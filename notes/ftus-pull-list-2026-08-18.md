@@ -1,0 +1,82 @@
+# FTUS bundle — WAV pull list (2026-08-18)
+
+The 20 files to extract from the All In One Immersive Bundle ZIPs, grouped by
+the filename prefix (which should match how the ZIPs are organized). Drop them
+all, original filenames intact, into **`incoming-ftus/`** at the repo root
+(gitignore it or delete after processing) — the pipeline in
+`notes/personal-sounds-selection-2026-08-17.md` handles front-pair extraction,
+placement, sidecars, and loopify from there. Destination scene/element and
+trim offset noted per file.
+
+## AMBNaut (nautical ambience)
+
+- [ ] `AMBNaut-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Thailand-Ambience, Nautical, Fishing Harbor, Seaside, Bird Activity, Water Splashing, Jetty, Morning, Distant Shipyard Repair Activity, Rayong.WAV`
+      → ocean-night / dockside-distant @ 521
+
+## WATRSurf (surf)
+
+- [ ] `WATRSurf-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Water, Surf, Calm Ocean Waves on Small Rocks, Short Interval Lapping, Gentle Splashing, Evening Atmosphere, Quiet Tourist Location, Relaxing Coastal Soundscape, Tasmania, 03.wav`
+      → ocean-night / waves @ 251
+- [ ] `WATRSurf-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Water, Surf, Massive Sand Beach with Large Rocks, Gentle Wave Impacts and Backwash, Calm Low Surf, Evening Atmosphere, Quiet Coastal Setting, Tasmania.WAV`
+      → ocean-night / waves-far @ 409
+
+## AMBSea (seaside ambience)
+
+- [ ] `AMBSea-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Ambience, Seaside, Sand Beach Perspective, Long Rushing Waves, Crickets in Bush, Calm Coastal Atmosphere, Undisturbed Nature, Tasmania, 03.wav`
+      → ocean-night / waves @ 251 (second variant)
+
+## WATRFlow (water flow)
+
+- [ ] `WATRFlow-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Water, Flow, Crystal Clear Forest Stream, Lush Greenery, Rocky Creek Bed, Undisturbed Nature, Daytime, Undisturbed Nature Tasmania.wav`
+      → forest-day + forest-night / creek-trickle @ 251
+- [ ] `WATRFlow-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Water, Flow, Calm Forest River, Gentle Trickle Over Rocks, Wind in Tree Tops, Evening Atmosphere, Birds Chirping, Relaxing Natural Ambience, Undisturbed Nature, Tasmania, 04.wav`
+      → forest-day + forest-night / creek-trickle @ 251 (second variant)
+- [ ] `WATRFlow-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Water, Flow, Strong Natural River, Wild Salmon River, Powerful Current, Calming yet Wild Atmosphere, Continuous Stream Energy, Undisturbed Nature, Tasmania, 02.WAV`
+      → forest-evening / creek-trickle @ 691 AND/OR waterfall-valley / river-below @ 521 (one WAV, decision pending audition)
+- [ ] `WATRFlow-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Thailand-Water, Flow, Waterfall, Calm Yet Powerful Flow, Forest, Occasional Bird Activity, Evening, Sunset, Natural Soundscape, Isan.WAV`
+      → waterfall-valley / falls-main @ 409
+
+## WATRFall (waterfalls)
+
+- [ ] `WATRFall-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Water, Waterfall, Mossy Rock Cascade, Gentle Drop, Outflow Creek, Birds Chirping, Calm Forest Atmosphere, Undisturbed Nature, Tasmania, 01.WAV`
+      → waterfall-valley / cascade-close @ 251
+- [ ] `WATRFall-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Water, Waterfall, Mossy Rock Cascade, Gentle Drop, Outflow Creek, Birds Chirping, Calm Forest Atmosphere, Undisturbed Nature, Tasmania, 02.WAV`
+      → waterfall-valley / cascade-close @ 251 (second variant)
+- [ ] `WATRFall-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Water, Waterfall, Mossy Rock Cascade, Gentle Drop, Outflow Creek, Birds Chirping, Calm Forest Atmosphere, Undisturbed Nature, Tasmania, 04.WAV`
+      → waterfall-valley / cascade-close @ 251 (third variant)
+
+## AMBForst (forest ambience)
+
+- [ ] `AMBForst-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Ambience, Forest, Dense Bushland, High Tree Canopy, Wind Rushing Through Tree Tops, Mixed Bird Calls, Cloudy Moody Atmosphere, Undisturbed Nature, Tasmania.WAV`
+      → forest-day / distant-birds @ 409 (or forest-evening wind — one home, audition decides)
+
+## RAIN / RAINPlas / RAINMetl (rain)
+
+- [ ] `RAIN-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Thailand-Rain, General, Apartment Window Perspective, Rain on Garden Leaves, Varying Rain Intensity, Birds Chirping, Faint Distant Traffic, Quiet Residential Area, Ekkamai, Bangkok.wav`
+      → forest-evening / forest-rain @ 251
+- [ ] `RAINPlas-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Rain, Plastic, Umbrella Perspective, Rain Drips, Lakeside Environment, Cold Morning, Birds and Crows, Calm and Relaxing Atmosphere, Experimental Texture, Campsite Setting, Tasmania, 01.WAV`
+      → rain-on-window / rain-on-glass @ 409
+- [ ] `RAINMetl-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Rain, Metal Roof Shed, Wind Driven Rain, Open Door Perspective, Wind in Trees, Storm Atmosphere, Residential Area, Geelong, 13.WAV`
+      → rain-on-window / rain-pavement @ 521
+- [ ] `RAINMetl-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Rain, Metal, Roof, Residential Neighborhood, Rain Hitting Roof and Concrete, Crickets, Birds, Evening Atmosphere, Occasional Car Pass Bys, Albury, 06.wav`
+      → monsoon / rain @ 251
+- [ ] `RAINMetl-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Rain, Metal, Roof, Residential Neighborhood, Rain Hitting Roof and Concrete, Crickets, Birds, Evening Atmosphere, Occasional Car Pass Bys, Albury, 07.wav`
+      → monsoon / rain @ 251 (second variant)
+
+## ANMLInsc / AMBGras (cricket beds — the new 199 offset)
+
+- [ ] `ANMLInsc-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Animals, Insect, Dense Cricket Chorus, Grass Habitat, Evening Insect Bed, Rhythmic Chirping, Calm Night Atmosphere, Natural Wildlife Ambience, Geelong, Victoria, 02.wav`
+      → forest-night / night-ambience @ 199 (the anchor — pure chorus, no birds)
+- [ ] `AMBGras-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Ambience, Grassland, Evening Field Atmosphere, Crickets in Grass, Crows Cawing, Flies Buzzing, Distant Wind in Trees, Calm Rural Setting, Tasmania, 01.wav`
+      → forest-night / night-ambience @ 199 (audition — crow caws may metronome at 3:19)
+- [ ] `AMBGras-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Ambience, Grassland, Evening Field Atmosphere, Crickets in Grass, Crows Cawing, Flies Buzzing, Distant Wind in Trees, Calm Rural Setting, Tasmania, 02.wav`
+      → forest-night / night-ambience @ 199 (audition — same caveat)
+
+## Notes
+
+- forest-night's `night-ambience` element gets re-keyed 409 → 199 in the
+  scene JSON when these land (the 199 prime is already in
+  `PRIME_ADJACENT_LOOP_OFFSETS_SECONDS`); until then the JSON is untouched
+  so the conformance test stays green against the current files.
+- Everything is 8-channel ORTF 3D — do NOT downmix or convert while pulling;
+  the pipeline extracts the front pair itself.
