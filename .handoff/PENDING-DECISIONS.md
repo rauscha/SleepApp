@@ -1,5 +1,49 @@
 # Pending decisions / queued actions
 
+## 0A. NEW 2026-08-18 — the FTUS audio batch shipped; four things open
+
+Full context in `.handoff/OVERNIGHT-LOG-2026-08-18.md`. Summary:
+
+**A. waterfall-valley is blocked on your answer.** Your reply to the photo
+question was cut off mid-word ("source from things ki"). The scene's 4 audio
+files are processed and in `public/audio/waterfall-valley/`; the scene JSON is
+staged at `notes/staged/waterfall-valley.scene.json`. It is not shipped because
+`sceneCatalogue.test.ts` requires `public/scenes/` to match `index.json`
+exactly (no hidden-scene state exists), and it still needs 3 Midnight-Editorial
+photos. Say where the photos come from and it's ~20 min to wire.
+
+**B. waterfall-valley's third element has no source.** `#726` went to
+forest-evening @691, and it is the ONLY file in the whole bundle >=527s
+(verified across all 16 ZIPs). So `river-below` @521 is unsourceable here.
+Either ship 2-element (cascade-close @251 x3 + falls-main @409), or add a third
+layer at 199 from WATER_06 leftovers (260s "Small Creek" or 294s "Front and
+Rear Flow") — three water layers risks spectral mush, so audition.
+
+**C. Two files with known residual risk, for your ears.**
+`forest-night/night-ambience/night-4` (#233): worst remaining loop seam at
+5.0 dB and the widest source in the batch (LRA 15.2), with crow caws that
+could metronome at the 199s loop. `night-5` (#234) shares the caveat; `night-3`
+(#612, pure chorus) is the safe anchor at 1.2 dB. And
+`rain-on-window/rain-pavement/pavement-3` (#656): 4.3 dB residual, gusty. Both
+can be re-cut from unused regions of the same sources on request.
+
+**D. Three small follow-ups.** (1) `gen-story.ts` still estimates
+`durationSeconds` as words/130*60 — ~10% over; committed values corrected by
+hand, tool untouched (needs an ffprobe dep). (2) The ElevenLabs **Projects API
+returned 405** on both story renders; the chunked-TTS fallback worked, but
+Projects is the documented long-form path and may be gone on this plan tier.
+(3) `tools/_build-level-candidates.sh` must NOT be deleted — the 2026-08-09
+hand-off wrongly said its logic lives in `loopify-scenes.py`; loopify does no
+levelling at all, and that script is the only record of the dynaudnorm ->
+loudnorm recipe used for this batch.
+
+**Wind/windows, answered:** WIND_01 and WINDOWS_01 were downloaded, indexed and
+rejected. WIND_01's VEGETATION material is right but tops out at 308s against
+wind slots needing >=415s or >=527s — a duration wall, not a quality one.
+WINDOWS_01 is motorised curtain foley. Neither is worth revisiting unless a
+wind element gets re-keyed to a short prime.
+
+
 Refreshed 2026-06-21. Older pre-pivot items have been resolved or folded into
 the Howler pivot and the v1.1 roadmap — see the note at the bottom.
 
