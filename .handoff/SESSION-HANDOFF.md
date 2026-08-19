@@ -1,3 +1,93 @@
+# Session hand-off — 2026-08-19 (machine: desktop)
+# Newest block. Everything below is prior history; this supersedes it for
+# REPO STATE.
+
+## STATE (read this first)
+- Branch `main`, clean, synced with `origin/main` (0/0). HEAD `5abc2de`.
+  Single worktree. Everything committed, pushed, **and deployed live**.
+- The FTUS audio batch is **shipped and in production** at
+  andrewrausch.com/SleepApp — verified serving (scene JSON, story index and
+  audio all reachable, HTTP 206 range requests working). Andrew slept on it.
+  20 new scene variants across six scenes, plus two new Glen-narrated sleep
+  stories. CI + Pages green on every commit.
+- The one substantive discovery: **`loopify-scenes.py` trims from t=0, which
+  put each source's fade-in against its settled tail** — a 10-17 dB step at
+  every loop wrap, on every file we have ever cut. Fixed for this batch by
+  searching a per-file start offset that matches the wrap head to its tail
+  (16 of 20 now wrap within 0.0-0.5 dB). **The tool itself is unchanged** —
+  see "Next up" #1, this is the most valuable thing outstanding.
+
+## Done this session
+- Pulled all 20 picks from 161 GB of FTUS Gumroad ZIPs; corrected the pull
+  list's ZIP mapping (WATER splits by category: 01-02 FLOW, 03-05 SURF,
+  **06 TURBULENCE+WATERFALL** — the size model had put the waterfall trio in
+  WATER_01 and ruled WATER_06 out). Lesson recorded: match by filename
+  category prefix, not cumulative size.
+- Checked and rejected WIND_01 (right material, but 308 s max against wind
+  slots needing >=415/527 s — a duration wall, not quality) and WINDOWS_01
+  (motorised curtain foley, not weather).
+- Measured the 47 shipped variants: the catalogue was **never uniformly
+  normalised** (-18.9 to -26.1 LUFS). New files are therefore normalised to
+  their destination element's median, not a global target, so `defaultVolume`
+  and the mix voicing still hold.
+- Processing chain per file: front ORTF pair only -> `dynaudnorm` (~40 s
+  window) -> **two-pass** `loudnorm` (linear; single-pass gates and pumps on a
+  long noise bed) -> seam-matched trim.
+- forest-night `night-ambience` re-keyed 409 -> 199 with 3 new cricket beds
+  (old two removed); everything else **added alongside** existing variants for
+  A/B. forest-night still shares forest-day's creeks.
+- Two stories written and rendered with **Glen** (now exposed in
+  `gen-story.ts`; it was meditation-only before, leaving Stone — a meditation
+  voice — as stories' only male option). Fixed `durationSeconds` for all four
+  stories: it was a `words/130*60` estimate, ~10% over on every entry.
+- CACHE_VERSION v9 -> v11.
+
+## Next up
+1. **Teach the seam fix to `tools/loopify-scenes.py`.** Right now it still
+   trims from 0, so the 10-17 dB wrap step returns for the next file anyone
+   cuts, and every *previously* shipped variant likely still has it. The
+   working algorithm is in this session's scratch (`seamfit.py`): decode a
+   1 kHz mono envelope, search S over [0, dur-P-6] minimising
+   |L(S) - L(S+P)|, penalise candidates whose wrap regions sit >4 dB off the
+   file's mean. Consider auditing the pre-existing 45 variants the same way.
+2. **[ANDREW] Audition, especially forest-night.** Two known-risky files:
+   `night-ambience/night-4` (#233 — 5.0 dB residual seam, LRA 15.2, crow caws
+   that could metronome at the 199 s loop; `night-5` same caveat, `night-3` is
+   the safe pure-chorus anchor) and `rain-pavement/pavement-3` (#656 — 4.3 dB,
+   gusty). Both re-cuttable from unused regions of the same sources.
+3. **[ANDREW] waterfall-valley photos.** Blocked on one answer — see
+   PENDING-DECISIONS 0A/A. Scene JSON staged at
+   `notes/staged/waterfall-valley.scene.json`, its 4 audio files already
+   processed and in `public/audio/waterfall-valley/`. ~20 min to wire once
+   photos exist. Also needs a call on its third element (0A/B).
+4. Remaining v1.0 roadmap `[ASK]`/`[DEVICE]`: photos (4.3), meditation
+   synthesis (6.5), device pass + tag (5.2).
+
+## Watch out for
+- **`tools/_build-level-candidates.sh` must NOT be deleted.** The 2026-08-09
+  block below says it is "safe to delete" because its logic "already lives in
+  `tools/loopify-scenes.py`" — **that is wrong.** loopify does no levelling at
+  all (its own header: "no loudnorm on scene files"). That script is the only
+  record of the dynaudnorm -> loudnorm recipe this batch used. Still untracked;
+  committing it is an open question for Andrew.
+- **There is no "hidden scene" state.** `sceneCatalogue.test.ts` requires
+  `public/scenes/` to match `index.json` exactly, which is why waterfall-valley
+  is staged under `notes/` rather than shipped unlisted.
+- **ElevenLabs Projects API returned 405** on both story renders; the
+  chunked-TTS fallback handled them. Projects is the documented long-form path,
+  so it may be gone or moved on this plan tier — check before a longer piece.
+- `gen-story.ts` still estimates `durationSeconds` from word count. Committed
+  values were corrected by hand; the tool needs an ffprobe dependency to fix
+  properly.
+- Three old unmerged branches exist (`backup/pre-rebase-2026-05-30`,
+  `claude/objective-kirch-e41ce1`, `claude/optimistic-khayyam-1e864b`), all
+  from May 2026 — i.e. before the June Howler pivot. Treated as litter per
+  CLAUDE.md, deliberately NOT merged. Leave for a "deferred clean-up work" pass.
+- Source material lives on `D:\Sounds` (161 GB of ZIPs, `picked/` 24 GB,
+  `final/` the shipped renders) — **desktop-local, will not reach the laptop.**
+
+---
+
 # Session hand-off — 2026-08-09 (later: code-review fix plan EXECUTED)
 # This block supersedes the two below for REPO STATE. The 2026-07-02 code-review
 # fix plan is now fully done and pushed. Everything below is prior history.
@@ -82,8 +172,10 @@
 
 ## Watch out for (2026-08-09)
 - Untracked `tools/_build-level-candidates.sh` — a throwaway from the superseded
-  freetousesounds LEVEL-fix batch; its logic already lives in `tools/loopify-scenes.py`.
-  Safe to delete; left untracked (not committed, not discarded).
+  freetousesounds LEVEL-fix batch. **CORRECTED 2026-08-19: its logic does NOT
+  live in `tools/loopify-scenes.py`** — loopify does no levelling at all. That
+  script is the only record of the dynaudnorm -> loudnorm recipe, which the
+  2026-08-18 FTUS batch used. Do NOT delete. Still untracked.
 - Today's proof loops + audio-scope live under `%TEMP%/klank/` on the LAPTOP only.
   The durable artifact is `file-transfers/Sounds/klankbeeld-descriptions.md` (on Drive).
 - Don't re-open the commercial-license thread unless the personal-use decision
