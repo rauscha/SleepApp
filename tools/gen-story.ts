@@ -43,7 +43,7 @@
  * Arguments:
  *   --title   Human-readable title displayed in the Library.
  *   --theme   Short prompt sent to Claude (also shown as the card subtitle).
- *   --voice   tide | stone  (default: tide)
+ *   --voice   tide | stone | glen  (default: tide)
  *   --id      Filename stem, e.g. "seaside-village" → seaside-village.mp3
  *             (defaults to a kebab-case version of --title)
  *   --script  Path to a .txt file to use instead of generating with Claude.
@@ -67,6 +67,12 @@ const INDEX_PATH = join(STORIES_DIR, 'index.json');
 const VOICE_IDS: Record<string, string> = {
   tide:  process.env['VITE_VOICE_TIDE']  || 'jv41DhCf464zw0TI7I1w',
   stone: process.env['VITE_VOICE_STONE'] || 'oae6GCCzwoEbfc5FHdEu',
+  // Glen is designed as a *story* voice (deep baritone, ~115-125 wpm, the
+  // option "for users who find female narration distracting at sleep onset"
+  // — notes/voice-design.md). It was only ever wired into gen-meditation.ts;
+  // stories could reach one male voice, Stone, which that same doc catalogues
+  // as a meditation voice. Exposed here for outdoor/weather-aware narratives.
+  glen:  process.env['VITE_VOICE_GLEN']  || 'UmQN7jS1Ee8B1czsUtQh',
 };
 
 // ---------------------------------------------------------------------------
@@ -105,7 +111,7 @@ function parseArgs() {
   return {
     title:      get('--title', 'Sleep story'),
     theme:      get('--theme', ''),
-    voice:      get('--voice', 'tide') as 'tide' | 'stone',
+    voice:      get('--voice', 'tide') as 'tide' | 'stone' | 'glen',
     id:         get('--id', ''),
     script:     get('--script', ''),
     // --no-projects forces the chunked-TTS path. The Projects API
@@ -425,7 +431,7 @@ async function main() {
   const audioPath = `${id}.mp3`;
   const voiceId = VOICE_IDS[voice];
   if (!voiceId) {
-    console.error(`ERROR: unknown voice "${voice}". Valid: tide, stone`);
+    console.error(`ERROR: unknown voice "${voice}". Valid: tide, stone, glen`);
     process.exit(1);
   }
 
