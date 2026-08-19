@@ -8,6 +8,36 @@ all, original filenames intact, into **`incoming-ftus/`** at the repo root
 placement, sidecars, and loopify from there. Destination scene/element and
 trim offset noted per file.
 
+## Which Gumroad ZIPs to download (2026-08-18 mapping)
+
+The Gumroad page splits the ORTF 3D library into 36 numbered category ZIPs
+with no per-file manifest. Predicted location of each pick, derived from
+cumulative raw sizes (duration x 8ch/32-bit/96kHz ~ 3.07 MB/s) walked
+alphabetically against the published ZIP sizes — the model cross-checks
+within a consistent ~14% zip-compression factor on every category, but
+files flagged near a boundary may spill into the adjacent ZIP:
+
+| ZIP | Size | Picks expected inside |
+|---|---|---|
+| ORTF3D_AMBIENCE_03 | 11.2 GB | #200 (forest wind+birds) |
+| ORTF3D_AMBIENCE_05 | 9.2 GB | #233, #234 (grassland crickets) |
+| ORTF3D_AMBIENCE_08 | 12.1 GB | #299 (Rayong harbor) |
+| ORTF3D_AMBIENCE_12 | 10.6 GB | #373 (gentle waves, alternate) |
+| ORTF3D_AMBIENCE_15 | 10.8 GB | #450 (waves + crickets) |
+| ORTF3D_ANIMALS_01 | 1.9 GB | #612 (cricket chorus) |
+| ORTF3D_RAIN_01 | 15.1 GB | #643, #656 |
+| ORTF3D_RAIN_02 | 12.6 GB | #668, #669, #670 |
+| ORTF3D_WATER_01 | 13.4 GB | #800, #801, #803, #701 (97% — may be in _02) |
+| ORTF3D_WATER_02 | 11.0 GB | #709 |
+| ORTF3D_WATER_03 | 10.8 GB | #726, #733 (96% — may be in _04) |
+| ORTF3D_WATER_04 | 10.5 GB | #737 |
+| ORTF3D_WATER_05 | 9.7 GB | #755, #764 |
+
+13 ZIPs, ~139 GB total. Both boundary-risk files' neighbor ZIPs are already
+on the list, so the set is self-covering. Not needed: AMBIENCE 01-02, 04,
+06-07, 09-11, 13-14, 16-23; WATER_06; WIND, WEATHER, and the small
+categories.
+
 ## AMBNaut (nautical ambience)
 
 - [ ] `AMBNaut-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Thailand-Ambience, Nautical, Fishing Harbor, Seaside, Bird Activity, Water Splashing, Jetty, Morning, Distant Shipyard Repair Activity, Rayong.WAV`
