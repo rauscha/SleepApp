@@ -28,6 +28,11 @@
           "id": "forest-2",
           "url": "/audio/forest-evening/forest-rain/forest-2.opus",
           "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-evening/forest-rain/forest-2.json for source + license."
+        },
+        {
+          "id": "forest-3",
+          "url": "/audio/forest-evening/forest-rain/forest-3.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-evening/forest-rain/forest-3.json for source + license."
         }
       ]
     },
@@ -48,6 +53,11 @@
           "id": "wind-2",
           "url": "/audio/forest-evening/wind-in-leaves/wind-2.opus",
           "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-evening/wind-in-leaves/wind-2.json for source + license."
+        },
+        {
+          "id": "wind-3",
+          "url": "/audio/forest-evening/wind-in-leaves/wind-3.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-evening/wind-in-leaves/wind-3.json for source + license."
         }
       ]
     },
@@ -88,6 +98,11 @@
           "id": "creek-2",
           "url": "/audio/forest-evening/creek-trickle/creek-2.opus",
           "attribution": "freetousesounds sound library \u2014 see /audio/forest-evening/creek-trickle/creek-2.json for license. Reverse-order acrossfade companion to creek-1."
+        },
+        {
+          "id": "creek-3",
+          "url": "/audio/forest-evening/creek-trickle/creek-3.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-evening/creek-trickle/creek-3.json for source + license."
         }
       ]
     }

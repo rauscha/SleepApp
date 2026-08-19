@@ -28,6 +28,16 @@
           "id": "creek-2",
           "url": "/audio/forest-day/creek-trickle/creek-2.opus",
           "attribution": "User-provided \u2014 see /audio/forest-day/creek-trickle/creek-2.json for license. Reused across forest-day and forest-night."
+        },
+        {
+          "id": "creek-3",
+          "url": "/audio/forest-day/creek-trickle/creek-3.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-day/creek-trickle/creek-3.json for source + license."
+        },
+        {
+          "id": "creek-4",
+          "url": "/audio/forest-day/creek-trickle/creek-4.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-day/creek-trickle/creek-4.json for source + license."
         }
       ]
     },
@@ -54,20 +64,25 @@
     {
       "id": "night-ambience",
       "label": "Night insects (distant)",
-      "loopOffsetSeconds": 409,
+      "loopOffsetSeconds": 199,
       "crossfadeSeconds": 5,
       "defaultVolume": 0.3,
       "variantRotation": "random",
       "variants": [
         {
-          "id": "night-1",
-          "url": "/audio/forest-night/night-ambience/night-1.opus",
-          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-night/night-ambience/night-1.json for source + license."
+          "id": "night-3",
+          "url": "/audio/forest-night/night-ambience/night-3.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-night/night-ambience/night-3.json for source + license."
         },
         {
-          "id": "night-2",
-          "url": "/audio/forest-night/night-ambience/night-2.opus",
-          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-night/night-ambience/night-2.json for source + license."
+          "id": "night-4",
+          "url": "/audio/forest-night/night-ambience/night-4.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-night/night-ambience/night-4.json for source + license."
+        },
+        {
+          "id": "night-5",
+          "url": "/audio/forest-night/night-ambience/night-5.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-night/night-ambience/night-5.json for source + license."
         }
       ]
     }

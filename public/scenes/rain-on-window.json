@@ -28,6 +28,11 @@
           "id": "glass-2",
           "url": "/audio/rain-on-window/rain-on-glass/glass-2.opus",
           "attribution": "Pixabay \u2014 see /audio/rain-on-window/rain-on-glass/glass-2.json. Flagged for replacement (24 kHz source, most-used variant)."
+        },
+        {
+          "id": "glass-3",
+          "url": "/audio/rain-on-window/rain-on-glass/glass-3.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/rain-on-window/rain-on-glass/glass-3.json for source + license."
         }
       ]
     },
@@ -48,6 +53,11 @@
           "id": "pavement-2",
           "url": "/audio/rain-on-window/rain-pavement/pavement-2.opus",
           "attribution": "User-provided \u2014 see /audio/rain-on-window/rain-pavement/pavement-2.json for license."
+        },
+        {
+          "id": "pavement-3",
+          "url": "/audio/rain-on-window/rain-pavement/pavement-3.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/rain-on-window/rain-pavement/pavement-3.json for source + license."
         }
       ]
     },

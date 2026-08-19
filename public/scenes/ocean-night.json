@@ -33,6 +33,16 @@
           "id": "wave-3",
           "url": "/audio/ocean-night/waves/wave-3.opus",
           "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/ocean-night/waves/wave-3.json for source + license."
+        },
+        {
+          "id": "wave-4",
+          "url": "/audio/ocean-night/waves/wave-4.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/ocean-night/waves/wave-4.json for source + license."
+        },
+        {
+          "id": "wave-5",
+          "url": "/audio/ocean-night/waves/wave-5.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/ocean-night/waves/wave-5.json for source + license."
         }
       ]
     },
@@ -53,6 +63,11 @@
           "id": "far-2",
           "url": "/audio/ocean-night/waves-far/far-2.opus",
           "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/ocean-night/waves-far/far-2.json for source + license."
+        },
+        {
+          "id": "far-3",
+          "url": "/audio/ocean-night/waves-far/far-3.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/ocean-night/waves-far/far-3.json for source + license."
         }
       ]
     },
@@ -73,6 +88,11 @@
           "id": "dock-2",
           "url": "/audio/ocean-night/dockside-distant/dock-2.opus",
           "attribution": "freetousesounds sound library \u2014 see /audio/ocean-night/dockside-distant/dock-2.json for license. Sparse event layer."
+        },
+        {
+          "id": "dock-3",
+          "url": "/audio/ocean-night/dockside-distant/dock-3.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/ocean-night/dockside-distant/dock-3.json for source + license."
         }
       ]
     }

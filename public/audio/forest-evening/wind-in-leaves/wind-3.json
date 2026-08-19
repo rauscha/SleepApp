@@ -1,0 +1,23 @@
+{
+  "source": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased)",
+  "recId": "200",
+  "bundleFile": "AMBForst-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Ambience, Forest, Dense Bushland, High Tree Canopy, Wind Rushing Through Tree Tops, Mixed Bird Calls, Cloudy Moody Atmosphere, Undisturbed Nature, Tasmania.WAV",
+  "url": "https://www.freetousesounds.com/",
+  "license": "Purchased FTUS bundle; (c) Free To Use Sounds LLC, all rights reserved. Personal build only \u2014 do not redistribute.",
+  "downloadedAt": "2026-08-18",
+  "destination": "forest-evening/wind-in-leaves/wind-3",
+  "processing": {
+    "frontPair": "pan=stereo|c0=c0|c1=c1 (front ORTF L/R of the 8ch ORTF 3D master)",
+    "leveling": "dynaudnorm=f=400:g=101:r=0.5:p=0.9:m=8",
+    "loopStartSeconds": 5,
+    "loopStartRationale": "start chosen so the 6s wrap head matches its tail at P=409s; trimming from 0 put a fade-in against a settled tail",
+    "lengthSeconds": 417,
+    "loopOffsetSeconds": 409,
+    "loudnorm": "two-pass linear, I=-20.84 LUFS, TP=-1.0 dBTP",
+    "sampleRate": 48000,
+    "bitDepth": 24
+  },
+  "notes": "Front ORTF pair from 8ch ORTF 3D master; see notes/personal-sounds-selection-2026-08-17.md Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless. Encoded as Opus (128k) \u2014 see DECISIONS.md 'Ship scene audio as Opus, not MP3'.",
+  "trimmedTo": "409s",
+  "outputFormat": "48 kHz / 128k / stereo Opus"
+}
