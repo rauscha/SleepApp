@@ -1,5 +1,42 @@
 # FTUS bundle — WAV pull list (2026-08-18)
 
+## HAND-OFF — pick up here on desktop (2026-08-19)
+
+**State:** Sound selection done and merged to main (cloud session,
+2026-08-17/18). 199 prime added to `PRIME_ADJACENT_LOOP_OFFSETS_SECONDS`
+(tests 259/259 green). The 13 needed Gumroad ZIPs (~139 GB) are downloaded
+to **`D:\Sounds`**. No audio has been extracted or processed yet; no scene
+JSON has changed.
+
+**Next steps, in order:**
+1. List each ZIP in `D:\Sounds` *without* extracting (PowerShell
+   `System.IO.Compression` or `unzip -l`), match entries against the 20
+   exact filenames below, and extract ONLY those into a folder **outside
+   the Google-Drive-synced repo** (e.g. `D:\Sounds\picked\`). If a pick
+   isn't in its predicted ZIP (mapping table below), check the
+   adjacent-numbered ZIP — the prediction is a size model, ±1 at
+   boundaries.
+2. Per pick: extract the front ORTF pair (`pan=stereo|c0=c0|c1=c1`,
+   48 kHz — NOT `-ac 2`), land the stereo WAV + license sidecar in
+   `public/audio/<scene>/<element>/`, per the pipeline in
+   `notes/personal-sounds-selection-2026-08-17.md`.
+3. Wire variants into the scene JSONs at the offsets below. Forest-night:
+   re-key `night-ambience` 409 → 199 when its 3 cricket variants land.
+   Decide `#726`'s home (forest-evening @691 vs waterfall-valley @521) and
+   `#200`'s (forest-day birds @409 vs forest-evening wind) by ear.
+4. Run `tools/loopify-scenes.py`, then `npx tsc --noEmit` +
+   `npx vitest run` (sceneCatalogue conformance covers lengths/offsets).
+5. **Audition before committing** — CSV descriptions flag crows, faint
+   traffic, wind gusts; a sharp transient near a trim point is a wake risk.
+6. Waterfall-valley is a NEW scene: needs scene JSON + index entry +
+   3 Midnight-Editorial photos before it ships in the UI.
+7. Suggested landing order: #299 → creeks → rain-on-window → monsoon →
+   forest-evening → waterfall-valley.
+
+**Gotchas:** don't extract full ZIPs into the Drive-synced repo folder;
+RecID numbers exist only in the metadata CSV — match by filename (appendix
+in the selection note maps every #RecID to its exact filename).
+
 The 20 files to extract from the All In One Immersive Bundle ZIPs, grouped by
 the filename prefix (which should match how the ZIPs are organized). Drop them
 all, original filenames intact, into **`incoming-ftus/`** at the repo root
