@@ -6,7 +6,7 @@
       "theme": "An empty seaside village after dark, fog off the water.",
       "voiceId": "tide",
       "createdAt": "2026-05-18T00:59:09.530Z",
-      "durationSeconds": 1259,
+      "durationSeconds": 1137,
       "audioPath": "seaside-village.mp3",
       "sceneId": "ocean-night"
     },
@@ -16,9 +16,29 @@
       "theme": "A long train ride through a quiet snowed-in valley.",
       "voiceId": "stone",
       "createdAt": "2026-05-18T01:04:02.890Z",
-      "durationSeconds": 1257,
+      "durationSeconds": 1168,
       "audioPath": "night-train.mp3",
       "sceneId": "forest-night"
+    },
+    {
+      "id": "observatory",
+      "title": "The observatory",
+      "theme": "a night alone in a remote mountain observatory, waiting for the sky to darken",
+      "voiceId": "glen",
+      "createdAt": "2026-08-19T04:19:03.637Z",
+      "durationSeconds": 1148,
+      "audioPath": "observatory.mp3",
+      "sceneId": "forest-night"
+    },
+    {
+      "id": "temple-stairs",
+      "title": "The temple stairs",
+      "theme": "climbing worn stone stairs up a forested mountain to an old temple at dusk",
+      "voiceId": "glen",
+      "createdAt": "2026-08-19T04:21:55.213Z",
+      "durationSeconds": 1157,
+      "audioPath": "temple-stairs.mp3",
+      "sceneId": "forest-evening"
     }
   ]
 }
