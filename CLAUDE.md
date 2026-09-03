@@ -110,6 +110,14 @@ minutes. This is core audio design, not an implementation detail.
    *within* a longer file. `tools/grow-out-scenes.sh` belonged to that era;
    loopify supersedes it.)
 
+   Since 2026-09-02 loopify does **not** trim from t=0: `tools/seamfit.py`
+   searches the start offset S whose wrap is level-matched, and flattens any
+   residual with a gain tilt across the loop, so a raw recording's fade-in no
+   longer lands a 10–17 dB level step on the wrap every P seconds all night
+   (see DECISIONS.md "Search the loop start offset, don't trim from zero").
+   Run `python tools/loopify-scenes.py --audit` to measure the wrap step of
+   every shipped variant read-only; anything over 3 dB wants a re-cut.
+
    **Format: scene audio ships as Opus, not MP3** (2026-06-30 decision — see
    DECISIONS.md "Ship scene audio as Opus, not MP3"). MP3's ~16kHz lowpass
    strips the noise "air" that matters for this material; Opus preserves to

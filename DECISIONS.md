@@ -571,3 +571,44 @@ Andrew accepted the recommendation above, same day. Resolution:
   later optional layer.
 - **Visualization-style meditations reuse the existing nature scene beds**
   where the script's imagery matches (already built, loop-safe).
+
+## Search the loop start offset, don't trim from zero (2026-09-02)
+
+`tools/loopify-scenes.py` always cut a variant's prime-length loop starting at
+t=0, so the gapless wrap was built from the source's first 6 seconds. Raw field
+recordings almost always open with a fade-in or with the recordist settling, so
+the wrap was *continuous* (no click — the crossfade guarantees that) but carried
+a **10–17 dB level step**: the loop dropped into a fade every P seconds, all
+night. Measured across the shipped catalogue, 16 of 61 variants wrap with more
+than a 3 dB step, the worst at 19 dB.
+
+Fixed in two parts, both in the new `tools/seamfit.py` (stdlib + ffmpeg only —
+levels come from `astats` at one frame per second, so no numpy dependency):
+
+- **Start-offset search.** Over S in `[0, dur - P - C]`, minimise the level
+  difference between the 6 s just before the wrap (source `[S+P-C, S+P]`) and
+  the 6 s just after it (`[S+C, S+2C]`), penalising candidates whose windows sit
+  more than 4 dB off the file's own mean level so the seam lands somewhere
+  representative. Trim head `[S, S+C]`, middle `[S+C, S+P]`, tail
+  `[S+P, S+P+C]`. Sources with no slack (`dur ≈ P + C`) still cut from 0.
+- **End-matching tilt.** If the best S still leaves more than 1 dB, apply
+  `gain_dB(t) = (t − S) · D / P` across the trimmed segment before the wrap is
+  built, walking the tail onto the head. A few dB spread over 199–691 s is
+  inaudible drift; the step it replaces is not. |D| is capped at 8 dB with a
+  WARN — past that the file wants a longer source, not a bigger ramp.
+
+Note the criterion is deliberately **not** "match the head window `[S, S+C]` to
+the tail window `[S+P, S+P+C]`", which is the obvious formulation and what the
+2026-08 scratch script used. A head window sitting inside a source fade averages
+far below the level the head *ends* at, and it is the end of the head that plays
+out of the wrap: forest-night night-5 scored 0.5 dB on that criterion and
+rendered a 14 dB audible step. Measuring across the wrap boundary instead makes
+the prediction agree with the rendered file to within 0.1 dB.
+
+Validated on the 20 leveled masters in `D:\Sounds\normalized`: every re-cut
+wraps within 0.8 dB (18 of 20 within 0.5 dB) against 3.1–17.7 dB if cut from
+zero, and low-slack simulations confirm the tilt takes a 5.2 dB residual to
+0.07 dB. Sidecars now record `processing.loopStartSeconds`,
+`loopStartRationale`, and `endMatchTiltDb`. `--audit` measures the wrap step of
+every shipped variant read-only; the 2026-09-02 baseline is
+`notes/loop-seam-audit-2026-09-02.md`.

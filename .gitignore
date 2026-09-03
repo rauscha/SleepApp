@@ -64,3 +64,7 @@ setup-mkcert.bat
 # Local reviews/ directory — output from deep-review sessions, personal
 # audit notes, spectrogram dumps, etc. Not shipped code.
 reviews/
+
+# Python bytecode cache — tools/ is a script dir, not a package
+__pycache__/
+*.pyc

@@ -22,6 +22,22 @@ it began, so loop wrap is continuous. Three input handles avoid asplit
 buffering issues; no loudnorm on scene files (preserves their existing voiced
 levels).
 
+Start-offset seam search (2026-09-02, see DECISIONS.md): the trim no longer
+starts at t=0. A raw field recording almost always opens with a fade-in or the
+recordist settling, so a wrap built from [0, C] is continuous but carries a
+10-17 dB LEVEL STEP against the settled tail -- every P seconds, all night.
+`tools/seamfit.py` measures a one-frame-per-second dB envelope and searches a
+start offset S minimising the level difference ACROSS the wrap -- the C seconds
+just before it (source [S+P-C, S+P]) against the C seconds just after it
+([S+C, S+2C]) -- penalising windows more than 4 dB off the file's own mean
+level so the seam lands somewhere representative. (Matching the head and tail
+windows themselves is the obvious formulation and is wrong; see seamfit's
+docstring.) Any residual step is flattened by an end-matching gain tilt: a
+linear-in-dB ramp gain_dB(t) = (t-S)*D/P across the trimmed segment, which
+walks the tail onto the head over minutes (inaudible drift) instead of leaving
+a step at the wrap (audible tick). Sources with no slack (dur ~= P + C) still
+trim from S=0.
+
 Output format (2026-06-30 decision, see DECISIONS.md "Ship scene audio as
 Opus, not MP3"): every file this script touches is emitted as **Opus**
 (libopus, OUTPUT_BITRATE), not MP3 — MP3's ~16kHz lowpass strips the noise
@@ -39,6 +55,9 @@ import os
 import subprocess
 import sys
 import tempfile
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import seamfit  # noqa: E402  (needs the path insert above to import from any cwd)
 
 C = 6  # wrap crossfade seconds
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -61,16 +80,31 @@ def probe_duration(path):
     return float(out)
 
 
-def seamless_loop(src, out, period, sr, loudnorm=None):
-    """Write `out`: a seamless Opus loop of length `period` built from `src`."""
+def seamless_loop(src, out, period, sr, loudnorm=None, start=0, tilt_db=0.0):
+    """Write `out`: a seamless Opus loop of length `period` built from `src`.
+
+    `start` (S, from seamfit.find_loop_start) is where the loop is cut from:
+    head [S, S+C], middle [S+C, S+P], tail [S+P, S+P+C]. `tilt_db` (D) is the
+    end-matching ramp -- gain_dB(t) = (t-S)*D/P applied to the source BEFORE
+    trimming (so `t` is source time), lifting the tail onto the head so the
+    finished loop's two ends sit at the same level.
+    """
     fmt = (f"aformat=sample_fmts=fltp:channel_layouts=stereo:"
            f"sample_rates={sr}")
     pre = f",{loudnorm}" if loudnorm else ""
+    if tilt_db:
+        # exp() avoids a comma inside the filtergraph expression (pow(10,x)
+        # would need escaping); K folds the dB->linear conversion in.
+        k = tilt_db * 2.302585092994046 / (20.0 * period)
+        tilt = f"volume=exp((t-{start})*{k:.12g}):eval=frame,"
+    else:
+        tilt = ""
+    a, b, c = start, start + C, start + period
     fc = (
-        f"[0:a]atrim=0:{C},{fmt},afade=t=in:st=0:d={C},asetpts=PTS-STARTPTS[head];"
-        f"[1:a]atrim={period}:{period + C},{fmt},afade=t=out:st=0:d={C},asetpts=PTS-STARTPTS[tailf];"
+        f"[0:a]{tilt}atrim={a}:{b},{fmt},afade=t=in:st=0:d={C},asetpts=PTS-STARTPTS[head];"
+        f"[1:a]{tilt}atrim={c}:{c + C},{fmt},afade=t=out:st=0:d={C},asetpts=PTS-STARTPTS[tailf];"
         f"[head][tailf]amix=inputs=2:normalize=0{pre},{fmt}[wrap];"
-        f"[2:a]atrim={C}:{period},{fmt},asetpts=PTS-STARTPTS[mid];"
+        f"[2:a]{tilt}atrim={b}:{c},{fmt},asetpts=PTS-STARTPTS[mid];"
         f"[wrap][mid]concat=n=2:v=0:a=1[out]"
     )
     subprocess.check_call(
@@ -94,28 +128,30 @@ def transcode_to_opus(src, out, sr):
 def loopify_in_place(path, period):
     """Make `path` a seamless `period`-second Opus loop.
 
-    Returns the final path (unchanged if `path` was already a correct-length
-    `.opus`; a sibling `<stem>.opus` otherwise — the old-extension source is
-    left in place for the *caller* to remove, and only after the caller has
-    rewritten and persisted the referencing scene JSON(s), so a crash can
-    never strand a JSON pointing at a deleted file). Returns None if left
-    as-is (already correct length + already Opus, or too short to trim).
+    Returns `(final_path, seam)`. `final_path` is unchanged if `path` was
+    already a correct-length `.opus`; a sibling `<stem>.opus` otherwise -- the
+    old-extension source is left in place for the *caller* to remove, and only
+    after the caller has rewritten and persisted the referencing scene JSON(s),
+    so a crash can never strand a JSON pointing at a deleted file. It is None
+    if the file was left as-is (already correct length + already Opus, or too
+    short to trim). `seam` is the seamfit record for the cut (start, tilt,
+    measured wrap step), or None when no cut happened.
     """
     d = probe_duration(path)
     stem, ext = os.path.splitext(path)
     opus_path = stem + ".opus"
     already_opus = ext.lower() == ".opus"
-    # NB: plain ASCII in prints — a fancy arrow here crashed the whole run
+    # NB: plain ASCII in prints -- a fancy arrow here crashed the whole run
     # mid-migration on Windows' default cp1252 console (2026-07-01).
     if abs(d - period) < 2:
         # Already exactly one prime-length loop.
         if already_opus:
             print(f"    skip {os.path.relpath(path, ROOT)} ({d:.1f}s ~= {period})")
-            return None
+            return None, None
         # Non-opus but already the right length (all shipped MP3 variants are
         # exact prime-length seamless loops): a straight transcode migrates it
         # to Opus without re-cutting the loop. This is what makes the
-        # documented in-place MP3->Opus migration actually reachable — the
+        # documented in-place MP3->Opus migration actually reachable -- the
         # too-short guard below used to fire for every one of these.
         tmp = opus_path + ".tmp.opus"
         transcode_to_opus(path, tmp, OPUS_SR)
@@ -124,29 +160,46 @@ def loopify_in_place(path, period):
         print(f"    xcode {os.path.relpath(path, ROOT)} -> "
               f"{os.path.relpath(opus_path, ROOT)}: {d:.1f}s -> {nd:.1f}s "
               f"(prime {period}, already looped; migrated to Opus)")
-        return opus_path
+        return opus_path, None
     if d < period + C:
         print(f"    WARN {os.path.relpath(path, ROOT)} too short "
               f"({d:.1f}s < {period + C}) -- left as-is")
-        return None
+        return None, None
+
+    # Where to cut. With slack, search the start offset that level-matches the
+    # wrap; without it (dur ~= period + C) there is only one possible cut, S=0.
+    fit = seamfit.find_loop_start(path, period)
+    tilt, clamped = seamfit.tilt_for(fit, period)
+    if clamped:
+        print(f"    WARN {os.path.relpath(path, ROOT)} residual seam step "
+              f"{fit['postDb'] - fit['preDb']:+.1f} dB exceeds the "
+              f"{seamfit.TILT_MAX_DB} dB tilt cap -- clamped to {tilt:+.1f} dB; "
+              f"the wrap will still step. Re-cut from a longer source.")
     tmp = opus_path + ".tmp.opus"
-    seamless_loop(path, tmp, period, OPUS_SR)
+    seamless_loop(path, tmp, period, OPUS_SR, start=fit["start"], tilt_db=tilt)
     nd = probe_duration(tmp)
     os.replace(tmp, opus_path)
-    if not already_opus:
-        # Old-extension source is intentionally NOT removed here — the caller
-        # deletes it only after rewriting + persisting the scene JSON that
-        # references it (crash-safe ordering).
-        print(f"    loop {os.path.relpath(path, ROOT)} -> "
-              f"{os.path.relpath(opus_path, ROOT)}: {d:.1f}s -> {nd:.1f}s "
-              f"(prime {period}, migrated to Opus)")
-    else:
-        print(f"    loop {os.path.relpath(opus_path, ROOT)}: {d:.1f}s -> {nd:.1f}s "
-              f"(prime {period})")
-    return opus_path
+    # Measure the finished loop rather than trusting the prediction.
+    measured = seamfit.wrap_step_db(seamfit.level_envelope(opus_path), period)
+    seam = {
+        "start": fit["start"], "tiltDb": tilt, "clamped": clamped,
+        "searched": fit["searched"], "predictedStepDb": fit["stepDb"],
+        "stepAtZeroDb": fit["stepAtZeroDb"],
+        "measuredStepDb": measured[0] if measured else None,
+    }
+    rel = os.path.relpath(opus_path, ROOT)
+    src_note = (f"{os.path.relpath(path, ROOT)} -> " if not already_opus else "")
+    was = fit["stepAtZeroDb"]
+    now = seam["measuredStepDb"]
+    print(f"    loop {src_note}{rel}: {d:.1f}s -> {nd:.1f}s (prime {period}) "
+          f"start={fit['start']}s tilt={tilt:+.2f}dB wrap step "
+          f"{'n/a' if was is None else format(was, '.1f') + 'dB'} at S=0 -> "
+          f"{'n/a' if now is None else format(now, '.2f') + 'dB'}"
+          + ("" if already_opus else ", migrated to Opus"))
+    return opus_path, seam
 
 
-def update_sidecar(path, period, renamed_from=None):
+def update_sidecar(path, period, renamed_from=None, seam=None):
     stem, _ = os.path.splitext(path)
     sc = stem + ".json"
     old_sc = os.path.splitext(renamed_from)[0] + ".json" if renamed_from else sc
@@ -166,6 +219,28 @@ def update_sidecar(path, period, renamed_from=None):
            f"Opus, not MP3'.")
     if "Seamless-looped" not in note:
         j["notes"] = (note + tag).strip()
+    if seam is not None:
+        # Record WHERE the loop was cut from, without clobbering whatever the
+        # capture/leveling pipeline already wrote into `processing`.
+        proc = j.get("processing")
+        if not isinstance(proc, dict):
+            proc = {}
+        proc["loopStartSeconds"] = seam["start"]
+        proc["loopOffsetSeconds"] = period
+        proc["loopStartRationale"] = (
+            f"start chosen so the {C}s before the wrap and the {C}s after it "
+            f"sit at the same level at P={period}s; trimming from 0 put a "
+            f"fade-in against a settled tail" if seam["searched"] else
+            f"source has no slack over P={period}s + {C}s wrap; trimmed from 0")
+        if seam["tiltDb"]:
+            proc["endMatchTiltDb"] = round(seam["tiltDb"], 3)
+            proc["endMatchTiltRationale"] = (
+                f"residual level step across the wrap after the start "
+                f"search; applied "
+                f"as a linear-in-dB gain ramp over the {period}s loop so the "
+                f"two ends meet at the same level (a few dB across minutes is "
+                f"inaudible drift, a step at the wrap is not)")
+        j["processing"] = proc
     json.dump(j, open(sc, "w", encoding="utf-8"), indent=2)
     if old_sc != sc and os.path.exists(old_sc):
         os.remove(old_sc)
@@ -206,7 +281,7 @@ def gen_beds(force=False):
                  f"r={OPUS_SR}:seed=471102",
                  "-af", "loudnorm=I=-23:TP=-1.5:LRA=7",
                  "-ac", "2", "-ar", str(OPUS_SR), raw])
-            seamless_loop(raw, out, BED_LENGTH, OPUS_SR)
+            seamless_loop(raw, out, BED_LENGTH, OPUS_SR, start=0)
         finally:
             os.path.exists(raw) and os.remove(raw)
         sc = os.path.splitext(out)[0] + ".json"
@@ -224,15 +299,18 @@ def gen_beds(force=False):
               f"({probe_duration(out):.1f}s)")
 
 
-def loopify_scenes():
-    print("## scene variants")
-    # Load every scene JSON up front and map each on-disk audio path to ALL
-    # the variants that reference it, across scenes. A file can be shared
-    # (forest-day's creek is reused by forest-night); it must be processed
-    # ONCE and its URL rewritten in EVERY referencing scene. Iterating scene
-    # by scene and rewriting only the current one — as before — would migrate
-    # forest-day's creek, delete the .mp3, and leave forest-night 404ing.
-    refs = {}  # abs audio path -> list of (scene_file, scene_dict, variant, period)
+def collect_scene_refs():
+    """Map each on-disk audio path to ALL the variants that reference it.
+
+    Loaded across every scene JSON up front, because a file can be shared
+    (forest-day's creek is reused by forest-night); it must be processed ONCE
+    and its URL rewritten in EVERY referencing scene. Iterating scene by scene
+    and rewriting only the current one -- as this once did -- would migrate
+    forest-day's creek, delete the .mp3, and leave forest-night 404ing.
+
+    Returns {abs path: [(scene_file, scene_dict, variant, period, element)]}.
+    """
+    refs = {}
     for f in sorted(glob.glob(os.path.join(SCENES, "*.json"))):
         if f.endswith("index.json"):
             continue
@@ -241,7 +319,13 @@ def loopify_scenes():
             period = el["loopOffsetSeconds"]
             for v in el["variants"]:
                 path = os.path.normpath(os.path.join(ROOT, "public" + v["url"]))
-                refs.setdefault(path, []).append((f, d, v, period))
+                refs.setdefault(path, []).append((f, d, v, period, el))
+    return refs
+
+
+def loopify_scenes():
+    print("## scene variants")
+    refs = collect_scene_refs()
 
     updated_scene_files = set()
     for path in sorted(refs):
@@ -257,12 +341,12 @@ def loopify_scenes():
         if not os.path.exists(path):
             print(f"    MISSING {os.path.relpath(path, ROOT)}")
             continue
-        new_path = loopify_in_place(path, period)
+        new_path, seam = loopify_in_place(path, period)
         if new_path is None:
             continue
         if new_path == path:
             # In-place opus re-trim (no rename): sidecar only.
-            update_sidecar(new_path, period)
+            update_sidecar(new_path, period, seam=seam)
             continue
         # Extension changed (mp3 -> opus). Crash-safe global rewrite: point
         # EVERY referencing scene at the new file and persist each of them
@@ -271,10 +355,10 @@ def loopify_scenes():
         # scenes). A crash between any two statements still leaves every scene
         # pointing at a present file — the old one until its dump lands, the
         # new .opus after.
-        update_sidecar(new_path, period, renamed_from=path)
+        update_sidecar(new_path, period, renamed_from=path, seam=seam)
         new_url = "/" + os.path.relpath(
             new_path, os.path.join(ROOT, "public")).replace(os.sep, "/")
-        for (_sf, _sd, variant, _p) in holders:
+        for (_sf, _sd, variant, _p, _el) in holders:
             variant["url"] = new_url
         for scene_file, scene_dict in {h[0]: h[1] for h in holders}.items():
             json.dump(scene_dict, open(scene_file, "w", encoding="utf-8"), indent=2)
@@ -284,7 +368,58 @@ def loopify_scenes():
         print(f"    updated {os.path.relpath(scene_file, ROOT)} (variant URLs -> .opus)")
 
 
+AUDIT_FLAG_DB = 3.0
+
+
+def audit_seams():
+    """Read-only: measure the wrap level step of every SHIPPED scene variant.
+
+    A shipped file is already exactly P long with the wrap baked into [0, C],
+    so the step a sleeper hears at the loop point is the level of the last C
+    seconds [P-C, P] against the C seconds just past the wrap [C, 2C]. Files
+    over AUDIT_FLAG_DB are flagged as re-cut candidates. Touches nothing.
+    """
+    refs = collect_scene_refs()
+    rows = []
+    for path in sorted(refs):
+        scene_file, _sd, variant, period, el = refs[path][0]
+        scene = os.path.splitext(os.path.basename(scene_file))[0]
+        if not os.path.exists(path):
+            print(f"    MISSING {os.path.relpath(path, ROOT)}")
+            continue
+        dur = probe_duration(path)
+        env = seamfit.level_envelope(path)
+        m = seamfit.wrap_step_db(env, period)
+        if m is None:
+            print(f"    SKIP {os.path.relpath(path, ROOT)} (too short to measure)")
+            continue
+        step, tail, post, mean = m
+        rows.append({
+            "scene": scene, "element": el.get("id", "?"),
+            "variant": os.path.basename(path), "period": period,
+            "durationSeconds": round(dur, 1), "stepDb": step,
+            "tailDb": tail, "postWrapDb": post, "meanDb": mean,
+            "tailDevDb": tail - mean, "postWrapDevDb": post - mean,
+            "path": path,
+        })
+    rows.sort(key=lambda r: -r["stepDb"])
+    print(f"{'scene':<16} {'element':<22} {'variant':<22} {'P':>4} "
+          f"{'step dB':>8} {'mean dB':>8} {'tail dev':>9} {'post dev':>9}  flag")
+    for r in rows:
+        flag = "FLAG >3dB" if r["stepDb"] > AUDIT_FLAG_DB else ""
+        print(f"{r['scene']:<16} {r['element']:<22} {r['variant']:<22} "
+              f"{r['period']:>4} {r['stepDb']:>8.2f} {r['meanDb']:>8.1f} "
+              f"{r['tailDevDb']:>+9.1f} {r['postWrapDevDb']:>+9.1f}  {flag}")
+    over = [r for r in rows if r["stepDb"] > AUDIT_FLAG_DB]
+    print("")
+    print(f"{len(over)} of {len(rows)} variants over {AUDIT_FLAG_DB} dB.")
+    return rows
+
+
 if __name__ == "__main__":
-    gen_beds(force="--force-beds" in sys.argv)
-    loopify_scenes()
-    print("done.")
+    if "--audit" in sys.argv:
+        audit_seams()
+    else:
+        gen_beds(force="--force-beds" in sys.argv)
+        loopify_scenes()
+        print("done.")
