@@ -19,6 +19,12 @@
       "url": "/scenes/forest-evening.json"
     },
     {
+      "id": "waterfall-valley",
+      "label": "Waterfall valley",
+      "description": "A mossy cascade close by, a steadier fall down the valley, a small creek over rocks below. Continuous water, no weather.",
+      "url": "/scenes/waterfall-valley.json"
+    },
+    {
       "id": "rain-on-window",
       "label": "Rain on the window",
       "description": "Steady rain against glass, distant rain on pavement, a bass rumble miles off.",

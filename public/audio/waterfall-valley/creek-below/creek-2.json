@@ -1,0 +1,23 @@
+{
+  "source": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased)",
+  "recId": "",
+  "bundleFile": "WATRFall-L,R,Ls,Rs,Lh,Rh,Lsh,Rsh_Australia-Water, Waterfall, Front and Rear Flow, Water Running Over Rocks, Continuous Cascade Movement, Lush Forest, Calm Natural Atmosphere, Undisturbed Nature, Tasmania.WAV",
+  "url": "https://www.freetousesounds.com/",
+  "license": "Purchased FTUS bundle; (c) Free To Use Sounds LLC, all rights reserved. Personal build only \u2014 do not redistribute.",
+  "downloadedAt": "2026-09-02",
+  "destination": "waterfall-valley/creek-below/creek-2",
+  "processing": {
+    "frontPair": "pan=stereo|c0=c0|c1=c1 (front ORTF L/R of the 8ch ORTF 3D master)",
+    "leveling": "dynaudnorm=f=400:g=101:r=0.5:p=0.9:m=8",
+    "loudnorm": "two-pass linear, I=-20.99 LUFS, TP=-1.0 dBTP, LRA=11",
+    "lengthSeconds": 293.6,
+    "sampleRate": 48000,
+    "bitDepth": 24,
+    "loopStartSeconds": 39,
+    "loopOffsetSeconds": 199,
+    "loopStartRationale": "start chosen so the 6s before the wrap and the 6s after it sit at the same level at P=199s; trimming from 0 put a fade-in against a settled tail"
+  },
+  "notes": "Front ORTF pair from 8ch ORTF 3D master, levelled by tools/level-ftus.py. Seamless-looped to 199s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless. Encoded as Opus (128k) \u2014 see DECISIONS.md 'Ship scene audio as Opus, not MP3'.",
+  "trimmedTo": "199s",
+  "outputFormat": "48 kHz / 128k / stereo Opus"
+}

@@ -1,0 +1,75 @@
+{
+  "id": "waterfall-valley",
+  "label": "Waterfall valley",
+  "description": "A mossy cascade dropping into its outflow creek, a steadier fall somewhere further down the valley, and a small creek running over rocks below \u2014 continuous water, no weather, nothing that changes.",
+  "synth": {
+    "color": "pink",
+    "defaultVolume": 0.12
+  },
+  "tinnitus": {
+    "enabledByDefault": false,
+    "defaultVolume": 0.2
+  },
+  "elements": [
+    {
+      "id": "cascade-close",
+      "label": "Cascade, close",
+      "loopOffsetSeconds": 251,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.55,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "cascade-1",
+          "url": "/audio/waterfall-valley/cascade-close/cascade-1.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/waterfall-valley/cascade-close/cascade-1.json for source + license."
+        },
+        {
+          "id": "cascade-2",
+          "url": "/audio/waterfall-valley/cascade-close/cascade-2.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/waterfall-valley/cascade-close/cascade-2.json for source + license."
+        },
+        {
+          "id": "cascade-3",
+          "url": "/audio/waterfall-valley/cascade-close/cascade-3.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/waterfall-valley/cascade-close/cascade-3.json for source + license."
+        }
+      ]
+    },
+    {
+      "id": "falls-main",
+      "label": "The main falls",
+      "loopOffsetSeconds": 409,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.3,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "falls-1",
+          "url": "/audio/waterfall-valley/falls-main/falls-1.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/waterfall-valley/falls-main/falls-1.json for source + license."
+        }
+      ]
+    },
+    {
+      "id": "creek-below",
+      "label": "Creek below",
+      "loopOffsetSeconds": 199,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.25,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "creek-1",
+          "url": "/audio/waterfall-valley/creek-below/creek-1.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/waterfall-valley/creek-below/creek-1.json for source + license."
+        },
+        {
+          "id": "creek-2",
+          "url": "/audio/waterfall-valley/creek-below/creek-2.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/waterfall-valley/creek-below/creek-2.json for source + license."
+        }
+      ]
+    }
+  ]
+}
