@@ -9,8 +9,8 @@
   "processing": {
     "frontPair": "pan=stereo|c0=c0|c1=c1 (front ORTF L/R of the 8ch ORTF 3D master)",
     "leveling": "dynaudnorm=f=400:g=101:r=0.5:p=0.9:m=8",
-    "loopStartSeconds": 29,
-    "loopStartRationale": "start chosen so the 6s wrap head matches its tail at P=521s; trimming from 0 put a fade-in against a settled tail",
+    "loopStartSeconds": 54,
+    "loopStartRationale": "start chosen so the 6s before the wrap and the 6s after it sit at the same level at P=521s; trimming from 0 put a fade-in against a settled tail",
     "lengthSeconds": 529,
     "loopOffsetSeconds": 521,
     "loudnorm": "two-pass linear, I=-23.84 LUFS, TP=-1.0 dBTP",
