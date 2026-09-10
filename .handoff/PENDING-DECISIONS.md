@@ -1,5 +1,16 @@
 # Pending decisions / queued actions
 
+## 0B. OPEN 2026-09-10 — review, markers, seams (see SESSION-HANDOFF top block)
+
+- **[ANDREW] Run the engine code review from the CLI on API tokens** (the
+  in-session attempt hit the monthly limit). Command in SESSION-HANDOFF
+  "Next up" #1. Ask it to confirm the Howler html5-loop finding.
+- **[ANDREW] Three marker-design answers** (media-key trigger; stories too;
+  native-loop fix same branch or separate) — `notes/debug-markers-plan-2026-09-08.md` §5.
+- **[ANDREW] Per flagged seam: replace from FTUS or re-cut Vlad?** Sources are
+  now on tikiserv (`~/sounds`), so either runs here. 0A's "still open" list is
+  unchanged (12 of 67 over 3 dB on 2026-09-08).
+
 ## 0A. RESOLVED 2026-09-03 — the 2026-08-18 FTUS follow-ups
 
 All four items from the 2026-08-18 block are closed (log in
