@@ -612,3 +612,51 @@ zero, and low-slack simulations confirm the tilt takes a 5.2 dB residual to
 `loopStartRationale`, and `endMatchTiltDb`. `--audit` measures the wrap step of
 every shipped variant read-only; the 2026-09-02 baseline is
 `notes/loop-seam-audit-2026-09-02.md`.
+
+## Session ownership: what a re-pick, a drift, and a screen exit may touch (2026-09-10)
+
+A max-effort review of the production overnight path found the same violation of
+"overnight protections are owned by the session, not a screen" in four places.
+The rules the fixes settle on, because they are not derivable from the code:
+
+- **Re-picking the scene that is already playing is an adoption, not a start.**
+  Tonight's `handlePick` is the only route back into the Player, so tapping the
+  live scene is routine — and it fell through to `crossfadeTo()`, which built a
+  second `<audio>` element per layer and faded two copies of the same loop
+  against each other (≈+6 dB with comb filtering for the fade, two more of
+  Howler's ten pooled elements per re-tap). `HowlScenePlayer.adoptLiveScene()`
+  now returns the live scene and touches only what the caller asked for.
+
+- **An armed countdown outranks the default the caller passes.** Tonight sends
+  `defaultTimerMinutes` on *every* pick, so a re-pick used to restart a running
+  countdown from the top. An adoption leaves a `running` timer exactly as it is
+  (bug H3's whole point), and a re-tap mid `fading` is read as "I'm still awake":
+  it cancels through the timer so the scene is restored rather than adopted on
+  its way to silence.
+
+- **A Night Drift preserves the session; a user switch resets it.** Both go
+  through `crossfadeTo`, which reset the sleep timer whenever no
+  `sleepTimerMinutes` was passed — correct for a user switch (bug H1: a pending
+  fade-exit must never stop the new scene) and wrong for a drift, which silently
+  disarmed a confirmed "Stops in 47:12" and then played at full volume until
+  morning. The drift path passes `preserveSessionTimer` and carries the live
+  `sceneGain` forward, so a 3 a.m. Door resume's reduced gain survives it too.
+  A drift also stands down entirely once the timer is `fading` — a fresh scene
+  would come up at full level and be hard-cut by the fade-exit behind it.
+
+- **A screen exit hands the media session over; it does not clear it.**
+  ContentPlayerScreen's cleanup called `clearMediaSession()`, so backing out of
+  a story stripped the OS session off a bed deliberately left playing all night
+  — precisely what Chrome on Android deprioritises and discards after ~10
+  minutes ("fell asleep to a story, woke up to silence"). It now calls
+  `HowlScenePlayer.claimMediaSession()` when a scene is still live, from an
+  unmount-only effect so the ownership flag can't flip mid-story. Lock-screen
+  Stop likewise stops narration *and* bed, matching the in-app ■ Stop; it used
+  to leave a story's bed running with no OS control able to reach it.
+
+Validated: `src/audio/howl/HowlScene.test.ts` gained 8 tests covering adoption,
+the three timer states, drift preservation/stand-down, and the hand-back; 270
+tests green. The remaining findings from that review are unfixed — see the reply
+in the session notes, notably the write-once `mediaManaged` flag, the
+un-refcounted SW keep-alive, `HowlScene.resume()` stacking a duplicate element,
+and `PlayerScreen`'s master-volume/mixer persistence gaps.

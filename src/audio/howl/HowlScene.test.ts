@@ -341,3 +341,240 @@ describe('HowlScenePlayer', () => {
     expect(() => __resetHowlScenePlayerForTests()).not.toThrow();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Session ownership — the 2026-09-10 review's top findings. The invariant
+// under test is CLAUDE.md's: overnight protections belong to the session and
+// must survive both a re-pick of the live scene and an automatic Night Drift.
+
+/** Minimal navigator.mediaSession + MediaMetadata stand-in (jsdom has
+ *  neither), mirroring the helper in SceneCoordinator.test.ts. */
+function installMediaSessionMock(): {
+  session: { metadata: unknown; playbackState: string };
+  handlers: Record<string, unknown>;
+  restore: () => void;
+} {
+  const handlers: Record<string, unknown> = {};
+  const session = {
+    metadata: null as unknown,
+    playbackState: 'none',
+    setActionHandler: (action: string, h: unknown) => {
+      handlers[action] = h;
+    },
+  };
+  const g = globalThis as unknown as { MediaMetadata?: unknown };
+  const priorMeta = g.MediaMetadata;
+  g.MediaMetadata = class {
+    constructor(init: Record<string, unknown>) {
+      Object.assign(this, init);
+    }
+  };
+  (navigator as unknown as { mediaSession?: unknown }).mediaSession = session;
+  return {
+    session,
+    handlers,
+    restore() {
+      delete (navigator as unknown as { mediaSession?: unknown }).mediaSession;
+      g.MediaMetadata = priorMeta;
+    },
+  };
+}
+
+/** The last-created fake Howl for a src — after a crossfade there are two
+ *  elements per url, and the incoming scene's is the later one. */
+const lastBySrc = (sub: string): FakeHowl =>
+  FakeHowl.all.filter((h) => h.opts.src.some((s) => s.includes(sub))).at(-1)!;
+
+describe('HowlScenePlayer — re-picking the scene that is already playing', () => {
+  it('adopts the live scene instead of crossfading it against itself', async () => {
+    const player = new HowlScenePlayer(fakeFactory);
+    const first = await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+    const built = FakeHowl.all.length;
+
+    const again = await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+
+    expect(again).toBe(first);
+    // No second <audio> element per layer (which would sum to ~+6 dB with
+    // comb filtering, and take two more out of Howler's pool of ten)...
+    expect(FakeHowl.all).toHaveLength(built);
+    // ...and nothing was faded out from under the user.
+    expect(FakeHowl.all.some((h) => h.fades.at(-1)?.[1] === 0)).toBe(false);
+    expect(FakeHowl.all.every((h) => !h.stopped)).toBe(true);
+  });
+
+  it('keeps the armed countdown instead of re-arming the default', async () => {
+    vi.useFakeTimers();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), {
+        firstFadeSeconds: 0,
+        sleepTimerMinutes: 60,
+      });
+      const endsAt = player.sleepTimer.getState().endsAt;
+      vi.advanceTimersByTime(10 * 60_000);
+
+      // Tonight passes the *default* timer on every pick, so a re-pick used
+      // to restart the countdown from 60 minutes (review bug H3's symptom:
+      // a confirmed "Stops in 49:58" jumping back to 59:59).
+      await player.startScene(makeDef(), {
+        firstFadeSeconds: 0,
+        sleepTimerMinutes: 60,
+      });
+
+      expect(player.sleepTimer.getState().status).toBe('running');
+      expect(player.sleepTimer.getState().endsAt).toBe(endsAt);
+      expect(Math.round(player.sleepTimer.getRemainingMs() / 60_000)).toBe(50);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('cancels an in-flight sleep-timer fade rather than adopting a dying scene', async () => {
+    vi.useFakeTimers();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), {
+        firstFadeSeconds: 0,
+        sleepTimerMinutes: 0.02,
+      });
+      vi.advanceTimersByTime(1500); // past the deadline → fading to silence
+      expect(player.sleepTimer.getState().status).toBe('fading');
+      const rain = lastBySrc('rain-1');
+      expect(rain.fades.at(-1)![1]).toBe(0);
+
+      // The user re-taps the scene: "I'm still awake."
+      await player.startScene(makeDef(), {
+        firstFadeSeconds: 0,
+        sleepTimerMinutes: 60,
+      });
+
+      expect(player.sleepTimer.getState().status).toBe('running');
+      // Ramping back to its mix level, not still heading to silence.
+      expect(rain.fades.at(-1)![1]).toBeCloseTo(0.5, 5);
+      // ...and the old fade-exit can't stop the adopted scene behind it.
+      vi.advanceTimersByTime(95_000);
+      expect(player.getCurrentScene()).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('still resets the timer on a user switch to a different scene (H1)', async () => {
+    vi.useFakeTimers();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef({ id: 'a' }), {
+        firstFadeSeconds: 0,
+        sleepTimerMinutes: 0.02,
+      });
+      vi.advanceTimersByTime(1500);
+      expect(player.sleepTimer.getState().status).toBe('fading');
+
+      await player.startScene(makeDef({ id: 'b' }), { fadeSeconds: 1 });
+
+      expect(player.sleepTimer.getState().status).toBe('off');
+      expect(player.sleepTimer.isArmed).toBe(false);
+      vi.advanceTimersByTime(95_000);
+      expect(player.getCurrentScene()?.id).toBe('b');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('HowlScenePlayer — Night Drift carries the session forward', () => {
+  it('keeps the armed countdown and the reduced scene gain across the drift', async () => {
+    vi.useFakeTimers();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      const target = makeDef({ id: 'night' });
+      player.setSceneResolver((id) =>
+        Promise.resolve(id === 'night' ? target : null)
+      );
+      await player.startScene(
+        makeDef({
+          id: 'evening',
+          driftsTo: { sceneId: 'night', afterMinutes: 0.02, crossfadeSeconds: 1 },
+        }),
+        {
+          firstFadeSeconds: 0,
+          firstFadeTarget: 0.6, // a 3 a.m. Door resume
+          sleepTimerMinutes: 60,
+        }
+      );
+      const endsAt = player.sleepTimer.getState().endsAt;
+
+      await vi.advanceTimersByTimeAsync(1300);
+
+      expect(player.getCurrentScene()?.id).toBe('night');
+      // The countdown is the whole point: a drift is an automatic
+      // continuation of the same night, not a user scene switch.
+      expect(player.sleepTimer.getState().status).toBe('running');
+      expect(player.sleepTimer.getState().endsAt).toBe(endsAt);
+      // The deep-night gain reduction survives too (0.5 mix × 0.6 gain).
+      expect(lastBySrc('rain-1').fades.at(-1)![1]).toBeCloseTo(0.3, 5);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('stands down when the sleep timer is already fading the night out', async () => {
+    vi.useFakeTimers();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      player.setSceneResolver(() => Promise.resolve(makeDef({ id: 'night' })));
+      await player.startScene(
+        makeDef({
+          id: 'evening',
+          driftsTo: { sceneId: 'night', afterMinutes: 0.04 },
+        }),
+        { firstFadeSeconds: 0, sleepTimerMinutes: 0.02 }
+      );
+
+      await vi.advanceTimersByTimeAsync(1500); // timer fires first → fading
+      expect(player.sleepTimer.getState().status).toBe('fading');
+      await vi.advanceTimersByTimeAsync(1500); // past the drift deadline
+
+      // A fresh scene here would come up at full level and then be hard-cut
+      // by the pending fade-exit.
+      expect(player.getCurrentScene()?.id).toBe('evening');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('HowlScenePlayer — media-session hand-back', () => {
+  it('claims the OS session for a bed the content player left playing', async () => {
+    const media = installMediaSessionMock();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      // How the content player starts a story's bed: it owns the OS session
+      // for the narration, so the bed must not stamp its own label.
+      await player.startScene(makeDef({ id: 'bed', label: 'Bed Scene' }), {
+        firstFadeSeconds: 0,
+        manageMediaSession: false,
+      });
+      expect(media.session.metadata).toBeNull();
+
+      // The user backs out to the Library; the bed plays on all night, so
+      // the session is handed back here instead of being cleared.
+      player.claimMediaSession();
+
+      expect((media.session.metadata as { title: string }).title).toBe('Bed Scene');
+      expect(media.session.playbackState).toBe('playing');
+      expect(typeof media.handlers.stop).toBe('function');
+
+      // And it now tears down with the scene, as any session-owned scene does.
+      player.stopScene(0);
+      expect(media.session.metadata).toBeNull();
+      expect(media.session.playbackState).toBe('none');
+
+      // No-op with nothing playing.
+      player.claimMediaSession();
+      expect(media.session.metadata).toBeNull();
+    } finally {
+      media.restore();
+    }
+  });
+});

@@ -65,6 +65,11 @@ export function ContentPlayerScreen({
   const [bedAttenuation, setBedAttenuation] = useState<number>(
     () => getSetting('contentBedAttenuation')
   );
+  /** Set once the user has stopped everything (■ Stop, or Stop from the
+   *  lock screen). Distinguishes "narration ended, bed carries the night"
+   *  from "nothing is playing any more" — which the state machine can't,
+   *  since both land on 'ended'. */
+  const [bedStopped, setBedStopped] = useState(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopTick = useCallback(() => {
@@ -97,6 +102,22 @@ export function ContentPlayerScreen({
       }
     }, 500);
   }, [stopTick, bedBehavior, bedSceneId]);
+
+  /** Stop everything this screen made audible — narration *and* the bed
+   *  scene. Howler's stop() fires no callback, so the UI state is set by
+   *  hand here rather than waiting for an onpause/onend that never comes. */
+  const stopAllAudio = useCallback(() => {
+    howlRef.current?.stop();
+    stopTick();
+    setPosition(0);
+    setState('ended');
+    setBedStopped(true);
+    coordinator.stopScene();
+    // Nothing is playing any more, so the OS widget shouldn't keep offering
+    // transport for it. (stopScene only clears the session if the session
+    // itself owned it — say the audio right here.)
+    clearMediaSession();
+  }, [coordinator, stopTick]);
 
   // Build Howl on mount; tear it down on unmount.
   useEffect(() => {
@@ -218,6 +239,7 @@ export function ContentPlayerScreen({
   // 'stop-with-content' meditation case after narration ends).
   const bedKeepsScreenLive =
     !!bedSceneId &&
+    !bedStopped &&
     state !== 'error' &&
     !(state === 'ended' && bedBehavior === 'stop-with-content');
   useWakeLock(state === 'playing' || bedKeepsScreenLive);
@@ -261,14 +283,38 @@ export function ContentPlayerScreen({
   }, [keepAudioFocusAlive]);
 
   useEffect(() => {
-    if (state === 'loading' || state === 'error') return;
+    // Nothing audible left to advertise after a full stop (stopAllAudio
+    // cleared the session itself).
+    if (bedStopped || state === 'loading' || state === 'error') return;
     setMediaSessionForScene(title, {
       onPlay: () => howlRef.current?.play(),
       onPause: () => howlRef.current?.pause(),
-      onStop: () => howlRef.current?.stop(),
+      // Stop from the lock screen / headset means stop everything audible,
+      // the same as the in-app ■ Stop. Stopping only the narration left a
+      // story's bed running with no OS control able to reach it: the widget
+      // showed this title over audio that nothing on the lock screen could
+      // silence, and after narration ended the pause button was inert too.
+      onStop: stopAllAudio,
     });
-    return () => clearMediaSession();
-  }, [title, state]);
+  }, [title, state, bedStopped, stopAllAudio]);
+
+  // Hand the OS media session over exactly once, as this screen goes away —
+  // deliberately a separate effect from the stamping above so it fires on
+  // unmount only, not on every playback-state change (which would hand the
+  // session back and forth mid-story, flipping the bed's ownership flag).
+  useEffect(() => {
+    return () => {
+      // Never strip the media session off a bed that is still playing: a
+      // story's bed deliberately carries the room all night, and this fires
+      // when the user simply backs out to the Library. A tab with no
+      // recognised media session is what Chrome on Android deprioritises and
+      // discards after ~10 minutes — "fell asleep to a story, woke up to
+      // silence." Hand it to the session that owns the bed instead.
+      const bed = coordinator.getCurrentScene();
+      if (bed && !bed.isDisposed()) coordinator.claimMediaSession();
+      else clearMediaSession();
+    };
+  }, [coordinator]);
 
   useEffect(() => {
     if (state === 'playing') setMediaSessionPlaybackState('playing');
@@ -295,10 +341,9 @@ export function ContentPlayerScreen({
 
   /** Stop narration + bed scene immediately and return to Library. */
   const handleStopAll = useCallback(() => {
-    howlRef.current?.stop();
-    coordinator.stopScene();
+    stopAllAudio();
     onBack();
-  }, [coordinator, onBack]);
+  }, [stopAllAudio, onBack]);
 
   const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const h = howlRef.current;

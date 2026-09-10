@@ -51,6 +51,11 @@ export interface StartSceneOptions {
 export class HowlScenePlayer {
   private current: HowlScene | null = null;
   private master = 1;
+  /** Scene-gain target the live scene was started at — 1 normally, reduced
+   *  for a 3 a.m. Door resume. Held on the session so an automatic Night
+   *  Drift can carry it onto the incoming scene instead of quietly
+   *  restoring full level at 4am. */
+  private sceneGain = 1;
   /** Monotonic stamp serializing overlapping start/crossfade/stop requests
    *  down to one winner (review bug M1), same contract as SceneCoordinator. */
   private startGeneration = 0;
@@ -94,9 +99,10 @@ export class HowlScenePlayer {
     definition: SceneDefinition,
     options: StartSceneOptions = {}
   ): Promise<HowlScene> {
-    if (this.current && !this.current.isDisposed()) {
-      return this.crossfadeTo(definition, options);
-    }
+    const live =
+      this.current && !this.current.isDisposed() ? this.current : null;
+    if (live && live.id === definition.id) return this.adoptLiveScene(live, options);
+    if (live) return this.crossfadeTo(definition, options);
     const generation = ++this.startGeneration;
     const scene = new HowlScene(definition, this.master, this.factory);
     // The build is synchronous, but a stop() could still have bumped the
@@ -106,9 +112,10 @@ export class HowlScenePlayer {
       scene.dispose();
       return scene;
     }
+    this.sceneGain = clamp01(options.firstFadeTarget ?? 1);
     scene.start(
       options.firstFadeSeconds ?? DEFAULT_SCENE_FIRST_START_SECONDS,
-      options.firstFadeTarget ?? 1
+      this.sceneGain
     );
     this.current = scene;
     recordEvent('scene-start', definition.id);
@@ -118,9 +125,52 @@ export class HowlScenePlayer {
     return scene;
   }
 
+  /**
+   * Re-picking the scene that is already playing must NOT rebuild it.
+   * Tonight's handlePick is the only route back into the Player, so tapping
+   * the live scene is a routine gesture — and it used to fall through to
+   * crossfadeTo(), which built a second <audio> element per layer and faded
+   * the two copies of the same loop against each other: roughly +6 dB with
+   * comb filtering for the length of the fade, two more elements out of
+   * Howler's pool of ten, and the armed countdown thrown away. Adopt the
+   * live scene instead and touch only what the caller actually asked for.
+   */
+  private adoptLiveScene(
+    live: HowlScene,
+    options: StartSceneOptions
+  ): HowlScene {
+    recordEvent('scene-adopt', live.id);
+    this.engageSessionProtections(live, options.manageMediaSession ?? true);
+    switch (this.sleepTimer.getState().status) {
+      case 'running':
+        // The countdown belongs to the session, not the screen: re-entering
+        // the Player must show the live remaining time, not re-arm the
+        // default a fresh start would apply (review bug H3).
+        break;
+      case 'fading':
+        // A re-tap mid fade-to-silence is the user saying "I'm still awake".
+        // Cancel through the timer so the scene is restored, rather than
+        // adopting one already on its way to silence, then honour the
+        // caller's timer request.
+        this.sleepTimer.cancel(this.master);
+        this.applySessionTimer(options.sleepTimerMinutes);
+        break;
+      default:
+        this.applySessionTimer(options.sleepTimerMinutes);
+    }
+    // Deliberately no scheduleDrift(): the drift is already armed from the
+    // original start, and re-keying it here would let a user bouncing
+    // between Tonight and the Player postpone the drift indefinitely.
+    return live;
+  }
+
   async crossfadeTo(
     definition: SceneDefinition,
-    options: StartSceneOptions = {}
+    options: StartSceneOptions = {},
+    /** Internal — Night Drift carries the armed sleep timer across the
+     *  switch. A *user-initiated* switch must still reset it, so a pending
+     *  fade-exit can never stop the new scene (review bug H1). */
+    preserveSessionTimer = false
   ): Promise<HowlScene> {
     const fade = options.fadeSeconds ?? DEFAULT_SCENE_CROSSFADE_SECONDS;
     const generation = ++this.startGeneration;
@@ -130,12 +180,13 @@ export class HowlScenePlayer {
       incoming.dispose();
       return incoming;
     }
-    incoming.start(fade, options.firstFadeTarget ?? 1);
+    this.sceneGain = clamp01(options.firstFadeTarget ?? 1);
+    incoming.start(fade, this.sceneGain);
     if (outgoing && !outgoing.isDisposed()) outgoing.fadeAndDispose(fade);
     this.current = incoming;
     recordEvent('scene-switch', definition.id);
     this.engageSessionProtections(incoming, options.manageMediaSession ?? true);
-    this.applySessionTimer(options.sleepTimerMinutes);
+    if (!preserveSessionTimer) this.applySessionTimer(options.sleepTimerMinutes);
     this.scheduleDrift(definition);
     return incoming;
   }
@@ -191,6 +242,10 @@ export class HowlScenePlayer {
     drift: NonNullable<SceneDefinition['driftsTo']>
   ): Promise<void> {
     if (!this.sceneResolver || !this.current) return;
+    // The sleep timer is already fading the night out and a stop is pending
+    // behind it. A fresh scene would come up at full level and then be
+    // hard-cut by that fade-exit — let the night end instead.
+    if (this.sleepTimer.getState().status === 'fading') return;
     const gen = this.startGeneration;
     let targetDef: SceneDefinition | null;
     try {
@@ -201,9 +256,21 @@ export class HowlScenePlayer {
     }
     if (!targetDef || gen !== this.startGeneration || !this.current) return;
     recordEvent('scene-drift', `${this.current.definition.id}->${drift.sceneId}`);
-    await this.crossfadeTo(targetDef, {
-      fadeSeconds: drift.crossfadeSeconds ?? DEFAULT_DRIFT_CROSSFADE_SECONDS,
-    });
+    await this.crossfadeTo(
+      targetDef,
+      {
+        fadeSeconds: drift.crossfadeSeconds ?? DEFAULT_DRIFT_CROSSFADE_SECONDS,
+        // Carry the live scene gain over: a 3 a.m. Door resume runs at a
+        // reduced gain and a drift an hour later must not restore full level.
+        firstFadeTarget: this.sceneGain,
+      },
+      // Keep the armed countdown. A drift is an automatic continuation of the
+      // same night, not a user scene switch: passing no sleepTimerMinutes
+      // through the normal path reset() it, so a confirmed "Stops in 47:12"
+      // silently evaporated the moment the scene drifted and the bed then
+      // played at full volume until morning (review bug H3, re-entered here).
+      true
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -235,6 +302,22 @@ export class HowlScenePlayer {
       this.protectionsEngaged = true;
       recordEvent('keepalive-start', 'session');
     }
+  }
+
+  /**
+   * Take (back) ownership of the OS media session for the live scene.
+   *
+   * The content player stamps the session with the narration's title while a
+   * story plays (it passes `manageMediaSession: false` so the bed's label
+   * doesn't overwrite it). When that screen goes away with the bed still
+   * running it hands the session back here instead of clearing it — a tab
+   * with no recognised media session is exactly what Chrome on Android
+   * deprioritises and discards after ~10 minutes, which is the "fell asleep
+   * to a story, woke up to silence" failure. No-op with nothing playing.
+   */
+  claimMediaSession(): void {
+    if (!this.current || this.current.isDisposed()) return;
+    this.engageSessionProtections(this.current, true);
   }
 
   private disengageSessionProtections(): void {
