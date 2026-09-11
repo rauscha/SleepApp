@@ -3,7 +3,12 @@
 // DOM media element.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { HowlScene, howlFormats, SYNTH_BED_LOOP_SECONDS } from './HowlScene';
+import {
+  applyNativeLoop,
+  HowlScene,
+  howlFormats,
+  SYNTH_BED_LOOP_SECONDS,
+} from './HowlScene';
 import type { HowlLike, HowlFactory, HowlFactoryOptions } from './HowlScene';
 import {
   HowlScenePlayer,
@@ -951,5 +956,60 @@ describe('HowlScenePlayer — media-key marker trigger', () => {
     } finally {
       media.restore();
     }
+  });
+});
+
+describe('applyNativeLoop — the element loops itself, not Howler', () => {
+  const fakeHowl = (nodes: Array<{ loop?: boolean } | undefined>) => {
+    const looped: boolean[] = [];
+    return {
+      howl: {
+        _sounds: nodes.map((n) => (n === undefined ? {} : { _node: n })),
+        loop: (on: boolean) => {
+          looped.push(on);
+          return null;
+        },
+      },
+      looped,
+    };
+  };
+
+  it('engages looping on every element, not just the first', () => {
+    // Any element left looping goes back into Howler's shared pool still
+    // looping, and the next sound to borrow it inherits that — which could
+    // be a story's narration, repeating until morning.
+    const a = { loop: false };
+    const b = { loop: false };
+    const { howl } = fakeHowl([a, b]);
+    expect(applyNativeLoop(howl, true)).toBe(true);
+    expect([a.loop, b.loop]).toEqual([true, true]);
+  });
+
+  it('releases looping on every element', () => {
+    const a = { loop: true };
+    const b = { loop: true };
+    const { howl } = fakeHowl([a, b]);
+    expect(applyNativeLoop(howl, false)).toBe(true);
+    expect([a.loop, b.loop]).toEqual([false, false]);
+  });
+
+  it('reports failure when the elements cannot be reached', () => {
+    // A future Howler could rename its internals; the caller falls back to
+    // Howler's own loop rather than leaving a layer that stops after one
+    // period.
+    expect(applyNativeLoop({ _sounds: [], loop: () => null }, true)).toBe(false);
+    expect(
+      applyNativeLoop({ loop: () => null } as never, true)
+    ).toBe(false);
+    expect(applyNativeLoop({ _sounds: [undefined], loop: () => null } as never, true)).toBe(
+      false
+    );
+  });
+
+  it('skips a sound with no element but still handles its siblings', () => {
+    const b = { loop: false };
+    const { howl } = fakeHowl([undefined, b]);
+    expect(applyNativeLoop(howl, true)).toBe(true);
+    expect(b.loop).toBe(true);
   });
 });

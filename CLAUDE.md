@@ -167,14 +167,18 @@ beats a primitive the browser suspends by design. The fix lets the OS own
 each loop, exactly like Spotify/Calm/YouTube.
 
 - **`HowlScene`** plays one looping `Howl({ html5: true, loop: true })`
-  `<audio>` element per layer (plus the synth-bed carrier). **Caveat found
-  2026-09-11 (DECISIONS.md, unresolved):** that `loop: true` does *not* set
-  the element's native `loop` — Howler re-starts the element from JS on a
-  timer, so each wrap is a stop/seek/play with a gap rather than an OS-owned
-  seamless loop. The pivot still stands (the element is real media the OS
-  keeps alive), but don't repeat the "the OS owns each loop" phrasing as if
-  it covered looping itself, and expect the baked-in gapless wrap to be
-  doing less than intended until that's fixed and measured. It exposes the
+  `<audio>` element per layer (plus the synth-bed carrier). **The element
+  loops itself — `loop: false` plus `node.loop = true`, NOT Howler's
+  `loop: true`** (2026-09-11, DECISIONS.md). Howler's own loop restarts the
+  element from a JS timer and measured **27 ms of silence at every wrap**
+  against 3.3 ms for a native loop, landing after the gapless wrap
+  `loopify-scenes.py` bakes in, where the crossfade can't cover it. Don't
+  "simplify" this back to `loop: true`. Two invariants come with it: the
+  factory's `unload()` must clear `node.loop` before the element returns to
+  Howler's shared pool (it is never reset on reuse, so a story's narration
+  would inherit it and repeat all night), and `applyNativeLoop` must keep its
+  fallback to Howler's loop if it can't reach the element. Re-run
+  `tools/loop-probe/run.sh` after any Howler upgrade. It exposes the
   same surface PlayerScreen reads off the old Web Audio `Scene`
   (`id`/`definition`/`getLayers`/`setLayerVolume`/`isDisposed`), so the UI
   was untouched by the pivot.

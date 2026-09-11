@@ -93,9 +93,55 @@ export function howlFormats(src: string[]): string[] {
   return src.map((s) => s.split(/[?#]/)[0]!.split('.').pop()!.toLowerCase());
 }
 
-/** Default factory — a real looping html5 Howl. */
-export const defaultHowlFactory: HowlFactory = (opts) =>
-  new Howl({
+/** The shape of the private Howler internals the native-loop fix reaches
+ *  into. Declared rather than casting inline so the reach is visible. */
+interface HowlInternals {
+  _sounds?: Array<{ _node?: { loop?: boolean } }>;
+  loop(on: boolean): unknown;
+}
+
+/**
+ * Turn the *element's own* looping on or off for every sound in a Howl.
+ *
+ * Why this exists (measured 2026-09-11, headless Chromium 151 — see
+ * DECISIONS.md): `new Howl({ html5: true, loop: true })` never sets the
+ * `<audio>` element's native `loop`. Howler runs the loop itself, from a JS
+ * timer: when the element ends it calls `stop().play()`, which rewinds and
+ * restarts it. Measured against a 2s Opus loop that costs **27 ms of silence
+ * at every wrap** (max 37 ms), against 3.8 ms for a bare `<audio loop>`. On
+ * a noise bed that is an audible tick, every 199-887 seconds, all night —
+ * and it happens *after* the gapless wrap `tools/loopify-scenes.py` bakes
+ * into the file, so the crossfade can do nothing about it.
+ *
+ * Handing the loop to the element brings it back to the bare-element figure
+ * (3.6 ms) and stops Howler intervening at all: no 'end' events, no replay
+ * 'play' events, `playing()` stays true, `fade()` still works.
+ *
+ * Returns false if the elements could not be reached, so the caller can fall
+ * back rather than leave a layer that stops after one period.
+ */
+export function applyNativeLoop(howl: HowlInternals, on: boolean): boolean {
+  const sounds = howl._sounds;
+  if (!Array.isArray(sounds) || sounds.length === 0) return false;
+  let touched = false;
+  for (const sound of sounds) {
+    const node = sound?._node;
+    // Every sound, not just the first: any element we leave looping goes
+    // back into Howler's shared pool still looping. _releaseHtml5Audio()
+    // pushes it back untouched and Sound.create() never resets `loop`, so
+    // the next consumer inherits it — and the next consumer might be a
+    // story's narration, which would then repeat until morning.
+    if (node && typeof node === 'object' && 'loop' in node) {
+      node.loop = on;
+      touched = true;
+    }
+  }
+  return touched;
+}
+
+/** Default factory — one html5 element per layer, looping natively. */
+export const defaultHowlFactory: HowlFactory = (opts) => {
+  const howl = new Howl({
     src: opts.src,
     // Scene audio is migrating to Opus (2026-06-30 — see DECISIONS.md "Ship
     // scene audio as Opus, not MP3"); mp3 and opus both still ship. The
@@ -103,12 +149,57 @@ export const defaultHowlFactory: HowlFactory = (opts) =>
     // positional, not a fallback, and would opus-gate the .mp3 layers.
     format: howlFormats(opts.src),
     html5: true, // the whole point — OS-backed background playback
-    loop: true,
+    // NOT Howler's loop: it restarts the element from a JS timer and costs
+    // ~27ms of silence at every wrap. The element loops itself instead —
+    // see applyNativeLoop. With loop:false Howler waits on an 'ended' event
+    // that a natively looping element never fires, so it never intervenes.
+    loop: false,
     volume: 0, // start silent; the layer fades in on play
-    onplay: opts.onplay,
+    onplay: () => {
+      if (!applyNativeLoop(howl as unknown as HowlInternals, true)) {
+        // Couldn't reach the element — a future Howler could rename its
+        // internals. Fall back to Howler's own timer-driven loop, which is
+        // what shipped before this change: a tick at each wrap is bad, a
+        // layer that stops dead after one period is far worse. Howler picks
+        // the loop up on the next 'ended'.
+        try {
+          (howl as unknown as HowlInternals).loop(true);
+          recordEvent('howl-native-loop-unavailable', opts.src[0] ?? '?');
+        } catch {
+          /* nothing more we can do; the layer will run once */
+        }
+      }
+      opts.onplay?.();
+    },
     onplayerror: opts.onplayerror,
     onloaderror: opts.onloaderror,
-  }) as unknown as HowlLike;
+  });
+
+  const api = howl as unknown as HowlLike;
+  return {
+    play: () => api.play(),
+    pause: () => api.pause(),
+    stop: () => api.stop(),
+    unload: () => {
+      // Hand the element back to the pool exactly as Howler expects to find
+      // it. See applyNativeLoop for what a stray `loop` would do to the next
+      // sound that borrows this element.
+      applyNativeLoop(howl as unknown as HowlInternals, false);
+      api.unload();
+    },
+    fade: (from, to, ms) => api.fade(from, to, ms),
+    volume: (level?: number) => {
+      if (level === undefined) return api.volume();
+      api.volume(level);
+      return level;
+    },
+    playing: () => api.playing(),
+    seek: () => {
+      const value = (howl as unknown as { seek(): number | unknown }).seek();
+      return typeof value === 'number' ? value : 0;
+    },
+  };
+};
 
 /** Pick a variant at random so repeat plays of a scene aren't identical. */
 function randomVariant(el: SceneElementDefinition): SceneVariantDefinition {

@@ -708,7 +708,7 @@ actually playing at, mixed to one wav. `--measure` reuses
 `seamfit.wrap_step_db`, so a file flagged here lines up with
 `loopify-scenes.py --audit` and `notes/loop-seam-audit-2026-09-02.md`.
 
-## FINDING (unresolved): Howler's html5 loop is a JS restart, not native (2026-09-11)
+## FINDING (RESOLVED same day — see the next entry): Howler's html5 loop is a JS restart, not native (2026-09-11)
 
 Recorded because it contradicts the engine notes above and in CLAUDE.md, and
 because the debug markers exist partly to measure it.
@@ -740,3 +740,54 @@ element never fires `'ended'`, so Howler simply never intervenes). Deliberately
 NOT attempted yet: it belongs on its own branch, measured before and after
 with the markers, rather than bundled with them. See
 `notes/debug-markers-plan-2026-09-08.md` §2.
+
+## Hand the loop to the element: `loop: false` + `node.loop = true` (2026-09-11)
+
+Resolves the finding above, and it was worse than source-reading suggested.
+Measured in headless Chromium 151 against a 2s Opus loop, 12 wraps, timing
+the element's own `pause`/`seeking` -> `playing` interval
+(`tools/loop-probe/run.sh`, committed so this is reproducible):
+
+| mode | silence per wrap | max | element paused | Howler restarts |
+|---|---:|---:|---:|---:|
+| bare `<audio loop>` | 3.3 ms | 3.7 ms | never | n/a |
+| Howler `loop: true` (what shipped) | **27.3 ms** | 40.6 ms | 17 samples | 12 |
+| `loop: false` + `node.loop` | 3.3 ms | 3.7 ms | never | 0 |
+
+**27 ms of silence punched into a noise bed, every 199-887 seconds, all
+night** — and it lands *after* the gapless wrap `loopify-scenes.py` builds
+into the file, so the 6s crossfade never had a chance to cover it. The seam
+work to date was fixing the level step and leaving the hole.
+
+`defaultHowlFactory` now builds each layer with `loop: false` and sets the
+element's own `loop` on first `'play'` (`applyNativeLoop`). With `loop:false`
+Howler waits on an `'ended'` event that a natively looping element never
+fires, so it stops intervening entirely: zero `end` events, zero replay
+`play` events, and `seek()`, `volume()`, `fade()` and `playing()` all still
+behave — verified against the real factory, not a mock.
+
+Two things this had to get right, both verified in the browser:
+
+- **Return the element to Howler's pool clean.** `_releaseHtml5Audio()`
+  pushes the element back untouched and `Sound.create()` never resets `loop`,
+  so an element left looping would make the *next* sound that borrows it loop
+  forever. The next borrower is plausibly a story's narration — "fell asleep
+  to a story, woke up to the same story on repeat". The factory's `unload()`
+  clears `loop` before releasing; the probe plays a narration Howl on a
+  recycled element and confirms it ends.
+- **Degrade, don't die.** `applyNativeLoop` reaches into Howler's private
+  `_sounds`. If an upgrade renames that, it returns false and the caller
+  falls back to Howler's own loop and records a
+  `howl-native-loop-unavailable` lifecycle event. A tick at each wrap is bad;
+  a layer that stops dead after one period is far worse.
+
+**Still unmeasured on a real device.** Headless Chromium on a null audio sink
+is not Android Chrome on a phone speaker, and the gap could differ in either
+direction there. The mechanism is platform-independent — it is JS, not codec
+behaviour — but the magnitude is not. This is now the first thing the debug
+markers are for: mark a wrap you can hear, and `tools/review-markers.py
+--render` will say which layer was at it.
+
+Consequence for the seam backlog: re-cutting the 12 variants still over 3 dB
+is worth doing, but it was never going to fix a tick on its own. Judge those
+files by ear *after* this change is on the phone.
