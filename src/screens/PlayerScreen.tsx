@@ -27,6 +27,8 @@ import { useWakeLock } from '../hooks/useWakeLock';
 import { scenePlayerBackground } from '../lib/sceneBackground';
 import { getSetting, rememberLayerVolume, setSetting } from '../storage';
 import { requestFullscreenSafe } from '../utils/fullscreen';
+import { tapFeedback } from '../utils/haptics';
+import type { MarkerTrigger } from '../diagnostics/markers';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -36,6 +38,9 @@ const WAKE_DURATION_MS = 7_000;  // how long a tap reveals controls (a sleepy
                                  // user needs more than 3s to focus + act)
 
 const TIMER_OPTIONS_MINUTES = [15, 30, 60, 90] as const;
+// How long the "marked 02:13:44" confirmation stays up. Long enough for a
+// half-awake reader, short enough that it is gone before they settle.
+const MARK_CONFIRM_MS = 6_000;
 // MasterBus fade duration when the sleep timer fires — owned by SleepTimer;
 // re-exported here only for the on-screen "90s fade" copy.
 const TIMER_FADE_SECONDS = SLEEP_TIMER_FADE_SECONDS;
@@ -155,6 +160,11 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
   // the on-screen experience, so it stays here.
   useWakeLock(scene !== null);
   const [mixerOpen, setMixerOpen] = useState(false);
+  // Debug markers (off by default). Read once on mount: the toggle lives in
+  // Settings, which is a different screen, so it can't change under us.
+  const [markersEnabled] = useState(() => getSetting('debugMarkers'));
+  const [markedAt, setMarkedAt] = useState<number | null>(null);
+  const markTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [masterVolume, setMasterVolume] = useState<number>(
     () => getSetting('masterVolume')
   );
@@ -236,6 +246,33 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
     prevTimerStatus.current = timerState.status;
   }, [timerState.status, wake]);
 
+  // "I'm hearing something wrong, right now." The marker itself is taken by
+  // the session (it knows every layer's live position); this only handles
+  // the confirmation, which is haptic first — the button is tapped on a
+  // black screen with eyes half shut, so flashing anything bright would
+  // defeat Nightstand's whole purpose.
+  const handleMark = useCallback(
+    (trigger: MarkerTrigger) => {
+      const marker = coordinator.markMoment(trigger);
+      if (!marker) return;
+      tapFeedback();
+      setMarkedAt(marker.ts);
+      if (markTimer.current) clearTimeout(markTimer.current);
+      markTimer.current = setTimeout(() => {
+        markTimer.current = null;
+        setMarkedAt(null);
+      }, MARK_CONFIRM_MS);
+    },
+    [coordinator]
+  );
+
+  useEffect(
+    () => () => {
+      if (markTimer.current) clearTimeout(markTimer.current);
+    },
+    []
+  );
+
   const handleStop = useCallback(() => {
     // If a sleep-timer fade is mid-flight, cancel it first so the master
     // bus gain is restored before we tear the scene down — otherwise the
@@ -297,15 +334,23 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
           >
             ← Scenes
           </button>
-          <TimerChip
-            timer={timer}
-            remaining={remaining}
-            onTap={() => {
-              if (timer.status === 'off') setPicking(true);
-              else if (timer.status === 'picking') setPicking(false);
-              else cancelTimer();
-            }}
-          />
+          <div className="flex items-center gap-1">
+            {markersEnabled && (
+              <MarkButton
+                markedAt={markedAt}
+                onMark={() => handleMark('lush')}
+              />
+            )}
+            <TimerChip
+              timer={timer}
+              remaining={remaining}
+              onTap={() => {
+                if (timer.status === 'off') setPicking(true);
+                else if (timer.status === 'picking') setPicking(false);
+                else cancelTimer();
+              }}
+            />
+          </div>
         </div>
 
         {timer.status === 'picking' && (
@@ -465,6 +510,9 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
         }}
         onStop={handleStop}
         onExitNightstand={() => setDisplayMode('lush')}
+        markersEnabled={markersEnabled}
+        markedAt={markedAt}
+        onMark={() => handleMark('nightstand')}
       />
     </div>
   );
@@ -494,6 +542,9 @@ function NightstandOverlay({
   onTap,
   onStop,
   onExitNightstand,
+  markersEnabled,
+  markedAt,
+  onMark,
 }: {
   engaged: boolean;
   scene: HowlScene;
@@ -503,6 +554,9 @@ function NightstandOverlay({
   onTap: () => void;
   onStop: () => void;
   onExitNightstand: () => void;
+  markersEnabled: boolean;
+  markedAt: number | null;
+  onMark: () => void;
 }) {
   return (
     // Full-viewport black overlay. Opacity tweens between 0 (Lush — clicks
@@ -551,6 +605,31 @@ function NightstandOverlay({
           )}
         </div>
 
+        {/* Mark this moment. Deliberately above Stop and visually quieter:
+            it is the button pressed most often at night, and mistaking it
+            for Stop would end the night by accident. */}
+        {markersEnabled && (
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); onMark(); }}
+              className="px-7 py-3 rounded-full border border-stone-500/40
+                         text-stone-300 ui-label transition-transform duration-slow
+                         active:scale-95 active:border-stone-400"
+              style={{ minWidth: 44, minHeight: 44 }}
+              aria-label="Mark this moment for later review"
+            >
+              Mark this moment
+            </button>
+            <p
+              className="ui-label text-stone-400 h-4 transition-opacity duration-slow"
+              style={{ opacity: markedAt ? 1 : 0 }}
+              role="status"
+            >
+              {markedAt ? `marked ${formatWallClock(markedAt)}` : ''}
+            </p>
+          </div>
+        )}
+
         {/* Stop button */}
         <button
           onClick={(e) => { e.stopPropagation(); onStop(); }}
@@ -580,6 +659,36 @@ function NightstandOverlay({
 
 // ---------------------------------------------------------------------------
 // Sub-components
+
+/** `02:13:44` — local wall clock, which is what the user would have
+ *  written down, and what lines up with the exported marker log. */
+function formatWallClock(ts: number): string {
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+/** Lush-mode marker control. Confirms in place, so the header doesn't
+ *  reflow and nothing on screen gets brighter. */
+function MarkButton({
+  markedAt,
+  onMark,
+}: {
+  markedAt: number | null;
+  onMark: () => void;
+}) {
+  return (
+    <button
+      onClick={onMark}
+      className="ui-label text-stone-300 hover:text-stone-100
+                 active:text-moon-300 transition-colors duration-slow px-3 py-2"
+      style={{ minHeight: 44 }}
+      aria-label="Mark this moment for later review"
+    >
+      {markedAt ? `marked ${formatWallClock(markedAt)}` : 'mark'}
+    </button>
+  );
+}
 
 function TimerChip({
   timer,
