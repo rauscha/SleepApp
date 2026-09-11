@@ -24,6 +24,16 @@ this step in a fresh clone that doesn't have one.
 
 ## Commit discipline
 
+- **Work directly on `main` in this repo. Do NOT open pull requests.**
+  (Andrew, 2026-09-11.) This overrides the global instruction that
+  unattended work stops at a pushed branch + PR — that is a reasonable
+  default for shared repos and pure friction on a solo project. Commit to
+  `main` and push. The safety net is the commit discipline below, not a
+  review gate: one logical change per commit, green before each, and a
+  message that explains itself well enough to revert from.
+  - A short-lived branch is still fine for genuinely risky or exploratory
+    work you expect to throw away, but merge it yourself when it's green
+    rather than leaving a PR open for Andrew to click through.
 - One logical change per commit. Typecheck + tests must be green.
 - Follow the existing commit message style (see `git log --oneline`): short
   imperative subject, multi-paragraph body with what changed and why, the

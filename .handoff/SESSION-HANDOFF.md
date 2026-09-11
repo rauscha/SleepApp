@@ -3,10 +3,13 @@
 # REPO STATE.
 
 ## STATE (read this first)
-- Branch **`overnight/2026-09-11`**, pushed, PR open. It contains the
-  2026-09-10 hand-off branch merged in, so PR #18 is superseded — review
-  and merge this one, then close #18.
-- `main` is untouched at 62a6487. Green on the branch: `npx tsc --noEmit`
+- **MERGED to `main` 2026-09-11** (PR #19; #18 closed as superseded). The
+  branch `overnight/2026-09-11` is history now.
+- **Workflow change, same day: no more pull requests in this repo.** Andrew
+  asked for commits straight to `main`, including unattended work. Recorded
+  in CLAUDE.md "Commit discipline"; it overrides the global
+  branch-and-PR default.
+- Was: branch `overnight/2026-09-11`, `main` at 62a6487. Green on the branch: `npx tsc --noEmit`
   clean, `npx vitest run` **339/339** (was 270 on main), `npx vite build`
   clean. No audio bytes changed, so **no CACHE_VERSION bump** (still v12).
 - Reminder: on tikiserv prefix tool-shell commands with
