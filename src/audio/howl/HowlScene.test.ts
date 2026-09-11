@@ -3,7 +3,7 @@
 // DOM media element.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { HowlScene, howlFormats } from './HowlScene';
+import { HowlScene, howlFormats, SYNTH_BED_LOOP_SECONDS } from './HowlScene';
 import type { HowlLike, HowlFactory, HowlFactoryOptions } from './HowlScene';
 import {
   HowlScenePlayer,
@@ -66,6 +66,13 @@ class FakeHowl implements HowlLike {
   }
   playing(): boolean {
     return this.played && !this.stopped && !this.paused;
+  }
+  /** Scripted playback position; mirrors Howler's seek() getter. */
+  seekValue = 0;
+  seekThrows = false;
+  seek(): number {
+    if (this.seekThrows) throw new Error('no element');
+    return this.seekValue;
   }
 }
 
@@ -545,6 +552,65 @@ describe('HowlScenePlayer — Night Drift carries the session forward', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('HowlScene — snapshot for debug markers', () => {
+  it('reports each layer with its file, loop period and live position', () => {
+    const scene = new HowlScene(makeDef(), 0.8, fakeFactory, firstVariant);
+    scene.start(0);
+    bySrc('rain-1').seekValue = 12.5;
+    bySrc('wind-1').seekValue = 400;
+    bySrc('brown').seekValue = 800;
+
+    const snap = scene.snapshot();
+
+    expect(snap.map((l) => l.id)).toEqual([
+      'test-scene:synth-bed',
+      'test-scene:rain',
+      'test-scene:wind',
+    ]);
+    const rain = snap.find((l) => l.id === 'test-scene:rain')!;
+    expect(rain.label).toBe('Rain');
+    expect(rain.url).toContain('rain-1.mp3');
+    expect(rain.periodSeconds).toBe(251);
+    expect(rain.seekSeconds).toBe(12.5);
+    expect(rain.volume).toBe(0.5);
+    expect(rain.outer).toBe(0.8);
+    expect(rain.playing).toBe(true);
+  });
+
+  it('gives the synth bed its 887s carrier period', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    scene.start(0);
+    const bed = scene.snapshot().find((l) => l.id === 'test-scene:synth-bed')!;
+    expect(bed.periodSeconds).toBe(SYNTH_BED_LOOP_SECONDS);
+    expect(bed.url).toContain('/audio/_bed/brown.opus');
+  });
+
+  it('reports a null position rather than guessing when the element cannot be read', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    scene.start(0);
+    bySrc('rain-1').seekThrows = true;
+    const rain = scene.snapshot().find((l) => l.id === 'test-scene:rain')!;
+    expect(rain.seekSeconds).toBeNull();
+  });
+
+  it('reports a null position for a layer that never started', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    const rain = scene.snapshot().find((l) => l.id === 'test-scene:rain')!;
+    expect(rain.seekSeconds).toBeNull();
+    expect(rain.playing).toBe(false);
+  });
+
+  it('tracks the saved mix level and the outer gain', () => {
+    const scene = new HowlScene(makeDef(), 0.5, fakeFactory, firstVariant, {
+      'test-scene:rain': 0.25,
+    });
+    scene.start(0, 0.6); // a 3 a.m. Door resume
+    const rain = scene.snapshot().find((l) => l.id === 'test-scene:rain')!;
+    expect(rain.volume).toBe(0.25);
+    expect(rain.outer).toBeCloseTo(0.3, 5);
   });
 });
 
