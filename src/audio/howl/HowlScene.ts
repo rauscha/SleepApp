@@ -255,8 +255,22 @@ export class HowlLayer {
     if (this.started && !this.disposed) this.howl.pause();
   }
 
+  /**
+   * Resume a paused layer. Guarded on `playing()` because Howler's `play()`
+   * with no sound id does NOT mean "resume this element": `_inactiveSound()`
+   * only reuses a sound that has ended or is paused, and when every sound is
+   * already playing it CREATES A NEW ONE. On the html5 path that takes a
+   * second element out of Howler's pool of ten and plays a second copy of
+   * the same loop at a random offset against the first — a layer roughly
+   * +6 dB and phasing, for the rest of the night, with nothing tracking the
+   * extra element to stop it. The OS fires `play` on an already-playing
+   * session freely (lock-screen tap, headset button, audio-focus return),
+   * so this is reachable without any bug elsewhere.
+   */
   resume(): void {
-    if (this.started && !this.disposed) this.howl.play();
+    if (!this.started || this.disposed) return;
+    if (this.howl.playing()) return;
+    this.howl.play();
   }
 
   /** Fade out, then free the element. */

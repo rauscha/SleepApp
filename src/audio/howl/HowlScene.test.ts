@@ -16,6 +16,9 @@ class FakeHowl implements HowlLike {
   readonly opts: HowlFactoryOptions;
   vol = 0;
   played = false;
+  /** How many times play() was called — a second call while already
+   *  playing is what creates a duplicate element in real Howler. */
+  playCalls = 0;
   stopped = false;
   unloaded = false;
   paused = false;
@@ -28,6 +31,7 @@ class FakeHowl implements HowlLike {
     FakeHowl.all.push(this);
   }
   play(): number {
+    this.playCalls += 1;
     this.played = true;
     this.paused = false;
     // Real html5 Howls fire onplay asynchronously once they can play; the
@@ -541,6 +545,49 @@ describe('HowlScenePlayer — Night Drift carries the session forward', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('HowlScene — resume() must not stack a second element', () => {
+  it('is a no-op on a layer that is already playing', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    scene.start(0);
+    const built = FakeHowl.all.length;
+    const rain = bySrc('rain-1');
+    expect(rain.playing()).toBe(true);
+    const playsBefore = rain.playCalls;
+
+    // The OS fires play on an already-playing session freely — a
+    // lock-screen tap, a headset button, an audio-focus return.
+    scene.resume();
+
+    expect(rain.playCalls).toBe(playsBefore);
+    expect(FakeHowl.all).toHaveLength(built);
+  });
+
+  it('still resumes a layer that was paused', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    scene.start(0);
+    const rain = bySrc('rain-1');
+    scene.pause();
+    expect(rain.playing()).toBe(false);
+    const playsBefore = rain.playCalls;
+
+    scene.resume();
+
+    expect(rain.playCalls).toBe(playsBefore + 1);
+    expect(rain.playing()).toBe(true);
+  });
+
+  it('does not resume a disposed layer', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    scene.start(0);
+    const rain = bySrc('rain-1');
+    scene.pause();
+    scene.dispose();
+    const playsBefore = rain.playCalls;
+    scene.resume();
+    expect(rain.playCalls).toBe(playsBefore);
   });
 });
 
