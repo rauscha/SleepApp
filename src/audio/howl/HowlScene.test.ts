@@ -548,6 +548,47 @@ describe('HowlScenePlayer — Night Drift carries the session forward', () => {
   });
 });
 
+describe('HowlScene — saved Mixer levels', () => {
+  it('starts a layer at its saved level instead of the scene default', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant, {
+      'test-scene:rain': 0.2,
+      'test-scene:synth-bed': 0.05,
+    });
+    scene.start(0);
+
+    // Applied as the initial target, so the fade-in still runs from silence
+    // to the saved level — not set afterwards, which would cancel the fade.
+    expect(bySrc('rain-1').fades.at(-1)).toEqual([0, 0.2, 0]);
+    expect(bySrc('brown').fades.at(-1)).toEqual([0, 0.05, 0]);
+    // Untouched layers keep the scene JSON's voicing.
+    expect(bySrc('wind-1').fades.at(-1)).toEqual([0, 0.3, 0]);
+  });
+
+  it('ignores a saved level for a layer that is not in this scene', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant, {
+      'other-scene:rain': 0.01,
+    });
+    scene.start(0);
+    expect(bySrc('rain-1').fades.at(-1)).toEqual([0, 0.5, 0]);
+  });
+
+  it('ignores a corrupt saved level', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant, {
+      'test-scene:rain': Number.NaN,
+    } as Record<string, number>);
+    scene.start(0);
+    expect(bySrc('rain-1').fades.at(-1)).toEqual([0, 0.5, 0]);
+  });
+
+  it('clamps a saved level that is out of range', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant, {
+      'test-scene:rain': 3,
+    });
+    scene.start(0);
+    expect(bySrc('rain-1').fades.at(-1)).toEqual([0, 1, 0]);
+  });
+});
+
 describe('HowlScene — resume() must not stack a second element', () => {
   it('is a no-op on a layer that is already playing', () => {
     const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);

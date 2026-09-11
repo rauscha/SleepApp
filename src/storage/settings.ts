@@ -37,6 +37,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   anthropicApiKey: null,
   displayMode: 'lush',
   defaultTimerMinutes: null,
+  layerVolumes: {},
   narrationSundown: true,
 };
 
@@ -157,6 +158,22 @@ export function setSetting<K extends keyof UserSettings>(
   const current = read();
   const next = { ...current, [key]: value };
   write(next);
+}
+
+/** The user's saved Mixer levels, keyed by layer id. */
+export function getLayerVolumes(): Readonly<Record<string, number>> {
+  return read().layerVolumes;
+}
+
+/**
+ * Remember one layer's Mixer level. Read-modify-write in one place so a
+ * caller can't clobber the other layers by rebuilding the map by hand.
+ */
+export function rememberLayerVolume(layerId: string, volume: number): void {
+  const clamped = volume < 0 ? 0 : volume > 1 ? 1 : volume;
+  const current = read().layerVolumes;
+  if (current[layerId] === clamped) return;
+  setSetting('layerVolumes', { ...current, [layerId]: clamped });
 }
 
 export function getAllSettings(): UserSettings {

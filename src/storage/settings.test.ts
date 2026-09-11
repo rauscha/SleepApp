@@ -4,7 +4,9 @@ import {
   DEFAULT_SETTINGS,
   __invalidateCacheForTests,
   getAllSettings,
+  getLayerVolumes,
   getSetting,
+  rememberLayerVolume,
   resetSettings,
   setSetting,
 } from './settings';
@@ -96,6 +98,7 @@ describe('settings merge covers every key', () => {
     displayMode: 'nightstand',
     defaultTimerMinutes: 90,
     narrationSundown: false,
+    layerVolumes: { 'forest-night:wind-in-leaves': 0.62 },
   };
 
   it('has a differing test value for every setting', () => {
@@ -160,5 +163,42 @@ describe('settings merge covers every key', () => {
     const loaded = getAllSettings();
     expect(loaded.tinnitus.centerHz).toBe(10_000);
     expect(loaded.tinnitus.bandwidthHz).toBe(DEFAULT_SETTINGS.tinnitus.bandwidthHz);
+  });
+});
+
+describe('remembered Mixer levels', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    resetSettings();
+  });
+
+  it('starts empty and records a level per layer', () => {
+    expect(getLayerVolumes()).toEqual({});
+    rememberLayerVolume('forest-night:wind-in-leaves', 0.62);
+    rememberLayerVolume('forest-night:synth-bed', 0.08);
+    expect(getLayerVolumes()).toEqual({
+      'forest-night:wind-in-leaves': 0.62,
+      'forest-night:synth-bed': 0.08,
+    });
+  });
+
+  it('updates one layer without clobbering the others', () => {
+    rememberLayerVolume('a:one', 0.4);
+    rememberLayerVolume('a:two', 0.9);
+    rememberLayerVolume('a:one', 0.1);
+    expect(getLayerVolumes()).toEqual({ 'a:one': 0.1, 'a:two': 0.9 });
+  });
+
+  it('clamps out-of-range values', () => {
+    rememberLayerVolume('a:one', 4);
+    rememberLayerVolume('a:two', -1);
+    expect(getLayerVolumes()).toEqual({ 'a:one': 1, 'a:two': 0 });
+  });
+
+  it('survives a cold reload', () => {
+    rememberLayerVolume('forest-night:synth-bed', 0.08);
+    window.dispatchEvent(new Event('pagehide'));
+    __invalidateCacheForTests();
+    expect(getLayerVolumes()['forest-night:synth-bed']).toBe(0.08);
   });
 });

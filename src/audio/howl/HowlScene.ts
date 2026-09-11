@@ -317,11 +317,19 @@ export class HowlScene {
   private sceneGain = 1;
   private disposed = false;
 
+  /**
+   * @param volumeOverrides Saved Mixer levels keyed by layer id. Applied as
+   *   each layer's *initial* target rather than set afterwards: a post-start
+   *   setVolume() would call howl.volume(), and Howler treats that as a
+   *   cancel of the running fade (_stopFade), so the scene would snap to
+   *   full level instead of fading in from silence.
+   */
   constructor(
     definition: SceneDefinition,
     master: number,
     factory: HowlFactory = defaultHowlFactory,
-    pickVariant: (el: SceneElementDefinition) => SceneVariantDefinition = randomVariant
+    pickVariant: (el: SceneElementDefinition) => SceneVariantDefinition = randomVariant,
+    volumeOverrides: Readonly<Record<string, number>> = {}
   ) {
     this.id = definition.id;
     this.definition = definition;
@@ -332,13 +340,20 @@ export class HowlScene {
     // offsets so it never resyncs with them). It rides underneath like the
     // old Web-Audio NoiseGenerator bed, just played natively so it survives
     // the night with everything else.
+    const mix = (layerId: string, fallback: number): number => {
+      const saved = volumeOverrides[layerId];
+      return typeof saved === 'number' && Number.isFinite(saved)
+        ? clamp01(saved)
+        : fallback;
+    };
     if (definition.synth) {
+      const id = `${definition.id}:synth-bed`;
       layers.push(
         new HowlLayer(
-          `${definition.id}:synth-bed`,
+          id,
           'Synth bed',
           [resolvePublicUrl(`/audio/_bed/${definition.synth.color}.opus`)],
-          definition.synth.defaultVolume,
+          mix(id, definition.synth.defaultVolume),
           this.master,
           factory
         )
@@ -346,12 +361,13 @@ export class HowlScene {
     }
     for (const el of definition.elements) {
       const variant = pickVariant(el);
+      const id = `${definition.id}:${el.id}`;
       layers.push(
         new HowlLayer(
-          `${definition.id}:${el.id}`,
+          id,
           el.label,
           [resolvePublicUrl(variant.url)],
-          el.defaultVolume,
+          mix(id, el.defaultVolume),
           this.master,
           factory
         )

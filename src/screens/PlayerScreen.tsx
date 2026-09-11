@@ -25,7 +25,7 @@ import { SLEEP_TIMER_FADE_SECONDS } from '../audio/SleepTimer';
 import type { HowlScene } from '../audio/howl/HowlScene';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { scenePlayerBackground } from '../lib/sceneBackground';
-import { getSetting, setSetting } from '../storage';
+import { getSetting, rememberLayerVolume, setSetting } from '../storage';
 import { requestFullscreenSafe } from '../utils/fullscreen';
 
 // ---------------------------------------------------------------------------
@@ -410,6 +410,11 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
                 value={layer.getVolume()}
                 onChange={(v) => {
                   scene.setLayerVolume(layer.id, v);
+                  // Remember it: the Mixer is how the brief says to tune the
+                  // synth bed by ear, and every level was being thrown away
+                  // at the end of the scene, so the next start came back at
+                  // the scene JSON's defaults.
+                  rememberLayerVolume(layer.id, v);
                   setTick((t) => t + 1);
                 }}
               />

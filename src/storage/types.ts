@@ -51,6 +51,15 @@ export interface UserSettings {
   /** Default sleep timer duration in minutes; null = no timer. */
   defaultTimerMinutes: number | null;
 
+  /**
+   * Per-layer mix levels the user set with the Player's Mixer, keyed by
+   * layer id (`<sceneId>:<elementId>`, or `<sceneId>:synth-bed` for the
+   * bed carrier). A layer with no entry uses its scene JSON's
+   * `defaultVolume`. Keyed by layer rather than by variant so the setting
+   * survives the random variant pick on the next start.
+   */
+  layerVolumes: Record<string, number>;
+
   /** Narration Sundown: ramp a story's narration down over its final third
    *  so the voice submerges under the paired scene bed instead of ending on
    *  a hard stop (a state change is a wake event). Default on. */

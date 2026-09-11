@@ -16,6 +16,7 @@ import {
 } from '../SceneCoordinator';
 import { SleepTimer } from '../SleepTimer';
 import { recordEvent } from '../../diagnostics/lifecycleLog';
+import { getLayerVolumes } from '../../storage';
 import { startSwKeepAlive, stopSwKeepAlive } from '../../serviceWorker/keepAlive';
 import {
   clearMediaSession,
@@ -87,6 +88,22 @@ export class HowlScenePlayer {
     });
   }
 
+  /**
+   * Build a scene at the session's current master, carrying the user's saved
+   * Mixer levels in. `undefined` for the variant picker keeps HowlScene's
+   * random default; the levels have to be constructor arguments because
+   * setting them after start() would cancel the fade-in.
+   */
+  private buildScene(definition: SceneDefinition): HowlScene {
+    return new HowlScene(
+      definition,
+      this.master,
+      this.factory,
+      undefined,
+      getLayerVolumes()
+    );
+  }
+
   getCurrentScene(): HowlScene | null {
     return this.current;
   }
@@ -110,7 +127,7 @@ export class HowlScenePlayer {
     if (live && live.id === definition.id) return this.adoptLiveScene(live, options);
     if (live) return this.crossfadeTo(definition, options);
     const generation = ++this.startGeneration;
-    const scene = new HowlScene(definition, this.master, this.factory);
+    const scene = this.buildScene(definition);
     // The build is synchronous, but a stop() could still have bumped the
     // generation between the ++ above and here in a re-entrant call; guard
     // anyway to keep the one-winner contract identical to SceneCoordinator.
@@ -181,7 +198,7 @@ export class HowlScenePlayer {
     const fade = options.fadeSeconds ?? DEFAULT_SCENE_CROSSFADE_SECONDS;
     const generation = ++this.startGeneration;
     const outgoing = this.current;
-    const incoming = new HowlScene(definition, this.master, this.factory);
+    const incoming = this.buildScene(definition);
     if (generation !== this.startGeneration) {
       incoming.dispose();
       return incoming;
