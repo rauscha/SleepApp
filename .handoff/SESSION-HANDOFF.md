@@ -1,3 +1,87 @@
+# Session hand-off — 2026-09-10 (machine: tikiserv)
+# Newest block. Everything below is prior history; this supersedes it for
+# REPO STATE.
+
+## STATE (read this first)
+- `main` at fed5c0c, clean, synced with `origin/main`. Single worktree. This
+  hand-off + the plan note are on branch `handoff/2026-09-10` (PR open);
+  merging is Andrew's call. Green at fed5c0c: `npx tsc --noEmit` clean,
+  `npx vitest run` 263/263. (On tikiserv, prefix tool-shell commands with
+  `source ~/.nvm/nvm.sh` — npx is not on the non-login PATH.)
+- **tikiserv is now a full audio working box.** Both source sets are mirrored
+  under `~/sounds/` (6.7 GB) and the repo's gitignored `raw-sounds` is a
+  symlink to `~/sounds/raw-sounds` (excluded via `.git/info/exclude`, since
+  `.gitignore`'s `raw-sounds/` only matches a directory):
+  - `~/sounds/normalized/` = `D:\Sounds\normalized` (22 leveled FTUS masters
+    + sidecars, 2.4 GB). Sizes verified against the desktop listing.
+  - `~/sounds/raw-sounds/` = `C:\GDrive\SleepApp\raw-sounds` (741 files,
+    4.4 GB): `_sources/george-vlad*` masters, `_sources/fireplace` 12 h
+    FOBOS, Pixabay thunder, `new/` dump. Three sources probed to the
+    durations in the audit note.
+  - `D:\Sounds\picked` (26 GB raw 8-ch picks) deliberately NOT copied; pull
+    only if re-leveling.
+- **crane-desk is reachable by SSH from tikiserv** (OpenSSH Server installed
+  2026-09-10, tailnet-only firewall, tikiserv's ed25519 key authorised,
+  PowerShell login shell): `ssh -o BatchMode=yes andre@100.125.254.46`.
+  Pull with `scp -r "andre@100.125.254.46:C:/path" ~/sounds/` (SFTP; no
+  rsync on Windows). Send PowerShell as `-EncodedCommand` (base64 UTF-16LE);
+  nested cmd quoting mangles anything with quotes. Direct WireGuard path,
+  ~2.4 GB in ~3 min.
+
+## Done this session (2026-09-08 → 09-10)
+- Pulled main; re-ran `tools/loopify-scenes.py --audit`: **12 of 67 over
+  3 dB**, identical to PENDING-DECISIONS 0A "still open" (4 singing-bowl
+  stitches to replace; wind-1 9.8, wave-3 8.4, far-1 7.8, forest-2 4.6,
+  rumble-2 3.8, birds-2 3.8, far-2 3.8, wind-2 3.5 re-cuttable). The four
+  FTUS re-cuts and all waterfall-valley files wrap under 1 dB.
+- Wrote `notes/debug-markers-plan-2026-09-08.md`: in-app "mark this moment"
+  debug markers (replaces Andrew's stopwatch) + `tools/review-markers.py`
+  design, file list, work order. PLAN ONLY — nothing implemented.
+- Attempted `/code-review max` over the engine surface; it hit the monthly
+  spend limit within minutes. Andrew will run it from the CLI on API tokens.
+- Set up crane-desk SSH + mirrored the audio sources (above).
+
+## FINDING — Howler's html5 loop is a JS restart, not native (unverified on device)
+`new Howl({html5:true, loop:true})` never sets `<audio>.loop`. howler 2.2.4
+(`node_modules/howler/dist/howler.js`) arms `setTimeout(_ended, duration)`
+(:954), polls every 100 ms until the element ends (:1958), then
+`stop(id,true).play(id)` and re-emits `'play'` (:1970). So every layer wrap is
+a JS restart with a gap — contradicting "the OS owns each looping element" in
+CLAUDE.md/DECISIONS.md, and it is the source of the replay `'play'` events
+`HowlLayer.hasFadedIn` guards. Proposed fix (separate branch, after markers so
+it can be A/B'd): `loop:false` + set the element's native `loop=true` on first
+`'play'`. Full reasoning: plan note §2. **Ask the reviewer to confirm/refute.**
+
+## Next up
+1. **[ANDREW] Engine review from the CLI** (API tokens). In `claude` at the
+   repo root:
+   `/code-review max src/audio/howl src/audio/mediaSession.ts src/serviceWorker src/screens/PlayerScreen.tsx src/screens/ContentPlayerScreen.tsx src/diagnostics`
+   Pose the Howler-loop question explicitly. Save findings as
+   `notes/code-review-2026-09-XX/fix-plan.md` in the 2026-07-02 format.
+2. Execute that fix plan (anything touching `HowlScene`/`HowlScenePlayer`
+   lands before the markers).
+3. Build the debug markers per plan §3.6 (engine snapshot → store → session
+   `markMoment` → setting → Nightstand UI → media key → Diagnostics panel →
+   review tool → Pixel pass). Branch + PR.
+4. Native-loop branch, A/B'd with markers.
+5. **[ANDREW] Seams, per flagged file:** replace from the FTUS masters or
+   re-cut the Vlad source through `loopify-scenes.py`? Everything needed is
+   now local. Singing-bowl: replace, don't re-cut.
+
+## Open questions for Andrew
+- Media-key `nexttrack` as a marker trigger (shows a "next" button on the
+  lock-screen widget while the toggle is on)?
+- Markers during stories/meditations too, or scenes only first?
+- Native-loop fix in the markers branch or separate? (Recommend separate.)
+
+## Watch out for
+- Don't re-copy `D:\Sounds\picked` casually — 26 GB against 67 GB free.
+- Files scp'd from Windows arrive read-only; `chmod -R u+w` before deleting.
+- The `.handoff` "desktop-local, will not reach the laptop" note below is
+  now stale for tikiserv — sources are here.
+
+---
+
 # Session hand-off — 2026-08-19 (machine: desktop)
 # Newest block. Everything below is prior history; this supersedes it for
 # REPO STATE.
