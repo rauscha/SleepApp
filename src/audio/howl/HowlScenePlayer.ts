@@ -16,6 +16,7 @@ import {
 } from '../SceneCoordinator';
 import { SleepTimer } from '../SleepTimer';
 import { recordEvent } from '../../diagnostics/lifecycleLog';
+import { addMarker, type DebugMarker, type MarkerTrigger } from '../../diagnostics/markers';
 import { getLayerVolumes } from '../../storage';
 import { startSwKeepAlive, stopSwKeepAlive } from '../../serviceWorker/keepAlive';
 import {
@@ -63,6 +64,10 @@ export class HowlScenePlayer {
    *  Drift can carry it onto the incoming scene instead of quietly
    *  restoring full level at 4am. */
   private sceneGain = 1;
+  /** Wall clock at which the live scene's layers started. Owned here, not
+   *  by a screen, so a debug marker taken at 3am still knows how long the
+   *  scene has been running after the Player was exited and re-entered. */
+  private sceneStartedAt = 0;
   /** Monotonic stamp serializing overlapping start/crossfade/stop requests
    *  down to one winner (review bug M1), same contract as SceneCoordinator. */
   private startGeneration = 0;
@@ -136,6 +141,7 @@ export class HowlScenePlayer {
       return scene;
     }
     this.sceneGain = clamp01(options.firstFadeTarget ?? 1);
+    this.sceneStartedAt = Date.now();
     scene.start(
       options.firstFadeSeconds ?? DEFAULT_SCENE_FIRST_START_SECONDS,
       this.sceneGain
@@ -204,6 +210,10 @@ export class HowlScenePlayer {
       return incoming;
     }
     this.sceneGain = clamp01(options.firstFadeTarget ?? 1);
+    // A crossfade (user switch or Night Drift alike) builds fresh elements
+    // that start from zero, so this is where the live scene's clock begins.
+    // An adoption deliberately leaves it alone.
+    this.sceneStartedAt = Date.now();
     incoming.start(fade, this.sceneGain);
     if (outgoing && !outgoing.isDisposed()) outgoing.fadeAndDispose(fade);
     this.current = incoming;
@@ -222,6 +232,7 @@ export class HowlScenePlayer {
     const stoppedId = this.current.definition.id;
     this.current.fadeAndDispose(fadeSeconds);
     this.current = null;
+    this.sceneStartedAt = 0;
     this.sleepTimer.reset();
     this.cancelDrift();
     recordEvent('scene-stop', stoppedId);
@@ -231,6 +242,36 @@ export class HowlScenePlayer {
   private applySessionTimer(minutes: number | null | undefined): void {
     if (minutes != null && minutes > 0) this.sleepTimer.start(minutes);
     else this.sleepTimer.reset();
+  }
+
+  /** When the live scene's layers started, or 0 with nothing playing. */
+  getSceneStartedAt(): number {
+    return this.sceneStartedAt;
+  }
+
+  /**
+   * Record a debug marker for whatever is playing right now — "I am hearing
+   * something wrong". Lives on the session rather than a screen for the same
+   * reason the sleep timer does: it has to work from the Player, from
+   * Nightstand, and from the OS media-key handler while the phone is locked,
+   * and a screen exit must not take it away.
+   *
+   * Returns null when nothing is playing, so a caller can stay silent rather
+   * than confirm a marker it didn't take.
+   */
+  markMoment(trigger: MarkerTrigger): DebugMarker | null {
+    const scene = this.current;
+    if (!scene || scene.isDisposed()) return null;
+    return addMarker({
+      ts: Date.now(),
+      sceneId: scene.id,
+      sceneLabel: scene.definition.label,
+      sceneStartedAt: this.sceneStartedAt,
+      trigger,
+      layers: scene.snapshot(),
+      masterVolume: this.master,
+      timerStatus: this.sleepTimer.getState().status,
+    });
   }
 
   // -------------------------------------------------------------------------

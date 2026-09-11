@@ -171,6 +171,50 @@ describe('seam suspects', () => {
     expect(seamSuspects(m).map((l) => l.id)).toEqual(['a', 'b']);
   });
 
+  it('does not flag the first play-through, when every layer sits near zero', () => {
+    // 20s into the scene: all three layers are a few seconds into their
+    // files, which is the start of the file and not a wrap.
+    const m = addMarker(
+      marker({
+        ts: 1_800_000_000_000,
+        sceneStartedAt: 1_800_000_000_000 - 20_000,
+        layers: [
+          layer({ id: 'a', seekSeconds: 2, periodSeconds: 251 }),
+          layer({ id: 'b', seekSeconds: 3, periodSeconds: 409 }),
+          layer({ id: 'c', seekSeconds: 4, periodSeconds: 887 }),
+        ],
+      })
+    );
+    expect(seamSuspects(m)).toEqual([]);
+  });
+
+  it('flags a layer past its wrap once it has been round once', () => {
+    const m = addMarker(
+      marker({
+        ts: 1_800_000_000_000,
+        sceneStartedAt: 1_800_000_000_000 - 300_000, // 5 min in
+        layers: [
+          // 251s loop, so it has wrapped; 2s past the wrap.
+          layer({ id: 'wrapped', seekSeconds: 2, periodSeconds: 251 }),
+          // 887s bed hasn't been round yet — still its first play-through.
+          layer({ id: 'bed', seekSeconds: 2, periodSeconds: 887 }),
+        ],
+      })
+    );
+    expect(seamSuspects(m).map((l) => l.id)).toEqual(['wrapped']);
+  });
+
+  it('always flags a layer about to wrap, however early in the scene', () => {
+    const m = addMarker(
+      marker({
+        ts: 1_800_000_000_000,
+        sceneStartedAt: 1_800_000_000_000 - 20_000,
+        layers: [layer({ id: 'ending', seekSeconds: 249, periodSeconds: 251 })],
+      })
+    );
+    expect(seamSuspects(m).map((l) => l.id)).toEqual(['ending']);
+  });
+
   it('uses an inclusive window', () => {
     const m = addMarker(
       marker({
@@ -198,8 +242,8 @@ describe('marker export', () => {
     addMarker(
       marker({
         layers: [
-          layer({ label: 'Wind', seekSeconds: 519, periodSeconds: 521 }),
-          layer({ label: 'Creek', seekSeconds: 130, periodSeconds: 251 }),
+          layer({ id: 'w', label: 'Wind', seekSeconds: 519, periodSeconds: 521 }),
+          layer({ id: 'c', label: 'Creek', seekSeconds: 130, periodSeconds: 251 }),
         ],
       })
     );

@@ -164,12 +164,33 @@ export function wrapDistanceSeconds(
   return Math.min(pos, periodSeconds - pos);
 }
 
-/** Layers that were within SEAM_WINDOW_SECONDS of their wrap at the tap. */
+/**
+ * Layers that were within SEAM_WINDOW_SECONDS of their loop wrap when the
+ * marker was taken — the ones to listen to first.
+ *
+ * A position near 0 only counts once the layer has actually been round at
+ * least once. Every layer sits at position ~0 for the first seconds of a
+ * scene, and that is the file's start, not a wrap: without this, a marker
+ * taken early would flag the entire stack and mean nothing. A position near
+ * the end of the file is always reported — the wrap is imminent there, and a
+ * tap lags the sound that prompted it by a second or more.
+ */
 export function seamSuspects(marker: DebugMarker): HowlLayerSnapshot[] {
-  return marker.layers.filter((l) => {
-    const d = wrapDistanceSeconds(l.seekSeconds, l.periodSeconds);
-    return d !== null && d <= SEAM_WINDOW_SECONDS;
-  });
+  return marker.layers.filter((l) => isSeamSuspect(marker, l));
+}
+
+/** The per-layer test behind seamSuspects. Takes the layer itself rather
+ *  than its id so callers can't be tripped up by a duplicate id. */
+export function isSeamSuspect(
+  marker: DebugMarker,
+  layer: HowlLayerSnapshot
+): boolean {
+  const d = wrapDistanceSeconds(layer.seekSeconds, layer.periodSeconds);
+  if (d === null || d > SEAM_WINDOW_SECONDS) return false;
+  const position = layer.seekSeconds! % layer.periodSeconds;
+  const justPastWrap = position <= SEAM_WINDOW_SECONDS;
+  if (justPastWrap && marker.elapsedMs / 1000 < layer.periodSeconds) return false;
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -232,7 +253,7 @@ export function formatMarkersAsText(): string {
       const wrap =
         d === null
           ? ''
-          : d <= SEAM_WINDOW_SECONDS
+          : isSeamSuspect(m, l)
             ? `  ** ${d.toFixed(1)}s FROM WRAP **`
             : `  (${d.toFixed(0)}s from wrap)`;
       lines.push(

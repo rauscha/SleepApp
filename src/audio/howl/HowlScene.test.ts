@@ -10,6 +10,11 @@ import {
   __resetHowlScenePlayerForTests,
 } from './HowlScenePlayer';
 import type { SceneDefinition } from '../sceneFormat';
+import {
+  __resetMarkersForTests,
+  getMarkers,
+  seamSuspects,
+} from '../../diagnostics/markers';
 
 class FakeHowl implements HowlLike {
   static all: FakeHowl[] = [];
@@ -114,6 +119,8 @@ function makeDef(overrides: Partial<SceneDefinition> = {}): SceneDefinition {
 beforeEach(() => {
   FakeHowl.all = [];
   __resetHowlScenePlayerForTests();
+  localStorage.clear();
+  __resetMarkersForTests();
 });
 
 describe('howlFormats (O2 — Howler format is positional, not a fallback list)', () => {
@@ -774,5 +781,89 @@ describe('HowlScenePlayer — media-session hand-back', () => {
     } finally {
       media.restore();
     }
+  });
+});
+
+describe('HowlScenePlayer — debug markers', () => {
+  it('records what every layer was playing and where it was', async () => {
+    const player = new HowlScenePlayer(fakeFactory);
+    await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+    player.setMasterVolume(0.4);
+    lastBySrc('rain-1').seekValue = 248;
+    lastBySrc('wind-1').seekValue = 100;
+
+    const marker = player.markMoment('nightstand')!;
+
+    expect(marker.sceneId).toBe('test-scene');
+    expect(marker.sceneLabel).toBe('Test Scene');
+    expect(marker.trigger).toBe('nightstand');
+    expect(marker.masterVolume).toBe(0.4);
+    const rain = marker.layers.find((l) => l.id === 'test-scene:rain')!;
+    expect(rain.seekSeconds).toBe(248);
+    expect(rain.periodSeconds).toBe(251);
+    expect(rain.url).toContain('rain-1.mp3');
+    // 248s into a 251s loop: 3s from the wrap, which is the whole point.
+    expect(seamSuspects(marker).map((l) => l.id)).toEqual(['test-scene:rain']);
+    expect(getMarkers()).toHaveLength(1);
+  });
+
+  it('returns null with nothing playing, and takes no marker', async () => {
+    const player = new HowlScenePlayer(fakeFactory);
+    expect(player.markMoment('media-key')).toBeNull();
+
+    await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+    player.stopScene(0);
+    expect(player.markMoment('media-key')).toBeNull();
+    expect(getMarkers()).toEqual([]);
+  });
+
+  it('measures elapsed from the scene start, across a screen exit', async () => {
+    vi.useFakeTimers();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+      vi.advanceTimersByTime(90 * 60_000);
+
+      // The Player was exited and re-entered in between — an adoption, which
+      // must not restart the clock the marker reports against.
+      await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+      const marker = player.markMoment('lush')!;
+
+      expect(Math.round(marker.elapsedMs / 60_000)).toBe(90);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('restarts the clock when a drift builds a fresh scene', async () => {
+    vi.useFakeTimers();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      player.setSceneResolver(() => Promise.resolve(makeDef({ id: 'night' })));
+      await player.startScene(
+        makeDef({ id: 'evening', driftsTo: { sceneId: 'night', afterMinutes: 30 } }),
+        { firstFadeSeconds: 0 }
+      );
+      await vi.advanceTimersByTimeAsync(30 * 60_000 + 100);
+      expect(player.getCurrentScene()?.id).toBe('night');
+
+      await vi.advanceTimersByTimeAsync(5 * 60_000);
+      const marker = player.markMoment('lush')!;
+
+      // The drifted-in layers are new elements that started at the drift,
+      // so "5 minutes in" is what locates their audio, not 35.
+      expect(Math.round(marker.elapsedMs / 60_000)).toBe(5);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('records the live sleep-timer state with the marker', async () => {
+    const player = new HowlScenePlayer(fakeFactory);
+    await player.startScene(makeDef(), {
+      firstFadeSeconds: 0,
+      sleepTimerMinutes: 60,
+    });
+    expect(player.markMoment('lush')!.timerStatus).toBe('running');
   });
 });
