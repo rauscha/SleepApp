@@ -268,16 +268,18 @@ export function ContentPlayerScreen({
   // media session are what keep the *tab* around long enough for that. For
   // *bed-paired* content the HowlScenePlayer owns the SW ping — it follows
   // the bed scene, not this screen (review bug C1) — so we only run this for
-  // content with no bed to avoid double-stopping it on unmount.
+  // content with no bed. The hold is taken under this screen's own name:
+  // the ping is reference-counted, so backing out of a bare meditation can
+  // no longer stop the ping a Tonight scene playing underneath still wants.
   // (No Web Audio keep-alive here any more: the old silent-loop + element
   // sink was the fragile MediaStream path we retired in the Path A pivot.)
   const keepAudioFocusAlive = !bedSceneId && state === 'playing';
   useEffect(() => {
     if (!keepAudioFocusAlive) return;
-    startSwKeepAlive();
+    startSwKeepAlive('content');
     recordEvent('keepalive-start', 'content');
     return () => {
-      stopSwKeepAlive();
+      stopSwKeepAlive('content');
       recordEvent('keepalive-stop', 'content');
     };
   }, [keepAudioFocusAlive]);

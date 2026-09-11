@@ -26,6 +26,12 @@ import type { SceneDefinition } from '../sceneFormat';
 import { HowlScene, defaultHowlFactory } from './HowlScene';
 import type { HowlFactory } from './HowlScene';
 
+/** Holder name for this session's SW keep-alive hold. The ping is
+ *  reference-counted: ContentPlayerScreen holds it under its own name for
+ *  bare narration, and whichever stands down first must not stop the other's
+ *  ping (see serviceWorker/keepAlive). */
+const SW_KEEPALIVE_HOLDER = 'session';
+
 function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }
@@ -283,7 +289,7 @@ export class HowlScenePlayer {
     scene: HowlScene,
     manageMediaSession: boolean
   ): void {
-    startSwKeepAlive();
+    startSwKeepAlive(SW_KEEPALIVE_HOLDER);
     if (manageMediaSession) {
       this.mediaManaged = true;
       setMediaSessionForScene(scene.definition.label, {
@@ -322,7 +328,7 @@ export class HowlScenePlayer {
 
   private disengageSessionProtections(): void {
     if (!this.protectionsEngaged) return;
-    stopSwKeepAlive();
+    stopSwKeepAlive(SW_KEEPALIVE_HOLDER);
     if (this.mediaManaged) clearMediaSession();
     this.mediaManaged = false;
     this.protectionsEngaged = false;
