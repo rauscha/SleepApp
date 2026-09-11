@@ -1,6 +1,11 @@
 # Plan — in-app debug markers for overnight listening (2026-09-08)
 
-Status: PLAN ONLY. Nothing implemented. Written on tikiserv after pulling
+Status: **EXECUTED 2026-09-11** on branch `overnight/2026-09-11` — steps 1–8
+of §3.6 are built, tested and pushed; step 9 (the device pass) and step 10
+(the native-loop fix) are still open. The design below is what shipped, with
+two deliberate departures recorded at the end. Original header follows.
+
+Status when written: PLAN ONLY. Nothing implemented. Written on tikiserv after pulling
 `main` (fed5c0c, already up to date) and re-running the checks below.
 
 ## 1. State check (done today)
@@ -221,3 +226,39 @@ CLAUDE.md and DECISIONS.md and should be corrected there if true.
    markers can measure before/after? Recommendation: separate.
 4. The 8 re-cuttable seams need the desktop's `raw-sounds/`; schedule a
    crane-desk session or copy the six Vlad masters to tikiserv?
+
+---
+
+## Execution record (2026-09-11)
+
+Built in this order, one commit each, typecheck + tests green at every step:
+the engine snapshot, the marker store, `markMoment()` on the session, the
+`debugMarkers` setting + media-key trigger, the Player controls, the
+Settings panel, and `tools/review-markers.py`. 339 tests pass, against 277
+at the start of the night (270 of those were already on `main`).
+
+Before any of it, the four findings the 2026-09-10 review left unfixed were
+cleared — see the branch's first four commits and the hand-off.
+
+**Departures from the plan above:**
+
+1. **Markers during stories are IN, not deferred.** §5 listed it as an open
+   question. It cost four lines: ContentPlayerScreen owns the OS media
+   session while narration plays, so without re-offering the `nexttrack`
+   handler there the trigger would vanish for the length of a story — and
+   the bed underneath is exactly what carries seams. The marker records the
+   bed's layers; it does *not* record the narration's own position, which
+   would need the content screen to register state with the session. Worth
+   adding only if a story's narration ever turns out to be the problem.
+
+2. **Seam detection needed a rule the plan didn't anticipate.** Every layer
+   sits at position ~0 for the first seconds of a scene, so a naive "within
+   10s of the wrap" test flagged the entire stack on any early marker. A
+   near-zero position now counts only once that layer has been round at
+   least once; a near-end position is always reported, since a tap lags the
+   sound. Ported into the Python tool so phone and desk always agree.
+
+**Still open:** the §5 question of whether the media key should be the
+trigger at all (built, but behind a default-off setting, so it is
+reversible), the device pass, and the native-loop fix (§2) — deliberately
+left out so the markers can measure it.

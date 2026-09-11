@@ -1,3 +1,104 @@
+# Session hand-off — 2026-09-11 (machine: tikiserv, unattended overnight run)
+# Newest block. Everything below is prior history; this supersedes it for
+# REPO STATE.
+
+## STATE (read this first)
+- Branch **`overnight/2026-09-11`**, pushed, PR open. It contains the
+  2026-09-10 hand-off branch merged in, so PR #18 is superseded — review
+  and merge this one, then close #18.
+- `main` is untouched at 62a6487. Green on the branch: `npx tsc --noEmit`
+  clean, `npx vitest run` **339/339** (was 270 on main), `npx vite build`
+  clean. No audio bytes changed, so **no CACHE_VERSION bump** (still v12).
+- Reminder: on tikiserv prefix tool-shell commands with
+  `source ~/.nvm/nvm.sh` — npx is not on the non-login PATH.
+
+## Done this session — part 1: the review's leftovers (4 commits)
+The 2026-09-10 review's top four findings were already fixed on main
+(60e3e95). Its DECISIONS.md entry named four more as unfixed; all four are
+now done, each with regression tests:
+
+- **SW keep-alive is reference-counted.** One on/off flag, two overlapping
+  holders: play a Tonight scene, start a bare meditation over it, back out,
+  and the screen's cleanup stopped the ping the scene still wanted — the
+  service worker then sat dormant for the rest of the night. Holds are now
+  named ('session' / 'content').
+- **Media-session ownership tracks both directions.** `mediaManaged` was
+  write-once, so a bed started for a story (`manageMediaSession: false`)
+  left it set and the next `stopScene()` cleared the OS session out from
+  under the narration that owned it — lock-screen title and transport gone
+  mid-story.
+- **`resume()` no longer stacks a second element.** Howler's `play()` with
+  no sound id creates a NEW sound when every existing one is playing, so a
+  lock-screen play tap on an already-playing scene added a second copy of
+  every layer at an unrelated offset — roughly +6 dB and phasing, all
+  night, with nothing tracking the extra element. Now guarded on `playing()`.
+- **Settings merge stopped dropping keys.** `mergeWithDefaults` named each
+  key by hand and silently dropped any it forgot; `narrationSundown` shipped
+  that way, so turning it off never survived a reload. It now walks
+  `DEFAULT_SETTINGS`, and the new round-trip test derives its own coverage
+  so a future key can't repeat it.
+- Plus one gap the same area implied: **Mixer levels are now persisted**
+  (`layerVolumes`, keyed by layer id). CLAUDE.md tells you to tune the synth
+  bed by ear with that slider and the tuning died with the scene. Applied as
+  each layer's *initial* target, never set after `start()` — that would
+  cancel the fade-in.
+
+## Done this session — part 2: debug markers (6 commits)
+`notes/debug-markers-plan-2026-09-08.md` is executed through §3.6 step 8;
+see its "Execution record" section for the two departures from the plan.
+
+- One tap records the scene, every layer's variant file, **where each layer
+  is inside its loop** (read from the element's `currentTime`, never from
+  elapsed-time arithmetic), the mix levels and the last lifecycle events.
+- Triggers: "Mark this moment" in Nightstand (above End the night,
+  deliberately quieter — mistaking it for Stop would end the night), a
+  "mark" chip in Lush, and the **OS next-track action** so a headset button
+  works with the phone locked. Confirmation is haptic plus one dim line;
+  nothing on a black screen brightens.
+- All of it behind the **`debugMarkers` setting, default off** (it puts a
+  button on the lock screen). Toggling it adds/removes that button on
+  whatever is already playing.
+- Review in Settings → Diagnostics: per-layer file, position, distance to
+  wrap, with near-wrap layers called out in text as well as colour (the
+  user is colourblind). Notes can be typed after the fact. Share / Copy /
+  Download text / Download JSON / Clear.
+- **`tools/review-markers.py`** takes the JSON and re-renders the marked
+  moment — each layer seeked to where it actually was, at the level it was
+  actually playing at, mixed to one wav. `--measure` reuses
+  `seamfit.wrap_step_db` so flags line up with `loopify-scenes.py --audit`.
+  `--wraps` back-computes each layer's wrap times around the mark.
+  Verified end to end against a fixture built from shipped forest-night
+  audio (35s render, -37.4 dB mean; creek-1 measured 1.13 dB, night-5 0.80).
+
+## Next up
+1. **[ANDREW] Device pass** — plan §3.6 step 9. Turn Debug markers on, sleep
+   on it, mark anything you hear, then in the morning: Settings →
+   Diagnostics → Download JSON, and
+   `python tools/review-markers.py <file> --measure --render`.
+   This is the only thing that can confirm the feature actually works in
+   the dark, on the lock screen, with real ears.
+2. **Native-loop fix** (DECISIONS.md 2026-09-11 FINDING, plan §2) — its own
+   branch, A/B'd with the markers. Deliberately not attempted yet.
+3. **[ANDREW] Per flagged seam: replace from FTUS or re-cut Vlad?** Both
+   source sets are on tikiserv under `~/sounds` (see the 2026-09-10 block),
+   so either runs here. 12 of 67 variants are over 3 dB; 4 are the
+   singing-bowl stitches, which want replacing rather than re-cutting.
+
+## Watch out for
+- **The Howler loop finding is unresolved and matters.** `loop: true` on an
+  html5 Howl never sets the element's native `loop`; Howler restarts it from
+  a JS timer (`stop().play()`), so every wrap is a gap, and the gapless 6s
+  wrap `loopify-scenes.py` bakes in may be doing nothing. Full evidence with
+  line numbers in DECISIONS.md. The 2026-06-15 pivot still stands — the
+  element is real media the OS keeps alive — but don't repeat "the OS owns
+  each loop" as if it covered looping itself. CLAUDE.md is corrected.
+- Marker renders land in `notes/marker-renders/`, now gitignored.
+- The `debugMarkers` setting is read once when the Player mounts, so
+  toggling it while the Player is open needs a screen re-entry for the
+  on-screen buttons (the lock-screen button updates immediately).
+
+---
+
 # Session hand-off — 2026-09-10 (machine: tikiserv)
 # Newest block. Everything below is prior history; this supersedes it for
 # REPO STATE.

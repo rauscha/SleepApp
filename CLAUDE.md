@@ -157,7 +157,14 @@ beats a primitive the browser suspends by design. The fix lets the OS own
 each loop, exactly like Spotify/Calm/YouTube.
 
 - **`HowlScene`** plays one looping `Howl({ html5: true, loop: true })`
-  `<audio>` element per layer (plus the synth-bed carrier). It exposes the
+  `<audio>` element per layer (plus the synth-bed carrier). **Caveat found
+  2026-09-11 (DECISIONS.md, unresolved):** that `loop: true` does *not* set
+  the element's native `loop` — Howler re-starts the element from JS on a
+  timer, so each wrap is a stop/seek/play with a gap rather than an OS-owned
+  seamless loop. The pivot still stands (the element is real media the OS
+  keeps alive), but don't repeat the "the OS owns each loop" phrasing as if
+  it covered looping itself, and expect the baked-in gapless wrap to be
+  doing less than intended until that's fixed and measured. It exposes the
   same surface PlayerScreen reads off the old Web Audio `Scene`
   (`id`/`definition`/`getLayers`/`setLayerVolume`/`isDisposed`), so the UI
   was untouched by the pivot.
@@ -171,6 +178,13 @@ each loop, exactly like Spotify/Calm/YouTube.
   watchdog, or `recreateContext` on the bed. Don't reintroduce them — they
   were treating symptoms of the unsupported construct above (the closed
   draft "element-sink stall watchdog" PR was the pivot's casualty).
+- **Debug markers are session-owned too** (2026-09-11, DECISIONS.md).
+  `HowlScenePlayer.markMoment()` records what every layer is playing and
+  where it is inside its loop; the store is `src/diagnostics/markers.ts`,
+  the desk-side review is `tools/review-markers.py`, and the whole feature
+  is behind the `debugMarkers` setting (default off). Layer positions come
+  from the element's own `currentTime`, never from elapsed-time arithmetic
+  — see the decision entry for why.
 - **Overnight protections are still owned by the session, not a screen.**
   `HowlScenePlayer` owns the sleep timer, Night Drift, the OS media session,
   and the SW keep-alive ping; they live/die with the scene, never in a React
@@ -206,6 +220,12 @@ user-facing path without re-deciding the pivot.
 - `tools/loopify-scenes.py` — idempotent; trims variants to their prime
   offset (gapless) and renders the synth beds. Re-run on any scene-audio
   change.
+- `tools/review-markers.py` — reads the debug-marker JSON exported from
+  Settings and re-renders the marked moment (each layer at its real
+  position and level); `--measure` reuses `seamfit.wrap_step_db`.
+- `src/diagnostics/` — `lifecycleLog.ts` (page-lifecycle events) and
+  `markers.ts` (the debug markers + the seam analysis both the app and the
+  review tool use).
 - `NEXT_STEPS.md` — personal current-state TODO; gitignored. Update if
   present, skip if absent.
 - `DECISIONS.md` — historical architecture decisions; don't overwrite, append.

@@ -660,3 +660,83 @@ tests green. The remaining findings from that review are unfixed — see the rep
 in the session notes, notably the write-once `mediaManaged` flag, the
 un-refcounted SW keep-alive, `HowlScene.resume()` stacking a duplicate element,
 and `PlayerScreen`'s master-volume/mixer persistence gaps.
+
+## Debug markers: mark the moment, review it at the desk (2026-09-11)
+
+Andrew's workflow for a bad sound in the night was a stopwatch on the
+nightstand and, in the morning, guesswork about which of ~60 variant files
+had been playing. The app knows all of it at the instant it happens, so it
+now records it on request. Design notes worth keeping:
+
+- **The marker lives on the session, not a screen.** `HowlScenePlayer.
+  markMoment()` for the same reason the sleep timer is there (bugs C1/H1/H3):
+  it has to work from the Player, from Nightstand, and from the OS media-key
+  handler with the phone locked, and leaving a screen must not take it away.
+
+- **Positions are read, never computed.** A layer's place in its loop comes
+  from the element's own `currentTime` (Howler's `seek()`), not from
+  `elapsed % period`. An OS audio-focus pause, a lock-screen pause and
+  Howler's loop restart each move the element's clock independently of wall
+  time, so the arithmetic drifts over a night — and the one thing a marker
+  must get right is *where in this file* the sound was.
+
+- **The media key is the trigger that matters.** There is no "next track" in
+  a sleep scene, so `nexttrack` is bound to the marker: a headset button or
+  the lock-screen widget, eyes closed, phone locked. It is behind the
+  `debugMarkers` setting (default off) because it puts a control on the lock
+  screen, and it registers as `null` when off so toggling removes it.
+  ContentPlayerScreen re-offers it while narration plays, since it owns the
+  OS session then and the bed underneath is what carries seams all night.
+
+- **Confirmation is haptic, then dim text.** The button is pressed on a
+  black screen with eyes half shut. Anything bright would defeat Nightstand,
+  so it is `navigator.vibrate(40)` (no-op on iOS) plus one dim line that
+  fades with the rest of the woken controls. In Nightstand the Mark button
+  sits *above* End the night and is styled quieter — it is pressed far more
+  often, and mistaking it for Stop would end the night by accident.
+
+- **A position near zero is not a wrap until the layer has been round once.**
+  Every layer sits at ~0 for the first seconds of a scene; without this rule
+  an early marker flags the whole stack and means nothing. A position near
+  the end of the file is always reported, because a tap lags the sound that
+  prompted it. `isSeamSuspect()` is ported line-for-line into
+  `tools/review-markers.py` so the phone and the desk never disagree.
+
+`tools/review-markers.py` takes the JSON export and re-renders the marked
+moment: every layer seeked to where it actually was, at the level it was
+actually playing at, mixed to one wav. `--measure` reuses
+`seamfit.wrap_step_db`, so a file flagged here lines up with
+`loopify-scenes.py --audit` and `notes/loop-seam-audit-2026-09-02.md`.
+
+## FINDING (unresolved): Howler's html5 loop is a JS restart, not native (2026-09-11)
+
+Recorded because it contradicts the engine notes above and in CLAUDE.md, and
+because the debug markers exist partly to measure it.
+
+Reading the vendored howler 2.2.4 (`node_modules/howler/dist/howler.js`):
+`new Howl({ html5: true, loop: true })` never sets the `<audio>` element's
+native `loop`. For a looping html5 sound Howler arms
+`setTimeout(_ended, duration)` (:954), re-polls every 100 ms if the element
+hasn't actually ended (:1958), then runs `stop(id, true).play(id)` and
+re-emits `'play'` (:1970). So **every layer wrap is a JS-driven stop/seek/play
+with a gap**, not an OS-owned seamless loop — which is also where the replay
+`'play'` events that `HowlLayer.hasFadedIn` guards come from (the 2026-07-01
+"background suddenly got loud" entry attributed them to audio-focus
+interruptions; loop wraps are at least as likely a source).
+
+What this does NOT change: the 2026-06-15 pivot stands. The element is still
+real media the OS keeps alive in the background, which is what made overnight
+survival work, and that was confirmed over a real 6h night.
+
+What it might change: the gapless 6s wrap that `loopify-scenes.py` bakes into
+every variant only pays off under native looping. Under a stop/seek/play
+restart the crossfade is moot and only the *level* match survives — which
+would mean the seam work to date has been fixing half the problem.
+
+**Unverified on device.** The proposed fix is `loop: false` plus setting the
+element's native `loop = true` on first `'play'` (with `loop: false` Howler
+attaches an `'ended'` listener instead of a timer, and a natively looping
+element never fires `'ended'`, so Howler simply never intervenes). Deliberately
+NOT attempted yet: it belongs on its own branch, measured before and after
+with the markers, rather than bundled with them. See
+`notes/debug-markers-plan-2026-09-08.md` §2.
