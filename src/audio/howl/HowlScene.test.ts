@@ -544,6 +544,50 @@ describe('HowlScenePlayer — Night Drift carries the session forward', () => {
   });
 });
 
+describe('HowlScenePlayer — media-session ownership is not write-once', () => {
+  it('gives up ownership when a bed starts for a screen that owns the session', async () => {
+    const media = installMediaSessionMock();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      // A Tonight scene: the session stamps the OS media session itself.
+      await player.startScene(makeDef({ id: 'tonight', label: 'Tonight' }), {
+        firstFadeSeconds: 0,
+      });
+      expect((media.session.metadata as { title: string }).title).toBe('Tonight');
+
+      // The user opens a story whose bed is a different scene. The content
+      // player owns the OS session for the narration from here.
+      await player.startScene(makeDef({ id: 'bed', label: 'Bed' }), {
+        fadeSeconds: 0,
+        manageMediaSession: false,
+      });
+      media.session.metadata = { title: 'A story' };
+
+      // The story's bed is told to stop. With the old write-once flag the
+      // session still believed it owned the OS session and wiped the
+      // narration's metadata + transport here, mid-story.
+      player.stopScene(0);
+
+      expect((media.session.metadata as { title: string }).title).toBe('A story');
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('still clears the session it does own', async () => {
+    const media = installMediaSessionMock();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef({ label: 'Mine' }), { firstFadeSeconds: 0 });
+      expect((media.session.metadata as { title: string }).title).toBe('Mine');
+      player.stopScene(0);
+      expect(media.session.metadata).toBeNull();
+    } finally {
+      media.restore();
+    }
+  });
+});
+
 describe('HowlScenePlayer — media-session hand-back', () => {
   it('claims the OS session for a bed the content player left playing', async () => {
     const media = installMediaSessionMock();

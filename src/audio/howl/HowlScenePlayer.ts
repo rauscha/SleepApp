@@ -290,8 +290,15 @@ export class HowlScenePlayer {
     manageMediaSession: boolean
   ): void {
     startSwKeepAlive(SW_KEEPALIVE_HOLDER);
+    // Ownership is whatever this call says it is, in both directions. The
+    // flag used to be write-once (`if (manageMediaSession) mediaManaged =
+    // true`), so once a Tonight scene had stamped the session, a bed later
+    // started for a story with `manageMediaSession: false` left it set —
+    // and a subsequent stopScene() then cleared the OS session out from
+    // under the *narration* that legitimately owned it, dropping the
+    // lock-screen transport mid-story. claimMediaSession() sets it back.
+    this.mediaManaged = manageMediaSession;
     if (manageMediaSession) {
-      this.mediaManaged = true;
       setMediaSessionForScene(scene.definition.label, {
         onStop: () => this.stopScene(),
         onPause: () => {
