@@ -16,8 +16,11 @@
 - **[ANDREW] Per flagged seam: replace from FTUS or re-cut Vlad?** Sources
   are on tikiserv (`~/sounds`), so either runs here. 0A's list is unchanged
   (12 of 67 over 3 dB on 2026-09-08).
-- **Native-loop fix is queued, not done** — DECISIONS.md 2026-09-11 FINDING.
-  It may mean the seam work so far has been fixing half the problem.
+- **Native-loop fix: DONE 2026-09-11** and it confirmed the worry —
+  Howler's loop cost 27 ms of silence at every wrap, after the gapless
+  crossfade, so the seam work so far has been fixing the level step and
+  leaving the hole. Measured, reproducible via `tools/loop-probe/run.sh`.
+  Unmeasured on a real device; that is what the markers are for.
 
 ## 0A. RESOLVED 2026-09-03 — the 2026-08-18 FTUS follow-ups
 

@@ -1,3 +1,63 @@
+# Session hand-off — 2026-09-11b (machine: tikiserv)
+# Newest block. Everything below is prior history; this supersedes it for
+# REPO STATE.
+
+## STATE
+- All work is **on `main` and pushed** (HEAD `9e74150`). No open PRs; #19
+  merged, #18 closed. **This repo no longer uses a PR workflow** — commit
+  straight to `main` (CLAUDE.md "Commit discipline").
+- Green: `npx tsc --noEmit` clean, `npx vitest run` **343/343**, `npx vite
+  build` clean. No audio bytes changed; CACHE_VERSION still v12.
+
+## The native-loop fix is IN, and the finding was worse than suspected
+Howler's html5 `loop: true` never sets the element's native `loop` — it
+restarts the element from a JS timer. Measured in headless Chromium against a
+2s Opus loop, timing the element's own pause->playing interval:
+
+    bare <audio loop>          3.3 ms per wrap
+    Howler loop: true         27.3 ms per wrap  (max 40.6)
+    loop: false + node.loop    3.3 ms per wrap   <- now shipping
+
+That is 27 ms of silence punched into a noise bed every 199-887 s, all night,
+landing *after* the gapless wrap `loopify-scenes.py` bakes in — where the 6s
+crossfade cannot cover it. **The seam work so far has been fixing the level
+step and leaving the hole.** Reproduce with `tools/loop-probe/run.sh`
+(committed; re-run it after any Howler upgrade — the fix reaches into
+Howler's private `_sounds` and falls back deliberately if that moves).
+
+Verified in a browser against the real factory, not a mock: native loop on,
+zero Howler end/play events across six wraps, and `seek`/`volume`/`fade`/
+`playing` all still behave. Also verified the nastiest hazard — Howler's
+element pool never resets `loop`, so a layer that returned a looping element
+would make the next borrower loop forever, plausibly a story's narration. The
+factory clears it on unload and the probe confirms a recycled narration ends.
+
+## Next up
+1. **[ANDREW] One device night, now testing two things.** Turn Debug markers
+   on, sleep on it, mark anything you hear. Morning: Settings -> Diagnostics
+   -> Download JSON, then
+   `python tools/review-markers.py <file> --measure --render`.
+   This is the only way to know (a) whether the marker trigger works on a
+   locked phone and (b) whether the wrap tick is actually gone on Android —
+   headless Chromium on a null audio sink is not a phone speaker.
+2. **[ANDREW] Then judge the seams by ear.** 12 of 67 variants are over 3 dB.
+   Re-cutting them is still worth doing but was never going to fix a tick on
+   its own, so judge them *after* the loop fix is on the phone. Per file:
+   replace from the FTUS masters or re-cut the Vlad source? Both sets are on
+   tikiserv under `~/sounds`. The 4 singing-bowl stitches want replacing.
+3. Remaining v1.0 roadmap, all gated on Andrew: 3 photos (4.3), meditation
+   synthesis (6.5, needs the ElevenLabs key), device pass + tag (5.2).
+
+## Watch out for
+- **Don't "simplify" `loop: false` back to `loop: true`** in
+  `defaultHowlFactory`. CLAUDE.md says why.
+- The `debugMarkers` setting is read once when the Player mounts, so toggling
+  it while the Player is open needs a screen re-entry for the on-screen
+  buttons. The lock-screen button updates immediately.
+- Marker renders land in `notes/marker-renders/`, gitignored.
+
+---
+
 # Session hand-off — 2026-09-11 (machine: tikiserv, unattended overnight run)
 # Newest block. Everything below is prior history; this supersedes it for
 # REPO STATE.
