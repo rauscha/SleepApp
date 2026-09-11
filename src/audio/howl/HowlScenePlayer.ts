@@ -16,6 +16,8 @@ import {
 } from '../SceneCoordinator';
 import { SleepTimer } from '../SleepTimer';
 import { recordEvent } from '../../diagnostics/lifecycleLog';
+import { addMarker, type DebugMarker, type MarkerTrigger } from '../../diagnostics/markers';
+import { getLayerVolumes, getSetting } from '../../storage';
 import { startSwKeepAlive, stopSwKeepAlive } from '../../serviceWorker/keepAlive';
 import {
   clearMediaSession,
@@ -25,6 +27,12 @@ import {
 import type { SceneDefinition } from '../sceneFormat';
 import { HowlScene, defaultHowlFactory } from './HowlScene';
 import type { HowlFactory } from './HowlScene';
+
+/** Holder name for this session's SW keep-alive hold. The ping is
+ *  reference-counted: ContentPlayerScreen holds it under its own name for
+ *  bare narration, and whichever stands down first must not stop the other's
+ *  ping (see serviceWorker/keepAlive). */
+const SW_KEEPALIVE_HOLDER = 'session';
 
 function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
@@ -56,6 +64,10 @@ export class HowlScenePlayer {
    *  Drift can carry it onto the incoming scene instead of quietly
    *  restoring full level at 4am. */
   private sceneGain = 1;
+  /** Wall clock at which the live scene's layers started. Owned here, not
+   *  by a screen, so a debug marker taken at 3am still knows how long the
+   *  scene has been running after the Player was exited and re-entered. */
+  private sceneStartedAt = 0;
   /** Monotonic stamp serializing overlapping start/crossfade/stop requests
    *  down to one winner (review bug M1), same contract as SceneCoordinator. */
   private startGeneration = 0;
@@ -81,6 +93,22 @@ export class HowlScenePlayer {
     });
   }
 
+  /**
+   * Build a scene at the session's current master, carrying the user's saved
+   * Mixer levels in. `undefined` for the variant picker keeps HowlScene's
+   * random default; the levels have to be constructor arguments because
+   * setting them after start() would cancel the fade-in.
+   */
+  private buildScene(definition: SceneDefinition): HowlScene {
+    return new HowlScene(
+      definition,
+      this.master,
+      this.factory,
+      undefined,
+      getLayerVolumes()
+    );
+  }
+
   getCurrentScene(): HowlScene | null {
     return this.current;
   }
@@ -104,7 +132,7 @@ export class HowlScenePlayer {
     if (live && live.id === definition.id) return this.adoptLiveScene(live, options);
     if (live) return this.crossfadeTo(definition, options);
     const generation = ++this.startGeneration;
-    const scene = new HowlScene(definition, this.master, this.factory);
+    const scene = this.buildScene(definition);
     // The build is synchronous, but a stop() could still have bumped the
     // generation between the ++ above and here in a re-entrant call; guard
     // anyway to keep the one-winner contract identical to SceneCoordinator.
@@ -113,6 +141,7 @@ export class HowlScenePlayer {
       return scene;
     }
     this.sceneGain = clamp01(options.firstFadeTarget ?? 1);
+    this.sceneStartedAt = Date.now();
     scene.start(
       options.firstFadeSeconds ?? DEFAULT_SCENE_FIRST_START_SECONDS,
       this.sceneGain
@@ -175,12 +204,16 @@ export class HowlScenePlayer {
     const fade = options.fadeSeconds ?? DEFAULT_SCENE_CROSSFADE_SECONDS;
     const generation = ++this.startGeneration;
     const outgoing = this.current;
-    const incoming = new HowlScene(definition, this.master, this.factory);
+    const incoming = this.buildScene(definition);
     if (generation !== this.startGeneration) {
       incoming.dispose();
       return incoming;
     }
     this.sceneGain = clamp01(options.firstFadeTarget ?? 1);
+    // A crossfade (user switch or Night Drift alike) builds fresh elements
+    // that start from zero, so this is where the live scene's clock begins.
+    // An adoption deliberately leaves it alone.
+    this.sceneStartedAt = Date.now();
     incoming.start(fade, this.sceneGain);
     if (outgoing && !outgoing.isDisposed()) outgoing.fadeAndDispose(fade);
     this.current = incoming;
@@ -199,6 +232,7 @@ export class HowlScenePlayer {
     const stoppedId = this.current.definition.id;
     this.current.fadeAndDispose(fadeSeconds);
     this.current = null;
+    this.sceneStartedAt = 0;
     this.sleepTimer.reset();
     this.cancelDrift();
     recordEvent('scene-stop', stoppedId);
@@ -208,6 +242,36 @@ export class HowlScenePlayer {
   private applySessionTimer(minutes: number | null | undefined): void {
     if (minutes != null && minutes > 0) this.sleepTimer.start(minutes);
     else this.sleepTimer.reset();
+  }
+
+  /** When the live scene's layers started, or 0 with nothing playing. */
+  getSceneStartedAt(): number {
+    return this.sceneStartedAt;
+  }
+
+  /**
+   * Record a debug marker for whatever is playing right now — "I am hearing
+   * something wrong". Lives on the session rather than a screen for the same
+   * reason the sleep timer does: it has to work from the Player, from
+   * Nightstand, and from the OS media-key handler while the phone is locked,
+   * and a screen exit must not take it away.
+   *
+   * Returns null when nothing is playing, so a caller can stay silent rather
+   * than confirm a marker it didn't take.
+   */
+  markMoment(trigger: MarkerTrigger): DebugMarker | null {
+    const scene = this.current;
+    if (!scene || scene.isDisposed()) return null;
+    return addMarker({
+      ts: Date.now(),
+      sceneId: scene.id,
+      sceneLabel: scene.definition.label,
+      sceneStartedAt: this.sceneStartedAt,
+      trigger,
+      layers: scene.snapshot(),
+      masterVolume: this.master,
+      timerStatus: this.sleepTimer.getState().status,
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -283,9 +347,16 @@ export class HowlScenePlayer {
     scene: HowlScene,
     manageMediaSession: boolean
   ): void {
-    startSwKeepAlive();
+    startSwKeepAlive(SW_KEEPALIVE_HOLDER);
+    // Ownership is whatever this call says it is, in both directions. The
+    // flag used to be write-once (`if (manageMediaSession) mediaManaged =
+    // true`), so once a Tonight scene had stamped the session, a bed later
+    // started for a story with `manageMediaSession: false` left it set —
+    // and a subsequent stopScene() then cleared the OS session out from
+    // under the *narration* that legitimately owned it, dropping the
+    // lock-screen transport mid-story. claimMediaSession() sets it back.
+    this.mediaManaged = manageMediaSession;
     if (manageMediaSession) {
-      this.mediaManaged = true;
       setMediaSessionForScene(scene.definition.label, {
         onStop: () => this.stopScene(),
         onPause: () => {
@@ -296,6 +367,13 @@ export class HowlScenePlayer {
           this.current?.resume();
           setMediaSessionPlaybackState('playing');
         },
+        // No "next track" in a sleep scene. Bound to the debug marker when
+        // that setting is on, because it is the only way to flag a bad
+        // moment without unlocking the phone. Explicitly null when off, so
+        // toggling the setting removes the lock-screen button.
+        onNextTrack: getSetting('debugMarkers')
+          ? () => void this.markMoment('media-key')
+          : null,
       });
     }
     if (!this.protectionsEngaged) {
@@ -320,9 +398,21 @@ export class HowlScenePlayer {
     this.engageSessionProtections(this.current, true);
   }
 
+  /**
+   * Re-apply the OS media-session action handlers for the live scene — used
+   * when the debug-marker setting is toggled, so the lock-screen button
+   * appears or disappears without waiting for the next scene start. No-op
+   * unless this session currently owns the media session.
+   */
+  refreshMediaSessionActions(): void {
+    if (!this.current || this.current.isDisposed()) return;
+    if (!this.mediaManaged) return;
+    this.engageSessionProtections(this.current, true);
+  }
+
   private disengageSessionProtections(): void {
     if (!this.protectionsEngaged) return;
-    stopSwKeepAlive();
+    stopSwKeepAlive(SW_KEEPALIVE_HOLDER);
     if (this.mediaManaged) clearMediaSession();
     this.mediaManaged = false;
     this.protectionsEngaged = false;

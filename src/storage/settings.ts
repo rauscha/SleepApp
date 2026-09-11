@@ -37,6 +37,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   anthropicApiKey: null,
   displayMode: 'lush',
   defaultTimerMinutes: null,
+  layerVolumes: {},
+  debugMarkers: false,
   narrationSundown: true,
 };
 
@@ -102,20 +104,46 @@ if (typeof window !== 'undefined') {
   });
 }
 
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+/**
+ * Fill a stored (possibly older, possibly partial) payload out to a full
+ * UserSettings, keeping the defaults for anything missing.
+ *
+ * This walks the keys of DEFAULT_SETTINGS rather than naming them one by
+ * one. The hand-written version silently dropped any key nobody remembered
+ * to add — `narrationSundown` shipped that way, so turning Narration
+ * Sundown off in Settings was forgotten on the next reload, with no error
+ * anywhere to notice. Walking the defaults means a newly added setting
+ * persists the day it is added.
+ *
+ * Values are still type-checked against the default they replace, so a
+ * corrupted or hand-edited payload can't put a string where the app expects
+ * a number. Nested objects (tinnitus, voices) merge key-by-key so a payload
+ * written by an older build keeps the current defaults for keys it lacks.
+ */
 function mergeWithDefaults(partial: Partial<UserSettings>): UserSettings {
   const out = structuredClone(DEFAULT_SETTINGS);
-  if (partial.lastSceneId !== undefined) out.lastSceneId = partial.lastSceneId;
-  if (typeof partial.masterVolume === 'number') out.masterVolume = partial.masterVolume;
-  if (typeof partial.contentBedAttenuation === 'number') {
-    out.contentBedAttenuation = partial.contentBedAttenuation;
-  }
-  if (partial.tinnitus) Object.assign(out.tinnitus, partial.tinnitus);
-  if (partial.voices) Object.assign(out.voices, partial.voices);
-  if (partial.elevenLabsApiKey !== undefined) out.elevenLabsApiKey = partial.elevenLabsApiKey;
-  if (partial.anthropicApiKey !== undefined) out.anthropicApiKey = partial.anthropicApiKey;
-  if (partial.displayMode) out.displayMode = partial.displayMode;
-  if (partial.defaultTimerMinutes !== undefined) {
-    out.defaultTimerMinutes = partial.defaultTimerMinutes;
+  const sink = out as unknown as Record<string, unknown>;
+  const source = partial as unknown as Record<string, unknown>;
+  for (const key of Object.keys(sink)) {
+    const stored = source[key];
+    if (stored === undefined) continue;
+    const fallback = sink[key];
+
+    if (isPlainObject(fallback)) {
+      if (isPlainObject(stored)) Object.assign(fallback, stored);
+      continue;
+    }
+    if (fallback === null) {
+      // A nullable key (lastSceneId, the API keys, defaultTimerMinutes):
+      // null is meaningful, and any primitive is a legitimate stored value.
+      if (stored === null || typeof stored !== 'object') sink[key] = stored;
+      continue;
+    }
+    if (typeof stored === typeof fallback) sink[key] = stored;
   }
   return out;
 }
@@ -131,6 +159,22 @@ export function setSetting<K extends keyof UserSettings>(
   const current = read();
   const next = { ...current, [key]: value };
   write(next);
+}
+
+/** The user's saved Mixer levels, keyed by layer id. */
+export function getLayerVolumes(): Readonly<Record<string, number>> {
+  return read().layerVolumes;
+}
+
+/**
+ * Remember one layer's Mixer level. Read-modify-write in one place so a
+ * caller can't clobber the other layers by rebuilding the map by hand.
+ */
+export function rememberLayerVolume(layerId: string, volume: number): void {
+  const clamped = volume < 0 ? 0 : volume > 1 ? 1 : volume;
+  const current = read().layerVolumes;
+  if (current[layerId] === clamped) return;
+  setSetting('layerVolumes', { ...current, [layerId]: clamped });
 }
 
 export function getAllSettings(): UserSettings {

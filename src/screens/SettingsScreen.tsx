@@ -17,6 +17,19 @@ import {
   type LogEntry,
 } from '../diagnostics/lifecycleLog';
 import {
+  clearMarkers,
+  deleteMarker,
+  exportMarkersJson,
+  formatClock,
+  formatMarkersAsText,
+  getMarkers,
+  isSeamSuspect,
+  setMarkerNote,
+  wrapDistanceSeconds,
+  type DebugMarker,
+} from '../diagnostics/markers';
+import { getHowlScenePlayer } from '../audio/howl/HowlScenePlayer';
+import {
   getOfflineStatus,
   isServiceWorkerControlling,
   precacheOfflineAssets,
@@ -47,7 +60,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
   const engine = useMemo(() => getAudioEngine(), []);
   const [settings, setSettings] = useState(() => getAllSettings());
 
-  function update<K extends 'masterVolume' | 'defaultTimerMinutes' | 'elevenLabsApiKey' | 'anthropicApiKey' | 'narrationSundown'>(
+  function update<K extends 'masterVolume' | 'defaultTimerMinutes' | 'elevenLabsApiKey' | 'anthropicApiKey' | 'narrationSundown' | 'debugMarkers'>(
     key: K,
     value: (typeof settings)[K]
   ) {
@@ -197,6 +210,40 @@ export function SettingsScreen(_props: SettingsScreenProps) {
           expected. Nothing leaves the device unless you share it.
         </p>
         <DiagnosticsPanel />
+
+        <div className="mt-8">
+          <p className="body-text text-stone-300 mb-2">Debug markers</p>
+          <p className="body-text text-stone-300 mb-3">
+            Adds a “Mark this moment” button to the player and binds your
+            headset’s next-track button to it, so you can flag something you
+            hear in the night without unlocking the phone. Each mark records
+            which file every layer was playing and exactly where it was in
+            its loop.
+          </p>
+          <button
+            onClick={() => {
+              const next = !settings.debugMarkers;
+              update('debugMarkers', next);
+              // Add/remove the lock-screen button on whatever is playing
+              // right now, rather than waiting for the next scene start.
+              getHowlScenePlayer().refreshMediaSessionActions();
+            }}
+            aria-pressed={settings.debugMarkers}
+            className={[
+              'px-4 py-2 rounded-soft ui-label transition-colors duration-slow',
+              settings.debugMarkers
+                ? 'bg-moon-600 text-stone-50'
+                : 'bg-ink-700 text-stone-300 hover:bg-ink-600',
+            ].join(' ')}
+            style={{ minHeight: 44, minWidth: 44 }}
+          >
+            {settings.debugMarkers ? 'On' : 'Off'}
+          </button>
+
+          <div className="mt-5">
+            <MarkersPanel />
+          </div>
+        </div>
       </section>
 
       <div className="h-px bg-ink-700 mb-8" />
@@ -468,6 +515,189 @@ function DiagnosticsPanel() {
         </div>
       )}
     </div>
+  );
+}
+
+function MarkersPanel() {
+  const [markers, setMarkers] = useState<DebugMarker[]>(() => getMarkers());
+  const [status, setStatus] = useState<string | null>(null);
+
+  const refresh = () => setMarkers(getMarkers());
+  const newestFirst = [...markers].reverse();
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(formatMarkersAsText());
+      setStatus('Copied to clipboard.');
+    } catch {
+      setStatus('Copy failed — try Share instead.');
+    }
+  };
+
+  const handleShare = async () => {
+    const text = formatMarkersAsText();
+    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+      try {
+        await navigator.share({ title: 'Sleep app debug markers', text });
+        setStatus('Shared.');
+        return;
+      } catch (err) {
+        if ((err as Error)?.name !== 'AbortError') {
+          setStatus('Share failed — try Copy instead.');
+        }
+        return;
+      }
+    }
+    void handleCopy();
+  };
+
+  const download = (body: string, ext: string, mime: string) => {
+    const blob = new Blob([body], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = `sleep-markers-${stamp}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus(`Downloaded .${ext}`);
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="body-text text-stone-300">
+        {markers.length} {markers.length === 1 ? 'marker' : 'markers'} saved
+      </p>
+
+      <div className="flex flex-wrap gap-2">
+        <DiagButton onClick={() => void handleShare()}>Share…</DiagButton>
+        <DiagButton onClick={() => void handleCopy()}>Copy</DiagButton>
+        <DiagButton
+          onClick={() => download(formatMarkersAsText(), 'txt', 'text/plain')}
+        >
+          Download text
+        </DiagButton>
+        <DiagButton
+          onClick={() =>
+            download(exportMarkersJson(), 'json', 'application/json')
+          }
+        >
+          Download JSON
+        </DiagButton>
+        <DiagButton
+          onClick={() => {
+            clearMarkers();
+            refresh();
+            setStatus('Markers cleared.');
+          }}
+          variant="quiet"
+        >
+          Clear
+        </DiagButton>
+        <DiagButton onClick={refresh} variant="quiet">
+          Refresh
+        </DiagButton>
+      </div>
+
+      {status && (
+        <p className="body-text text-moon-300" role="status">
+          {status}
+        </p>
+      )}
+
+      {newestFirst.length > 0 && (
+        <ul className="space-y-3 max-h-96 overflow-y-auto">
+          {newestFirst.map((m) => (
+            <MarkerRow
+              key={m.id}
+              marker={m}
+              onChanged={refresh}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** One marker: when, which scene, and where every layer was in its loop.
+ *  The layers nearest their wrap are called out — those are the ones to
+ *  listen to first when a seam is the suspected cause. */
+function MarkerRow({
+  marker,
+  onChanged,
+}: {
+  marker: DebugMarker;
+  onChanged: () => void;
+}) {
+  const [note, setNote] = useState(marker.note ?? '');
+  return (
+    <li className="bg-ink-800 rounded-soft p-3">
+      <div className="flex justify-between items-start gap-2 mb-2">
+        <div>
+          <p className="body-text text-stone-200">
+            {new Date(marker.ts).toLocaleTimeString()}{' '}
+            <span className="text-stone-300">
+              · {marker.sceneLabel} · {formatClock(marker.elapsedMs)} in
+            </span>
+          </p>
+          <p className="ui-label text-stone-300">via {marker.trigger}</p>
+        </div>
+        <button
+          onClick={() => {
+            deleteMarker(marker.id);
+            onChanged();
+          }}
+          className="ui-label text-stone-300 hover:text-stone-100 px-2 py-2"
+          style={{ minHeight: 44, minWidth: 44 }}
+          aria-label={`Delete marker from ${new Date(marker.ts).toLocaleTimeString()}`}
+        >
+          delete
+        </button>
+      </div>
+
+      <ul className="ui-label font-mono text-stone-300 space-y-0.5 mb-2">
+        {marker.layers.map((l, i) => {
+          const d = wrapDistanceSeconds(l.seekSeconds, l.periodSeconds);
+          const suspect = isSeamSuspect(marker, l);
+          return (
+            <li key={`${l.id}-${i}`} className="leading-snug break-words">
+              <span className={suspect ? 'text-moon-300' : 'text-stone-300'}>
+                {l.label}
+              </span>{' '}
+              {l.seekSeconds === null ? '?' : l.seekSeconds.toFixed(1)}s /{' '}
+              {l.periodSeconds}s
+              {d !== null && (
+                <span className={suspect ? 'text-moon-300' : 'text-stone-300'}>
+                  {suspect
+                    ? ` — ${d.toFixed(1)}s from wrap`
+                    : ` (${d.toFixed(0)}s from wrap)`}
+                </span>
+              )}
+              {!l.playing && (
+                <span className="text-stone-200"> · not playing</span>
+              )}
+              <span className="block text-stone-400">{l.url}</span>
+            </li>
+          );
+        })}
+      </ul>
+
+      <input
+        type="text"
+        value={note}
+        placeholder="what did you hear?"
+        onChange={(e) => setNote(e.target.value)}
+        onBlur={() => {
+          setMarkerNote(marker.id, note);
+          onChanged();
+        }}
+        className="w-full bg-ink-900 text-stone-200 body-text rounded-soft
+                   px-3 py-2 border border-ink-600 placeholder-stone-500
+                   focus:outline-none focus:border-moon-600 transition-colors"
+        aria-label="Note for this marker"
+      />
+    </li>
   );
 }
 

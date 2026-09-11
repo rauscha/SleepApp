@@ -25,6 +25,15 @@ export interface SceneMediaHandlers {
    * Map to whatever the app considers a soft-stop (e.g. fade-and-stop).
    */
   onPause?: () => void;
+  /**
+   * Called for the next-track action. There is no "next track" in a sleep
+   * scene, so this is bound to the debug-marker trigger: it is the only way
+   * to flag a bad moment without unlocking the phone — a headset button or
+   * the lock-screen widget, eyes closed. Pass null to remove the handler
+   * (and with it the button) when the setting is off; undefined leaves any
+   * existing handler alone, like the others here.
+   */
+  onNextTrack?: (() => void) | null;
 }
 
 function hasMediaSession(): boolean {
@@ -64,6 +73,9 @@ export function setMediaSessionForScene(
   if (handlers.onPause !== undefined) {
     safeSetActionHandler('pause', handlers.onPause);
   }
+  if (handlers.onNextTrack !== undefined) {
+    safeSetActionHandler('nexttrack', handlers.onNextTrack);
+  }
 }
 
 /**
@@ -98,6 +110,7 @@ export function clearMediaSession(): void {
   safeSetActionHandler('stop', null);
   safeSetActionHandler('play', null);
   safeSetActionHandler('pause', null);
+  safeSetActionHandler('nexttrack', null);
 }
 
 function safeSetActionHandler(

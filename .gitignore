@@ -68,3 +68,7 @@ reviews/
 # Python bytecode cache — tools/ is a script dir, not a package
 __pycache__/
 *.pyc
+
+# Re-rendered debug-marker excerpts (tools/review-markers.py --render).
+# Generated from shipped audio on demand; large and never reviewed as source.
+notes/marker-renders/

@@ -6,6 +6,8 @@ export * from './types';
 export {
   getSetting,
   setSetting,
+  getLayerVolumes,
+  rememberLayerVolume,
   getAllSettings,
   resetSettings,
   DEFAULT_SETTINGS,

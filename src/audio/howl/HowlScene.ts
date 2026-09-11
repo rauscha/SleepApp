@@ -28,6 +28,11 @@ import type {
   SceneVariantDefinition,
 } from '../sceneFormat';
 
+/** Length of the pre-rendered synth-bed carrier loops in
+ *  `public/audio/_bed/*.opus` — 887s, the 5th prime, coprime to every
+ *  element offset so the bed never resyncs with them. */
+export const SYNTH_BED_LOOP_SECONDS = 887;
+
 /** Quick (non-audible-jump) ramp for slider / cancel-fade restores. */
 const QUICK_RAMP_SECONDS = 0.4;
 /** Slack after a fade-out before the element is actually stopped + freed. */
@@ -54,6 +59,14 @@ export interface HowlLike {
   /** Getter (no arg) returns current group volume; setter applies it. */
   volume(level?: number): number;
   playing(): boolean;
+  /**
+   * Playback position in seconds. Optional because it is only used for
+   * diagnostics (the debug markers): Howler returns the element's own
+   * `currentTime`, which is the only trustworthy answer for "where in its
+   * loop is this layer right now" — elapsed-time arithmetic drifts across a
+   * night of OS pauses and Howler's loop restarts.
+   */
+  seek?(): number;
 }
 
 export interface HowlFactoryOptions {
@@ -107,9 +120,34 @@ function randomVariant(el: SceneElementDefinition): SceneVariantDefinition {
 // HowlLayer — one looping element, exposing the Layer surface PlayerScreen's
 // mixer reads (id / label / getVolume / setVolume).
 
+/** One layer's state at an instant — what a debug marker records. */
+export interface HowlLayerSnapshot {
+  id: string;
+  label: string;
+  /** The variant file this layer actually picked for tonight. */
+  url: string;
+  /** The layer's loop length in seconds (its element's prime offset; 887
+   *  for the synth-bed carrier). */
+  periodSeconds: number;
+  /** Live playback position in seconds, or null if the element can't be
+   *  read (not started, disposed, or a Howl without seek support). */
+  seekSeconds: number | null;
+  /** Mixer level for this layer, in [0,1]. */
+  volume: number;
+  /** Outer multiplier applied on top (master x scene gain). */
+  outer: number;
+  /** Whether the element reports itself as playing. */
+  playing: boolean;
+}
+
 export class HowlLayer {
   readonly id: string;
   readonly label: string;
+  /** Source url of the picked variant — recorded so a marker names the
+   *  exact file that was in the user's ears. */
+  readonly url: string;
+  /** This layer's loop length in seconds. */
+  readonly periodSeconds: number;
   private readonly howl: HowlLike;
   /** This layer's mix level in [0,1] (the value the mixer slider shows). */
   private target: number;
@@ -136,10 +174,13 @@ export class HowlLayer {
     src: string[],
     target: number,
     outer: number,
-    factory: HowlFactory
+    factory: HowlFactory,
+    periodSeconds = 0
   ) {
     this.id = id;
     this.label = label;
+    this.url = src[0] ?? '';
+    this.periodSeconds = periodSeconds;
     this.target = clamp01(target);
     this.outer = clamp01(outer);
     this.howl = factory({
@@ -210,6 +251,42 @@ export class HowlLayer {
     return this.target;
   }
 
+  /**
+   * Read the element's live playback position. Never inferred from wall
+   * time: an OS audio-focus pause, a lock-screen pause, or Howler's own
+   * loop restart all move the element's clock independently of ours, and
+   * the whole point of a marker is to say exactly where in this file the
+   * user heard something.
+   */
+  getSeekSeconds(): number | null {
+    if (!this.started || this.disposed) return null;
+    try {
+      const raw = this.howl.seek?.();
+      return typeof raw === 'number' && Number.isFinite(raw) ? raw : null;
+    } catch {
+      return null;
+    }
+  }
+
+  snapshot(): HowlLayerSnapshot {
+    let playing = false;
+    try {
+      playing = this.howl.playing();
+    } catch {
+      playing = false;
+    }
+    return {
+      id: this.id,
+      label: this.label,
+      url: this.url,
+      periodSeconds: this.periodSeconds,
+      seekSeconds: this.getSeekSeconds(),
+      volume: this.target,
+      outer: this.outer,
+      playing,
+    };
+  }
+
   /** Mixer slider — set this layer's mix level. */
   setVolume(v: number): void {
     // An explicit mixer action is a deliberate user choice: it supersedes any
@@ -255,8 +332,22 @@ export class HowlLayer {
     if (this.started && !this.disposed) this.howl.pause();
   }
 
+  /**
+   * Resume a paused layer. Guarded on `playing()` because Howler's `play()`
+   * with no sound id does NOT mean "resume this element": `_inactiveSound()`
+   * only reuses a sound that has ended or is paused, and when every sound is
+   * already playing it CREATES A NEW ONE. On the html5 path that takes a
+   * second element out of Howler's pool of ten and plays a second copy of
+   * the same loop at a random offset against the first — a layer roughly
+   * +6 dB and phasing, for the rest of the night, with nothing tracking the
+   * extra element to stop it. The OS fires `play` on an already-playing
+   * session freely (lock-screen tap, headset button, audio-focus return),
+   * so this is reachable without any bug elsewhere.
+   */
   resume(): void {
-    if (this.started && !this.disposed) this.howl.play();
+    if (!this.started || this.disposed) return;
+    if (this.howl.playing()) return;
+    this.howl.play();
   }
 
   /** Fade out, then free the element. */
@@ -303,11 +394,19 @@ export class HowlScene {
   private sceneGain = 1;
   private disposed = false;
 
+  /**
+   * @param volumeOverrides Saved Mixer levels keyed by layer id. Applied as
+   *   each layer's *initial* target rather than set afterwards: a post-start
+   *   setVolume() would call howl.volume(), and Howler treats that as a
+   *   cancel of the running fade (_stopFade), so the scene would snap to
+   *   full level instead of fading in from silence.
+   */
   constructor(
     definition: SceneDefinition,
     master: number,
     factory: HowlFactory = defaultHowlFactory,
-    pickVariant: (el: SceneElementDefinition) => SceneVariantDefinition = randomVariant
+    pickVariant: (el: SceneElementDefinition) => SceneVariantDefinition = randomVariant,
+    volumeOverrides: Readonly<Record<string, number>> = {}
   ) {
     this.id = definition.id;
     this.definition = definition;
@@ -318,28 +417,38 @@ export class HowlScene {
     // offsets so it never resyncs with them). It rides underneath like the
     // old Web-Audio NoiseGenerator bed, just played natively so it survives
     // the night with everything else.
+    const mix = (layerId: string, fallback: number): number => {
+      const saved = volumeOverrides[layerId];
+      return typeof saved === 'number' && Number.isFinite(saved)
+        ? clamp01(saved)
+        : fallback;
+    };
     if (definition.synth) {
+      const id = `${definition.id}:synth-bed`;
       layers.push(
         new HowlLayer(
-          `${definition.id}:synth-bed`,
+          id,
           'Synth bed',
           [resolvePublicUrl(`/audio/_bed/${definition.synth.color}.opus`)],
-          definition.synth.defaultVolume,
+          mix(id, definition.synth.defaultVolume),
           this.master,
-          factory
+          factory,
+          SYNTH_BED_LOOP_SECONDS
         )
       );
     }
     for (const el of definition.elements) {
       const variant = pickVariant(el);
+      const id = `${definition.id}:${el.id}`;
       layers.push(
         new HowlLayer(
-          `${definition.id}:${el.id}`,
+          id,
           el.label,
           [resolvePublicUrl(variant.url)],
-          el.defaultVolume,
+          mix(id, el.defaultVolume),
           this.master,
-          factory
+          factory,
+          el.loopOffsetSeconds
         )
       );
     }
@@ -352,6 +461,11 @@ export class HowlScene {
 
   getLayers(): HowlLayer[] {
     return this.layers;
+  }
+
+  /** Every layer's live state — what a debug marker records. */
+  snapshot(): HowlLayerSnapshot[] {
+    return this.layers.map((l) => l.snapshot());
   }
 
   setLayerVolume(id: string, v: number): void {

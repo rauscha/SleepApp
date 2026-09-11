@@ -3,19 +3,28 @@
 // DOM media element.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { HowlScene, howlFormats } from './HowlScene';
+import { HowlScene, howlFormats, SYNTH_BED_LOOP_SECONDS } from './HowlScene';
 import type { HowlLike, HowlFactory, HowlFactoryOptions } from './HowlScene';
 import {
   HowlScenePlayer,
   __resetHowlScenePlayerForTests,
 } from './HowlScenePlayer';
 import type { SceneDefinition } from '../sceneFormat';
+import {
+  __resetMarkersForTests,
+  getMarkers,
+  seamSuspects,
+} from '../../diagnostics/markers';
+import { resetSettings, setSetting } from '../../storage';
 
 class FakeHowl implements HowlLike {
   static all: FakeHowl[] = [];
   readonly opts: HowlFactoryOptions;
   vol = 0;
   played = false;
+  /** How many times play() was called — a second call while already
+   *  playing is what creates a duplicate element in real Howler. */
+  playCalls = 0;
   stopped = false;
   unloaded = false;
   paused = false;
@@ -28,6 +37,7 @@ class FakeHowl implements HowlLike {
     FakeHowl.all.push(this);
   }
   play(): number {
+    this.playCalls += 1;
     this.played = true;
     this.paused = false;
     // Real html5 Howls fire onplay asynchronously once they can play; the
@@ -62,6 +72,13 @@ class FakeHowl implements HowlLike {
   }
   playing(): boolean {
     return this.played && !this.stopped && !this.paused;
+  }
+  /** Scripted playback position; mirrors Howler's seek() getter. */
+  seekValue = 0;
+  seekThrows = false;
+  seek(): number {
+    if (this.seekThrows) throw new Error('no element');
+    return this.seekValue;
   }
 }
 
@@ -103,6 +120,9 @@ function makeDef(overrides: Partial<SceneDefinition> = {}): SceneDefinition {
 beforeEach(() => {
   FakeHowl.all = [];
   __resetHowlScenePlayerForTests();
+  localStorage.clear();
+  __resetMarkersForTests();
+  resetSettings();
 });
 
 describe('howlFormats (O2 — Howler format is positional, not a fallback list)', () => {
@@ -544,6 +564,193 @@ describe('HowlScenePlayer — Night Drift carries the session forward', () => {
   });
 });
 
+describe('HowlScene — snapshot for debug markers', () => {
+  it('reports each layer with its file, loop period and live position', () => {
+    const scene = new HowlScene(makeDef(), 0.8, fakeFactory, firstVariant);
+    scene.start(0);
+    bySrc('rain-1').seekValue = 12.5;
+    bySrc('wind-1').seekValue = 400;
+    bySrc('brown').seekValue = 800;
+
+    const snap = scene.snapshot();
+
+    expect(snap.map((l) => l.id)).toEqual([
+      'test-scene:synth-bed',
+      'test-scene:rain',
+      'test-scene:wind',
+    ]);
+    const rain = snap.find((l) => l.id === 'test-scene:rain')!;
+    expect(rain.label).toBe('Rain');
+    expect(rain.url).toContain('rain-1.mp3');
+    expect(rain.periodSeconds).toBe(251);
+    expect(rain.seekSeconds).toBe(12.5);
+    expect(rain.volume).toBe(0.5);
+    expect(rain.outer).toBe(0.8);
+    expect(rain.playing).toBe(true);
+  });
+
+  it('gives the synth bed its 887s carrier period', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    scene.start(0);
+    const bed = scene.snapshot().find((l) => l.id === 'test-scene:synth-bed')!;
+    expect(bed.periodSeconds).toBe(SYNTH_BED_LOOP_SECONDS);
+    expect(bed.url).toContain('/audio/_bed/brown.opus');
+  });
+
+  it('reports a null position rather than guessing when the element cannot be read', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    scene.start(0);
+    bySrc('rain-1').seekThrows = true;
+    const rain = scene.snapshot().find((l) => l.id === 'test-scene:rain')!;
+    expect(rain.seekSeconds).toBeNull();
+  });
+
+  it('reports a null position for a layer that never started', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    const rain = scene.snapshot().find((l) => l.id === 'test-scene:rain')!;
+    expect(rain.seekSeconds).toBeNull();
+    expect(rain.playing).toBe(false);
+  });
+
+  it('tracks the saved mix level and the outer gain', () => {
+    const scene = new HowlScene(makeDef(), 0.5, fakeFactory, firstVariant, {
+      'test-scene:rain': 0.25,
+    });
+    scene.start(0, 0.6); // a 3 a.m. Door resume
+    const rain = scene.snapshot().find((l) => l.id === 'test-scene:rain')!;
+    expect(rain.volume).toBe(0.25);
+    expect(rain.outer).toBeCloseTo(0.3, 5);
+  });
+});
+
+describe('HowlScene — saved Mixer levels', () => {
+  it('starts a layer at its saved level instead of the scene default', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant, {
+      'test-scene:rain': 0.2,
+      'test-scene:synth-bed': 0.05,
+    });
+    scene.start(0);
+
+    // Applied as the initial target, so the fade-in still runs from silence
+    // to the saved level — not set afterwards, which would cancel the fade.
+    expect(bySrc('rain-1').fades.at(-1)).toEqual([0, 0.2, 0]);
+    expect(bySrc('brown').fades.at(-1)).toEqual([0, 0.05, 0]);
+    // Untouched layers keep the scene JSON's voicing.
+    expect(bySrc('wind-1').fades.at(-1)).toEqual([0, 0.3, 0]);
+  });
+
+  it('ignores a saved level for a layer that is not in this scene', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant, {
+      'other-scene:rain': 0.01,
+    });
+    scene.start(0);
+    expect(bySrc('rain-1').fades.at(-1)).toEqual([0, 0.5, 0]);
+  });
+
+  it('ignores a corrupt saved level', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant, {
+      'test-scene:rain': Number.NaN,
+    } as Record<string, number>);
+    scene.start(0);
+    expect(bySrc('rain-1').fades.at(-1)).toEqual([0, 0.5, 0]);
+  });
+
+  it('clamps a saved level that is out of range', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant, {
+      'test-scene:rain': 3,
+    });
+    scene.start(0);
+    expect(bySrc('rain-1').fades.at(-1)).toEqual([0, 1, 0]);
+  });
+});
+
+describe('HowlScene — resume() must not stack a second element', () => {
+  it('is a no-op on a layer that is already playing', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    scene.start(0);
+    const built = FakeHowl.all.length;
+    const rain = bySrc('rain-1');
+    expect(rain.playing()).toBe(true);
+    const playsBefore = rain.playCalls;
+
+    // The OS fires play on an already-playing session freely — a
+    // lock-screen tap, a headset button, an audio-focus return.
+    scene.resume();
+
+    expect(rain.playCalls).toBe(playsBefore);
+    expect(FakeHowl.all).toHaveLength(built);
+  });
+
+  it('still resumes a layer that was paused', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    scene.start(0);
+    const rain = bySrc('rain-1');
+    scene.pause();
+    expect(rain.playing()).toBe(false);
+    const playsBefore = rain.playCalls;
+
+    scene.resume();
+
+    expect(rain.playCalls).toBe(playsBefore + 1);
+    expect(rain.playing()).toBe(true);
+  });
+
+  it('does not resume a disposed layer', () => {
+    const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant);
+    scene.start(0);
+    const rain = bySrc('rain-1');
+    scene.pause();
+    scene.dispose();
+    const playsBefore = rain.playCalls;
+    scene.resume();
+    expect(rain.playCalls).toBe(playsBefore);
+  });
+});
+
+describe('HowlScenePlayer — media-session ownership is not write-once', () => {
+  it('gives up ownership when a bed starts for a screen that owns the session', async () => {
+    const media = installMediaSessionMock();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      // A Tonight scene: the session stamps the OS media session itself.
+      await player.startScene(makeDef({ id: 'tonight', label: 'Tonight' }), {
+        firstFadeSeconds: 0,
+      });
+      expect((media.session.metadata as { title: string }).title).toBe('Tonight');
+
+      // The user opens a story whose bed is a different scene. The content
+      // player owns the OS session for the narration from here.
+      await player.startScene(makeDef({ id: 'bed', label: 'Bed' }), {
+        fadeSeconds: 0,
+        manageMediaSession: false,
+      });
+      media.session.metadata = { title: 'A story' };
+
+      // The story's bed is told to stop. With the old write-once flag the
+      // session still believed it owned the OS session and wiped the
+      // narration's metadata + transport here, mid-story.
+      player.stopScene(0);
+
+      expect((media.session.metadata as { title: string }).title).toBe('A story');
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('still clears the session it does own', async () => {
+    const media = installMediaSessionMock();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef({ label: 'Mine' }), { firstFadeSeconds: 0 });
+      expect((media.session.metadata as { title: string }).title).toBe('Mine');
+      player.stopScene(0);
+      expect(media.session.metadata).toBeNull();
+    } finally {
+      media.restore();
+    }
+  });
+});
+
 describe('HowlScenePlayer — media-session hand-back', () => {
   it('claims the OS session for a bed the content player left playing', async () => {
     const media = installMediaSessionMock();
@@ -573,6 +780,174 @@ describe('HowlScenePlayer — media-session hand-back', () => {
       // No-op with nothing playing.
       player.claimMediaSession();
       expect(media.session.metadata).toBeNull();
+    } finally {
+      media.restore();
+    }
+  });
+});
+
+describe('HowlScenePlayer — debug markers', () => {
+  it('records what every layer was playing and where it was', async () => {
+    const player = new HowlScenePlayer(fakeFactory);
+    await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+    player.setMasterVolume(0.4);
+    lastBySrc('rain-1').seekValue = 248;
+    lastBySrc('wind-1').seekValue = 100;
+
+    const marker = player.markMoment('nightstand')!;
+
+    expect(marker.sceneId).toBe('test-scene');
+    expect(marker.sceneLabel).toBe('Test Scene');
+    expect(marker.trigger).toBe('nightstand');
+    expect(marker.masterVolume).toBe(0.4);
+    const rain = marker.layers.find((l) => l.id === 'test-scene:rain')!;
+    expect(rain.seekSeconds).toBe(248);
+    expect(rain.periodSeconds).toBe(251);
+    expect(rain.url).toContain('rain-1.mp3');
+    // 248s into a 251s loop: 3s from the wrap, which is the whole point.
+    expect(seamSuspects(marker).map((l) => l.id)).toEqual(['test-scene:rain']);
+    expect(getMarkers()).toHaveLength(1);
+  });
+
+  it('returns null with nothing playing, and takes no marker', async () => {
+    const player = new HowlScenePlayer(fakeFactory);
+    expect(player.markMoment('media-key')).toBeNull();
+
+    await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+    player.stopScene(0);
+    expect(player.markMoment('media-key')).toBeNull();
+    expect(getMarkers()).toEqual([]);
+  });
+
+  it('measures elapsed from the scene start, across a screen exit', async () => {
+    vi.useFakeTimers();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+      vi.advanceTimersByTime(90 * 60_000);
+
+      // The Player was exited and re-entered in between — an adoption, which
+      // must not restart the clock the marker reports against.
+      await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+      const marker = player.markMoment('lush')!;
+
+      expect(Math.round(marker.elapsedMs / 60_000)).toBe(90);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('restarts the clock when a drift builds a fresh scene', async () => {
+    vi.useFakeTimers();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      player.setSceneResolver(() => Promise.resolve(makeDef({ id: 'night' })));
+      await player.startScene(
+        makeDef({ id: 'evening', driftsTo: { sceneId: 'night', afterMinutes: 30 } }),
+        { firstFadeSeconds: 0 }
+      );
+      await vi.advanceTimersByTimeAsync(30 * 60_000 + 100);
+      expect(player.getCurrentScene()?.id).toBe('night');
+
+      await vi.advanceTimersByTimeAsync(5 * 60_000);
+      const marker = player.markMoment('lush')!;
+
+      // The drifted-in layers are new elements that started at the drift,
+      // so "5 minutes in" is what locates their audio, not 35.
+      expect(Math.round(marker.elapsedMs / 60_000)).toBe(5);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('records the live sleep-timer state with the marker', async () => {
+    const player = new HowlScenePlayer(fakeFactory);
+    await player.startScene(makeDef(), {
+      firstFadeSeconds: 0,
+      sleepTimerMinutes: 60,
+    });
+    expect(player.markMoment('lush')!.timerStatus).toBe('running');
+  });
+});
+
+describe('HowlScenePlayer — media-key marker trigger', () => {
+  it('offers no next-track button while the setting is off', async () => {
+    const media = installMediaSessionMock();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+      expect(media.handlers.nexttrack).toBeNull();
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('takes a marker when the OS fires next-track', async () => {
+    const media = installMediaSessionMock();
+    try {
+      setSetting('debugMarkers', true);
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+
+      expect(typeof media.handlers.nexttrack).toBe('function');
+      (media.handlers.nexttrack as () => void)();
+
+      expect(getMarkers()).toHaveLength(1);
+      expect(getMarkers()[0]!.trigger).toBe('media-key');
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('adds and removes the button when the setting is toggled mid-scene', async () => {
+    const media = installMediaSessionMock();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+      expect(media.handlers.nexttrack).toBeNull();
+
+      setSetting('debugMarkers', true);
+      player.refreshMediaSessionActions();
+      expect(typeof media.handlers.nexttrack).toBe('function');
+
+      setSetting('debugMarkers', false);
+      player.refreshMediaSessionActions();
+      expect(media.handlers.nexttrack).toBeNull();
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('does not steal the session back when another screen owns it', async () => {
+    const media = installMediaSessionMock();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), {
+        firstFadeSeconds: 0,
+        manageMediaSession: false,
+      });
+      media.session.metadata = { title: 'A story' };
+
+      setSetting('debugMarkers', true);
+      player.refreshMediaSessionActions();
+
+      expect((media.session.metadata as { title: string }).title).toBe('A story');
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('clears the next-track handler when the scene stops', async () => {
+    const media = installMediaSessionMock();
+    try {
+      setSetting('debugMarkers', true);
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+      expect(typeof media.handlers.nexttrack).toBe('function');
+
+      player.stopScene(0);
+
+      expect(media.handlers.nexttrack).toBeNull();
     } finally {
       media.restore();
     }

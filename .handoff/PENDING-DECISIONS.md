@@ -1,5 +1,24 @@
 # Pending decisions / queued actions
 
+## 0B. UPDATED 2026-09-11 — review done, markers built, seams still open
+
+- **Engine review: DONE.** Andrew ran it from the CLI on 2026-09-10. Its top
+  four findings landed on main (60e3e95); the four its DECISIONS entry left
+  unfixed were cleared on `overnight/2026-09-11`, along with two persistence
+  gaps in the same area.
+- **Debug markers: BUILT** on `overnight/2026-09-11` (PR open, supersedes
+  #18). The three §5 questions were answered by building the recommended
+  option: media key yes but behind a default-off setting, stories yes (four
+  lines), native-loop fix kept separate. All three stay reversible — say the
+  word and any of them comes out.
+- **[ANDREW] Device pass is the one thing left for the markers.** Nothing
+  else can confirm the trigger works in the dark on a locked phone.
+- **[ANDREW] Per flagged seam: replace from FTUS or re-cut Vlad?** Sources
+  are on tikiserv (`~/sounds`), so either runs here. 0A's list is unchanged
+  (12 of 67 over 3 dB on 2026-09-08).
+- **Native-loop fix is queued, not done** — DECISIONS.md 2026-09-11 FINDING.
+  It may mean the seam work so far has been fixing half the problem.
+
 ## 0A. RESOLVED 2026-09-03 — the 2026-08-18 FTUS follow-ups
 
 All four items from the 2026-08-18 block are closed (log in
