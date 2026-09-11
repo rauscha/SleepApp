@@ -297,8 +297,16 @@ export function ContentPlayerScreen({
       // showed this title over audio that nothing on the lock screen could
       // silence, and after narration ended the pause button was inert too.
       onStop: stopAllAudio,
+      // The bed is what carries seams through the night, and this screen
+      // owns the OS session while narration plays — so the marker trigger
+      // has to be re-offered here or it would vanish for the whole story.
+      // Null when the setting is off, to take the button back off the lock
+      // screen. Reads the setting at stamp time, like the session does.
+      onNextTrack: getSetting('debugMarkers')
+        ? () => void coordinator.markMoment('media-key')
+        : null,
     });
-  }, [title, state, bedStopped, stopAllAudio]);
+  }, [title, state, bedStopped, stopAllAudio, coordinator]);
 
   // Hand the OS media session over exactly once, as this screen goes away —
   // deliberately a separate effect from the stamping above so it fires on

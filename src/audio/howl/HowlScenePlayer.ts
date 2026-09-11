@@ -17,7 +17,7 @@ import {
 import { SleepTimer } from '../SleepTimer';
 import { recordEvent } from '../../diagnostics/lifecycleLog';
 import { addMarker, type DebugMarker, type MarkerTrigger } from '../../diagnostics/markers';
-import { getLayerVolumes } from '../../storage';
+import { getLayerVolumes, getSetting } from '../../storage';
 import { startSwKeepAlive, stopSwKeepAlive } from '../../serviceWorker/keepAlive';
 import {
   clearMediaSession,
@@ -367,6 +367,13 @@ export class HowlScenePlayer {
           this.current?.resume();
           setMediaSessionPlaybackState('playing');
         },
+        // No "next track" in a sleep scene. Bound to the debug marker when
+        // that setting is on, because it is the only way to flag a bad
+        // moment without unlocking the phone. Explicitly null when off, so
+        // toggling the setting removes the lock-screen button.
+        onNextTrack: getSetting('debugMarkers')
+          ? () => void this.markMoment('media-key')
+          : null,
       });
     }
     if (!this.protectionsEngaged) {
@@ -388,6 +395,18 @@ export class HowlScenePlayer {
    */
   claimMediaSession(): void {
     if (!this.current || this.current.isDisposed()) return;
+    this.engageSessionProtections(this.current, true);
+  }
+
+  /**
+   * Re-apply the OS media-session action handlers for the live scene — used
+   * when the debug-marker setting is toggled, so the lock-screen button
+   * appears or disappears without waiting for the next scene start. No-op
+   * unless this session currently owns the media session.
+   */
+  refreshMediaSessionActions(): void {
+    if (!this.current || this.current.isDisposed()) return;
+    if (!this.mediaManaged) return;
     this.engageSessionProtections(this.current, true);
   }
 

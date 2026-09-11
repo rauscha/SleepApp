@@ -38,6 +38,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   displayMode: 'lush',
   defaultTimerMinutes: null,
   layerVolumes: {},
+  debugMarkers: false,
   narrationSundown: true,
 };
 

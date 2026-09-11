@@ -60,6 +60,15 @@ export interface UserSettings {
    */
   layerVolumes: Record<string, number>;
 
+  /**
+   * Debug markers: show a "Mark" control in the Player and bind the OS
+   * media session's next-track action to it, so a bad moment in the night
+   * can be timestamped without reaching for a stopwatch. Off by default —
+   * it puts a control on the lock screen, which the brief's quiet-by-default
+   * stance doesn't want for everyone.
+   */
+  debugMarkers: boolean;
+
   /** Narration Sundown: ramp a story's narration down over its final third
    *  so the voice submerges under the paired scene bed instead of ending on
    *  a hard stop (a state change is a wake event). Default on. */

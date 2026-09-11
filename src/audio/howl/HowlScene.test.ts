@@ -15,6 +15,7 @@ import {
   getMarkers,
   seamSuspects,
 } from '../../diagnostics/markers';
+import { resetSettings, setSetting } from '../../storage';
 
 class FakeHowl implements HowlLike {
   static all: FakeHowl[] = [];
@@ -121,6 +122,7 @@ beforeEach(() => {
   __resetHowlScenePlayerForTests();
   localStorage.clear();
   __resetMarkersForTests();
+  resetSettings();
 });
 
 describe('howlFormats (O2 — Howler format is positional, not a fallback list)', () => {
@@ -865,5 +867,89 @@ describe('HowlScenePlayer — debug markers', () => {
       sleepTimerMinutes: 60,
     });
     expect(player.markMoment('lush')!.timerStatus).toBe('running');
+  });
+});
+
+describe('HowlScenePlayer — media-key marker trigger', () => {
+  it('offers no next-track button while the setting is off', async () => {
+    const media = installMediaSessionMock();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+      expect(media.handlers.nexttrack).toBeNull();
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('takes a marker when the OS fires next-track', async () => {
+    const media = installMediaSessionMock();
+    try {
+      setSetting('debugMarkers', true);
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+
+      expect(typeof media.handlers.nexttrack).toBe('function');
+      (media.handlers.nexttrack as () => void)();
+
+      expect(getMarkers()).toHaveLength(1);
+      expect(getMarkers()[0]!.trigger).toBe('media-key');
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('adds and removes the button when the setting is toggled mid-scene', async () => {
+    const media = installMediaSessionMock();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+      expect(media.handlers.nexttrack).toBeNull();
+
+      setSetting('debugMarkers', true);
+      player.refreshMediaSessionActions();
+      expect(typeof media.handlers.nexttrack).toBe('function');
+
+      setSetting('debugMarkers', false);
+      player.refreshMediaSessionActions();
+      expect(media.handlers.nexttrack).toBeNull();
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('does not steal the session back when another screen owns it', async () => {
+    const media = installMediaSessionMock();
+    try {
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), {
+        firstFadeSeconds: 0,
+        manageMediaSession: false,
+      });
+      media.session.metadata = { title: 'A story' };
+
+      setSetting('debugMarkers', true);
+      player.refreshMediaSessionActions();
+
+      expect((media.session.metadata as { title: string }).title).toBe('A story');
+    } finally {
+      media.restore();
+    }
+  });
+
+  it('clears the next-track handler when the scene stops', async () => {
+    const media = installMediaSessionMock();
+    try {
+      setSetting('debugMarkers', true);
+      const player = new HowlScenePlayer(fakeFactory);
+      await player.startScene(makeDef(), { firstFadeSeconds: 0 });
+      expect(typeof media.handlers.nexttrack).toBe('function');
+
+      player.stopScene(0);
+
+      expect(media.handlers.nexttrack).toBeNull();
+    } finally {
+      media.restore();
+    }
   });
 });

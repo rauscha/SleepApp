@@ -98,6 +98,7 @@ describe('settings merge covers every key', () => {
     displayMode: 'nightstand',
     defaultTimerMinutes: 90,
     narrationSundown: false,
+    debugMarkers: true,
     layerVolumes: { 'forest-night:wind-in-leaves': 0.62 },
   };
 
