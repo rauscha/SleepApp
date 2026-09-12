@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Howl } from 'howler';
 import { getHowlScenePlayer } from '../audio/howl/HowlScenePlayer';
+import { gainToTaper, taperToGain } from '../audio/taper';
 import {
   fetchSceneDefinition,
   fetchSceneIndex,
@@ -460,18 +461,19 @@ export function ContentPlayerScreen({
         <div className="mt-10">
           <label className="block">
             <span className="block body-text text-stone-300 mb-2">
-              Background — {Math.round(bedAttenuation * 100)}%
+              Background — {Math.round(gainToTaper(bedAttenuation) * 100)}%
             </span>
             <input
               type="range"
               min={0}
               max={1}
               step={0.01}
-              value={bedAttenuation}
+              // Tapered like every other volume slider — see audio/taper.
+              value={gainToTaper(bedAttenuation)}
               aria-label="Background volume"
-              aria-valuetext={`${Math.round(bedAttenuation * 100)} percent`}
+              aria-valuetext={`${Math.round(gainToTaper(bedAttenuation) * 100)} percent`}
               onChange={(e) => {
-                const v = parseFloat(e.target.value);
+                const v = taperToGain(parseFloat(e.target.value));
                 setBedAttenuation(v);
                 setSetting('contentBedAttenuation', v);
               }}

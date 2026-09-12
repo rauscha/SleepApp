@@ -22,6 +22,7 @@ import {
 import { DEFAULT_SCENE_FIRST_START_SECONDS } from '../audio/SceneCoordinator';
 import { getHowlScenePlayer } from '../audio/howl/HowlScenePlayer';
 import { SLEEP_TIMER_FADE_SECONDS } from '../audio/SleepTimer';
+import { gainToTaper, taperToGain } from '../audio/taper';
 import type { HowlScene } from '../audio/howl/HowlScene';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { scenePlayerBackground } from '../lib/sceneBackground';
@@ -411,18 +412,20 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
       <div className="mb-6">
         <label className="block">
           <span className="block body-text text-stone-300 mb-2">
-            Master volume — {Math.round(masterVolume * 100)}%
+            Master volume — {Math.round(gainToTaper(masterVolume) * 100)}%
           </span>
           <input
             type="range"
             min={0}
             max={1}
             step={0.01}
-            value={masterVolume}
+            // Tapered like the layer sliders: the percentage is where the
+            // thumb sits, not the raw amplitude. See audio/taper.
+            value={gainToTaper(masterVolume)}
             aria-label="Master volume"
-            aria-valuetext={`${Math.round(masterVolume * 100)} percent`}
+            aria-valuetext={`${Math.round(gainToTaper(masterVolume) * 100)} percent`}
             onChange={(e) => {
-              const v = parseFloat(e.target.value);
+              const v = taperToGain(parseFloat(e.target.value));
               setMasterVolume(v);
               coordinator.setMasterVolume(v);
               setSetting('masterVolume', v);
@@ -456,14 +459,14 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
               <LayerSlider
                 key={layer.id}
                 label={layer.label}
-                // The slider works in its own 0-1 travel, mapped onto this
-                // layer's ceiling. Gain is linear amplitude, so on a layer
-                // voiced at 0.25 the top of a full-range slider is levels
-                // nobody would choose and the useful range is crushed into
-                // the bottom. The engine still stores real gain.
-                value={layer.getVolume() / layer.maxVolume}
+                // The slider works in its own 0-1 travel, tapered onto this
+                // layer's ceiling: equal movement is equal loudness change,
+                // rather than equal amplitude change with all the audible
+                // range crushed into the bottom. The engine still stores
+                // real gain — see audio/taper.
+                value={gainToTaper(layer.getVolume(), layer.maxVolume)}
                 onChange={(travel) => {
-                  const gain = travel * layer.maxVolume;
+                  const gain = taperToGain(travel, layer.maxVolume);
                   scene.setLayerVolume(layer.id, gain);
                   // Remember it: the Mixer is how the brief says to tune the
                   // synth bed by ear, and every level was being thrown away

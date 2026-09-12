@@ -828,3 +828,40 @@ Still linear *within* the ceiling. A perceptual curve is the better answer to
 "the top half of the slider is useless" in general and Andrew has asked for
 it; it is deliberately a separate change, after he has heard these ceilings,
 because it alters the feel of every layer at once.
+
+## Volume sliders are tapered, not linear (2026-09-12)
+
+The other half of Andrew's "there's no way I would ever go past ~60%". The
+ceilings (above) stopped the sliders offering levels nobody would choose; the
+curve *within* the ceiling was still linear amplitude, which is the reason
+the top of a volume slider feels dead in the first place.
+
+Doubling amplitude is +6 dB, well under a doubling of perceived loudness. So
+a linear slider spends its entire top half on about 6 dB while the bottom few
+percent covers an enormous audible range. `src/audio/taper.ts` replaces that
+with the taper a mixing desk uses: **constant dB per unit of travel**, 30 dB
+across the slider, so equal movement is equal loudness change anywhere on it.
+Every volume slider in the app goes through it — the Mixer layers, master
+volume in both the Player and Settings, and the story/meditation Background.
+
+- **30 dB, not more.** Wide enough to be a whisper at the bottom, small
+  enough that a scene default (half its ceiling, by the 2× rule) still sits
+  around 80% of travel with room above it. A 40 dB range pushes the default
+  to 85% and leaves nothing.
+- **The bottom 5% of travel fades the curve's floor to true silence.** A pure
+  dB curve never reaches zero, and a layer dragged to the bottom has to
+  actually go off.
+- **Stored values stay real gain.** The taper is applied only where a slider
+  is drawn or dragged, so scene JSON, saved Mixer levels, `masterVolume`,
+  `contentBedAttenuation` and the debug-marker logs all keep meaning exactly
+  what they meant before, and no migration was needed. `taperToGain` and
+  `gainToTaper` are exact inverses (tested), so a slider redrawn from a
+  stored gain lands back where the user left it.
+- **The percentage on screen is thumb position, not amplitude.** Master
+  volume stored at 0.4 now reads 73%. That is the honest reading of a
+  tapered control, and the alternative — showing raw amplitude next to a
+  tapered thumb — would be actively misleading.
+
+What this looks like on forest-night: every layer's thumb starts around 80%
+of travel (71% for the re-voiced crickets), each 10% of travel is 3.0 dB, and
+the whole slider is usable instead of just its bottom third.

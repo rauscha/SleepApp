@@ -151,7 +151,13 @@ minutes. This is core audio design, not an implementation detail.
    `sceneCatalogue.test.ts` enforces that a ceiling is at least the default
    and leaves real headroom. Departures from the 2× rule need a reason
    (forest-night's `night-ambience` is 0.22/0.60 — Andrew found the crickets
-   hot and would never go past 0.6). Sparse "event" layers (distant thunder, occasional dockside)
+   hot and would never go past 0.6). **Within the ceiling the sliders are
+   tapered, not linear** (`src/audio/taper.ts`, 2026-09-12): constant dB per
+   unit of travel, so equal movement is equal loudness change. Stored values
+   — scene JSON, saved Mixer levels, settings, marker logs — are all still
+   real gain; the taper converts only where a slider is drawn or dragged, so
+   nothing else has to know about it. Any new volume slider should use
+   `gainToTaper`/`taperToGain` rather than binding gain directly. Sparse "event" layers (distant thunder, occasional dockside)
    sit quieter still (~0.18–0.20) and use a long mostly-silent loop. The
    synth bed is no longer a live Web-Audio `NoiseGenerator`: it's a
    pre-rendered 887s noise loop (`public/audio/_bed/<color>.opus` — the 5th

@@ -9,6 +9,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { getAudioEngine } from '../audio/AudioEngine';
+import { gainToTaper, taperToGain } from '../audio/taper';
 import { BUILD_ID } from '../lib/buildInfo';
 import {
   clearLog,
@@ -83,18 +84,20 @@ export function SettingsScreen(_props: SettingsScreenProps) {
         <div className="mb-6">
           <label className="block">
             <span className="block body-text text-stone-300 mb-2">
-              Master volume — {Math.round(settings.masterVolume * 100)}%
+              Master volume — {Math.round(gainToTaper(settings.masterVolume) * 100)}%
             </span>
             <input
               type="range"
               min={0}
               max={1}
               step={0.01}
-              value={settings.masterVolume}
+              // Tapered: equal movement is equal loudness change, and the
+              // percentage is thumb position rather than raw amplitude.
+              value={gainToTaper(settings.masterVolume)}
               aria-label="Master volume"
-              aria-valuetext={`${Math.round(settings.masterVolume * 100)} percent`}
+              aria-valuetext={`${Math.round(gainToTaper(settings.masterVolume) * 100)} percent`}
               onChange={(e) => {
-                const v = parseFloat(e.target.value);
+                const v = taperToGain(parseFloat(e.target.value));
                 update('masterVolume', v);
                 if (engine.isInitialized) engine.bus.setMasterVolume(v);
               }}
