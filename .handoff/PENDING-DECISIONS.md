@@ -1,5 +1,30 @@
 # Pending decisions / queued actions
 
+## 0C. DECIDED 2026-09-12 — the library becomes hand-made, not generated
+
+Andrew: this "really needs to be a dead simple straightforward APP of an app,
+not something where we've bolted on gen AI cause its cool". So:
+
+- **Strip the in-app generation feature.** ~2,500 lines across
+  `src/screens/StoryGeneratorScreen.tsx`, `src/services/storyGenerator.ts`
+  (+ its test), `src/storage/apiKeys.ts`, `src/lib/storyExcerpt.ts` (+ test),
+  plus the references in `App.tsx`, `SettingsScreen.tsx` (both API-key
+  fields) and `src/storage/`. The app ships a fixed library.
+- **Generated stories in IndexedDB can be DROPPED.** Andrew, asked whether to
+  preserve the ones already on his phone: "I don't love the generated ones on
+  my phone, they can disappear, i'm not worried about the wasted work." So
+  `LibraryScreen`'s user-story read path goes too — no migration, no promotion
+  into the bundled library, no keeping the read path alive for old data.
+- **Instead: more hand-authored stories and meditations, male and female
+  voices.** Note **7 of 10 meditation scripts are already written and
+  unrendered** (`public/meditations/*.txt` — down-the-staircase, lake-at-dusk,
+  long-exhale, quiet-shuffle, tense-and-release, under-a-slow-sky, warm-room,
+  ~900 words each). Those need only a voice + engine decision.
+- **TTS engine is an open question**, being researched 2026-09-12: current
+  engine landscape, specific voices for sleep narration, narration craft, and
+  whether local rendering is viable. Render hardware available: tikiserv
+  RTX 4060 Ti (8 GB) and crane-desk RTX 4080 (16 GB).
+
 ## 0B. UPDATED 2026-09-11 — review done, markers built, seams still open
 
 - **Engine review: DONE.** Andrew ran it from the CLI on 2026-09-10. Its top
