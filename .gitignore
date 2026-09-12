@@ -72,3 +72,7 @@ __pycache__/
 # Re-rendered debug-marker excerpts (tools/review-markers.py --render).
 # Generated from shipped audio on demand; large and never reviewed as source.
 notes/marker-renders/
+
+# Rate-ladder listening tests (tools/tts-ladder.py). Generated locally,
+# large, and not library content.
+notes/tts-ladder/
