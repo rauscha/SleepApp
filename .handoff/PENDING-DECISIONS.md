@@ -65,7 +65,11 @@ All four items from the 2026-08-18 block are closed (log in
   pavement-3 / wave-4 were re-cut to <1 dB. night-5's seam sits ~7 dB under
   the file's mean (only 14 s of slack) — flat, but quiet; listen.
 - **D.** (1) `gen-story.ts` duration estimate — still open, needs ffprobe.
-  (2) ElevenLabs Projects 405 — still open. (3) the leveling recipe is now
+  (2) **ElevenLabs Projects 405 — ROOT CAUSE FOUND 2026-09-12:** the API was
+  renamed Studio and moved to `/v1/studio/projects`; `tools/gen-story.ts`
+  still calls `/v1/projects` in ~5 places. The long-form path was never
+  broken, we were calling a retired path. See
+  `notes/tts-research-2026-09-12.md` §1. (3) the leveling recipe is now
   `tools/level-ftus.py`; `tools/_build-level-candidates.sh` remains
   untracked litter (its 2026-06-21 candidates are superseded) — Andrew's
   call whether to delete it.
