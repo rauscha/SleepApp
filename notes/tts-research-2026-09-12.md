@@ -86,6 +86,63 @@ https://sleepcalculators.net/adult-bedtime-stories/ ·
 https://noiz.ai/use-cases/en/sleep-story-narration-ai ·
 https://writersaudiobookclinic.com/2024/10/29/the-power-of-pacing-and-timing-in-audiobook-narration/
 
+## 4b. MEASURED: what we actually shipped [VERIFIED — our own files]
+
+Rather than trust the spec or the blogs, measured directly (word count of the
+script with `[pause]`/`[softly]` markers stripped, over the rendered
+duration):
+
+| story | voice | words | mins | **gross wpm** | integrated |
+|---|---|---:|---:|---:|---:|
+| seaside-village | tide | 2707 | 18.9 | **143** | -20.3 LUFS |
+| night-train | stone | 2677 | 19.5 | **138** | -19.4 LUFS |
+| observatory | glen | 2802 | 19.1 | **146** | -19.5 LUFS |
+| temple-stairs | glen | 2809 | 19.3 | **146** | -19.6 LUFS |
+| meditations | hush/ember/glen | 765-975 | 5.8-7.3 | **132-135** | — |
+
+**Every file is faster than our own spec**, which asks for 115-130 (story)
+and 95-110 (meditation), and far faster than the ≤90 wpm the craft sources
+claim. Loudness is consistently around -19.5 LUFS, i.e. already well below
+the -16 podcast norm, which is right for sleep.
+
+### The finding that matters: rate is not what makes it work
+
+Andrew has listened to these repeatedly and reports **night-train is
+AMAZING** — "a Werner Herzog sound-alike, sitting on a train... prosody
+sounds great since its accented, its slow, gravelly, authoritative."
+
+night-train measures **138 wpm**. It is the slowest of the four, but only by
+5-8 wpm, and it is 50% faster than the figure the research says is required.
+So the ≤90 wpm claim does **not** describe what actually works for this
+listener, and §4's "our stories may be too fast" is now largely **refuted by
+direct evidence.** Do not slow the library to 90 wpm on the strength of a
+blog post.
+
+What appears to carry the perceived slowness is **voice character** — low
+pitch, gravel, an accent, authority, falling phrase endings. A voice like
+that *reads* slow at 138 wpm. A bright, smooth, mid-register voice would not.
+
+Two consequences:
+
+1. **`stone` is the reference voice for stories**, and standardising on it
+   matches the "sameness of voice across episodes" finding. Note the
+   taxonomy in `notes/voice-design.md` is wrong in practice: it catalogues
+   Stone as a *meditation* voice, and Stone-on-a-story is the one that works.
+2. If we do want slower, test **110-120 wpm with the same voice**, not 90
+   with any voice. Rate is a second-order knob here.
+
+### Caveat: ignore any pause statistics from silence detection
+
+A first pass reported pause percentages per file. Those are unreliable and
+are not recorded here: the counts swing wildly with the noise threshold
+(seaside-village shows 281 pauses at -30 dB, 8 at -40 dB, 1 at -50 dB;
+night-train 441 / 269 / 63). The gaps in these renders are filled with room
+tone rather than true digital silence, and each voice sits at a different
+floor, so silence detection measures the noise floor more than the phrasing.
+Only the **gross wpm** column above is trustworthy. Measuring real pause
+structure would need forced alignment against the script, which nobody has
+asked for yet.
+
 ## 5. Voices and settings [UNVERIFIED — audition required]
 
 Named ElevenLabs library voices people rate for meditation/calm narration:
@@ -136,14 +193,16 @@ https://openvoxai.com/blog/best-free-local-tts-models-2026
 
 ## 7. What I would do next, cheapest first
 
-1. **Fix the Studio endpoints** in `tools/gen-story.ts` (4 paths). Free, and
+1. **Fix the Studio endpoints** in `tools/gen-story.ts` (5 paths). Free, and
    it reopens the long-form render path we thought was dead.
-2. **Render one meditation script three ways** — current settings, ~90 wpm,
-   and a local model (Kokoro first, it is the cheapest to stand up) — and
-   listen on the phone in bed. One script, three files, one night.
-3. **Then decide the voice pair.** Pick one female and one male and stay with
-   them, per the "sameness" finding, rather than carrying five.
-4. Only then render the 7 waiting meditation scripts.
+2. **Standardise the male story voice on `stone`** — the measured winner,
+   and it satisfies the "sameness" finding. Then find its female counterpart
+   by the same criteria (low, gravelly, accented, authoritative) rather than
+   by the "soft and calming" descriptions the vendor pages lead with.
+3. **Render the 7 waiting meditation scripts in `stone`'s character**, at
+   the measured 138 wpm rather than re-voicing the whole library slower.
+4. Optional experiment, one script only: 110-120 wpm in the same voice, and
+   a local model (Kokoro is cheapest to stand up) — A/B on the phone.
 
 Not researched, still open: whether to keep our five designed voices at all,
 and Andrew's own cloned voice (PENDING-DECISIONS #3).
