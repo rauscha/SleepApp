@@ -7,6 +7,7 @@ import {
   recordEvent,
 } from './diagnostics/lifecycleLog';
 import { BUILD_ID } from './lib/buildInfo';
+import { primeAudioUnlock } from './audio/howl/primeAudioUnlock';
 import './index.css';
 
 // Install lifecycle listeners BEFORE the first paint. We want to capture
@@ -18,6 +19,12 @@ installLifecycleListeners();
 // deploy only takes over on a cold start — after an overnight incident
 // this line is what settles "did the phone actually run the new code?"
 recordEvent('build', BUILD_ID);
+// Register Howler's audio-unlock listeners now, so the tap that picks the
+// first scene completes the unlock *before* that scene starts loading. Left
+// until the first Howl is built, the unlock lands one gesture too late and
+// aborts the scene's in-flight media requests — which is the "first scene of
+// the session plays silent until I tap around" bug. See primeAudioUnlock.
+primeAudioUnlock();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element');

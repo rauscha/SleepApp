@@ -139,61 +139,235 @@ export function applyNativeLoop(howl: HowlInternals, on: boolean): boolean {
   return touched;
 }
 
+/**
+ * How long to wait before deciding a layer never actually started, and how
+ * many times to re-issue play(). Bounded on purpose: this is a start-up
+ * retry, not a running watchdog (the engine notes forbid re-introducing one
+ * of those — they were treating a suspended Web Audio primitive, which is a
+ * different problem with a different fix).
+ */
+const START_RETRY_DELAYS_MS = [1200, 3000, 6000];
+
+/**
+ * Backoff before rebuilding a layer whose file failed to load. Longer than
+ * the start retries because a load failure usually means the network is
+ * unhappy, and hammering it helps nobody at 2am.
+ */
+const RELOAD_DELAYS_MS = [1500, 5000, 15000, 45000];
+
+/** How long after a play() to keep watching for a layer that never started.
+ *  Generous enough to cover a slow first load on a phone radio, bounded so
+ *  nothing is still ticking hours into the night. */
+const START_CHECK_WINDOW_MS = 5 * 60_000;
+
+/** Short label for diagnostics — the variant filename. */
+function srcLabel(src: string[]): string {
+  return (src[0] ?? '?').split('/').slice(-1)[0] ?? '?';
+}
+
 /** Default factory — one html5 element per layer, looping natively. */
 export const defaultHowlFactory: HowlFactory = (opts) => {
-  const howl = new Howl({
-    src: opts.src,
-    // Scene audio is migrating to Opus (2026-06-30 — see DECISIONS.md "Ship
-    // scene audio as Opus, not MP3"); mp3 and opus both still ship. The
-    // format MUST be derived per-src (see howlFormats) — a fixed list is
-    // positional, not a fallback, and would opus-gate the .mp3 layers.
-    format: howlFormats(opts.src),
-    html5: true, // the whole point — OS-backed background playback
-    // NOT Howler's loop: it restarts the element from a JS timer and costs
-    // ~27ms of silence at every wrap. The element loops itself instead —
-    // see applyNativeLoop. With loop:false Howler waits on an 'ended' event
-    // that a natively looping element never fires, so it never intervenes.
-    loop: false,
-    volume: 0, // start silent; the layer fades in on play
-    onplay: () => {
-      if (!applyNativeLoop(howl as unknown as HowlInternals, true)) {
-        // Couldn't reach the element — a future Howler could rename its
-        // internals. Fall back to Howler's own timer-driven loop, which is
-        // what shipped before this change: a tick at each wrap is bad, a
-        // layer that stops dead after one period is far worse. Howler picks
-        // the loop up on the next 'ended'.
-        try {
-          (howl as unknown as HowlInternals).loop(true);
-          recordEvent('howl-native-loop-unavailable', opts.src[0] ?? '?');
-        } catch {
-          /* nothing more we can do; the layer will run once */
-        }
-      }
-      opts.onplay?.();
-    },
-    onplayerror: opts.onplayerror,
-    onloaderror: opts.onloaderror,
-  });
+  const label = srcLabel(opts.src);
+  let howl: Howl;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let startRetries = 0;
+  let reloads = 0;
+  let released = false;
+  /** Whether this layer is supposed to be making sound right now. Set by
+   *  play(), cleared by pause()/stop()/unload(), so no recovery below can
+   *  ever restart something the user deliberately silenced. */
+  let wantPlaying = false;
 
-  const api = howl as unknown as HowlLike;
+  const internals = () => howl as unknown as HowlInternals;
+  const element = ():
+    | { paused?: boolean; readyState?: number }
+    | undefined =>
+    internals()._sounds?.[0]?._node as
+      | { paused?: boolean; readyState?: number }
+      | undefined;
+  const isAudible = () => {
+    const node = element();
+    return !!node && node.paused === false;
+  };
+  const disarm = () => {
+    if (retryTimer) clearTimeout(retryTimer);
+    retryTimer = null;
+  };
+
+  /**
+   * Re-issue play() if the layer never actually started.
+   *
+   * The browser's autoplay policy can hand back an element it refuses to
+   * play; Howler emits 'unlock' when that policy is satisfied, and does not
+   * retry on its own. Bounded on purpose — this is a start-up retry, not a
+   * running watchdog (the engine notes forbid re-introducing one of those;
+   * they were treating a suspended Web Audio primitive, a different problem).
+   */
+  const armStartCheck = (deadline = Date.now() + START_CHECK_WINDOW_MS) => {
+    disarm();
+    const delay = START_RETRY_DELAYS_MS[
+      Math.min(startRetries, START_RETRY_DELAYS_MS.length - 1)
+    ] ?? 6000;
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      if (released || !wantPlaying || isAudible()) return;
+      if (Date.now() > deadline) return;
+      // Still downloading (readyState 0/1 = no usable data yet). Nothing is
+      // wrong and play() would not help — a 3-7 MB variant on a phone radio
+      // legitimately takes tens of seconds. Keep watching without spending a
+      // retry, so the attempts are saved for a layer that really is stuck.
+      const node = element();
+      if (node && (node.readyState ?? 0) < 2) {
+        armStartCheck(deadline);
+        return;
+      }
+      if (startRetries >= START_RETRY_DELAYS_MS.length) {
+        recordEvent('howl-bed-start-failed', label);
+        return;
+      }
+      startRetries += 1;
+      recordEvent('howl-bed-start-retry', `${label} #${startRetries}`);
+      howl.play();
+      armStartCheck(deadline);
+    }, delay);
+  };
+
+  /**
+   * Rebuild the layer after a load failure.
+   *
+   * This is the one that matters overnight. A scene layer whose file fails
+   * to load — a dropped request on a phone radio, a stalled connection — is
+   * silent for the rest of the night: Howler reports 'loaderror' once and
+   * never retries, and re-issuing play() on a Howl that has no media cannot
+   * help. Reproduced in headless Chromium with a throttled link, where a
+   * couple of layers per scene came back MEDIA_ERR_SRC_NOT_SUPPORTED and
+   * simply never played until a scene change built new elements. That is the
+   * "silence until I tap around" failure.
+   *
+   * A fresh Howl is the recovery, because the failed one has no media to
+   * retry. Level is restored for free: HowlLayer's own 'play' handler
+   * re-asserts its mix level on any replay after the first (its hasFadedIn
+   * guard), so the rebuilt layer comes back at exactly the level the mixer
+   * and master left it, without re-running the fade-in from silence.
+   */
+  const scheduleReload = () => {
+    if (released || reloads >= RELOAD_DELAYS_MS.length) {
+      if (!released) recordEvent('howl-bed-reload-failed', label);
+      return;
+    }
+    const delay = RELOAD_DELAYS_MS[reloads] ?? 8000;
+    reloads += 1;
+    setTimeout(() => {
+      if (released || isAudible()) return;
+      recordEvent('howl-bed-reload', `${label} #${reloads}`);
+      const previous = howl;
+      howl = build();
+      try {
+        previous.unload();
+      } catch {
+        /* already gone */
+      }
+      if (wantPlaying) {
+        howl.play();
+        armStartCheck();
+      }
+    }, delay);
+  };
+
+  function build(): Howl {
+    return new Howl({
+      src: opts.src,
+      // Scene audio is migrating to Opus (2026-06-30 — see DECISIONS.md "Ship
+      // scene audio as Opus, not MP3"); mp3 and opus both still ship. The
+      // format MUST be derived per-src (see howlFormats) — a fixed list is
+      // positional, not a fallback, and would opus-gate the .mp3 layers.
+      format: howlFormats(opts.src),
+      html5: true, // the whole point — OS-backed background playback
+      // NOT Howler's loop: it restarts the element from a JS timer and costs
+      // ~27ms of silence at every wrap. The element loops itself instead —
+      // see applyNativeLoop. With loop:false Howler waits on an 'ended' event
+      // that a natively looping element never fires, so it never intervenes.
+      loop: false,
+      volume: 0, // start silent; the layer fades in on play
+      onplay: () => {
+        if (!applyNativeLoop(internals(), true)) {
+          // Couldn't reach the element — a future Howler could rename its
+          // internals. Fall back to Howler's own timer-driven loop, which is
+          // what shipped before this change: a tick at each wrap is bad, a
+          // layer that stops dead after one period is far worse. Howler picks
+          // the loop up on the next 'ended'.
+          try {
+            internals().loop(true);
+            recordEvent('howl-native-loop-unavailable', label);
+          } catch {
+            /* nothing more we can do; the layer will run once */
+          }
+        }
+        opts.onplay?.();
+      },
+      onplayerror: (id, err) => {
+        opts.onplayerror?.(id, err);
+        if (wantPlaying) armStartCheck();
+      },
+      onloaderror: (id, err) => {
+        opts.onloaderror?.(id, err);
+        scheduleReload();
+      },
+    });
+  }
+
+  howl = build();
+
+  // Howler emits 'unlock' on every Howl once the browser's autoplay policy
+  // has been satisfied — the moment a layer blocked by it can finally start.
+  try {
+    (howl as unknown as { once(e: string, fn: () => void): unknown }).once(
+      'unlock',
+      () => {
+        if (released || !wantPlaying || isAudible()) return;
+        recordEvent('howl-bed-start-on-unlock', label);
+        howl.play();
+        armStartCheck();
+      }
+    );
+  } catch {
+    /* no .once on this Howler — the timed retry still covers it */
+  }
+
   return {
-    play: () => api.play(),
-    pause: () => api.pause(),
-    stop: () => api.stop(),
+    play: () => {
+      wantPlaying = true;
+      const id = howl.play() as unknown as number;
+      armStartCheck();
+      return id;
+    },
+    pause: () => {
+      wantPlaying = false;
+      disarm();
+      howl.pause();
+    },
+    stop: () => {
+      wantPlaying = false;
+      disarm();
+      return howl.stop();
+    },
     unload: () => {
+      released = true;
+      wantPlaying = false;
+      disarm();
       // Hand the element back to the pool exactly as Howler expects to find
       // it. See applyNativeLoop for what a stray `loop` would do to the next
       // sound that borrows this element.
-      applyNativeLoop(howl as unknown as HowlInternals, false);
-      api.unload();
+      applyNativeLoop(internals(), false);
+      howl.unload();
     },
-    fade: (from, to, ms) => api.fade(from, to, ms),
+    fade: (from, to, ms) => howl.fade(from, to, ms),
     volume: (level?: number) => {
-      if (level === undefined) return api.volume();
-      api.volume(level);
+      if (level === undefined) return howl.volume() as number;
+      howl.volume(level);
       return level;
     },
-    playing: () => api.playing(),
+    playing: () => howl.playing(),
     seek: () => {
       const value = (howl as unknown as { seek(): number | unknown }).seek();
       return typeof value === 'number' ? value : 0;

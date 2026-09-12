@@ -26,7 +26,6 @@ import type { HowlScene } from '../audio/howl/HowlScene';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { scenePlayerBackground } from '../lib/sceneBackground';
 import { getSetting, rememberLayerVolume, setSetting } from '../storage';
-import { requestFullscreenSafe } from '../utils/fullscreen';
 import { tapFeedback } from '../utils/haptics';
 import type { MarkerTrigger } from '../diagnostics/markers';
 
@@ -471,11 +470,15 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
       <div className="mt-8 flex justify-center">
         <button
           onClick={() => {
-            // Fullscreen is normally already engaged from the scene-pick
-            // in TonightScreen. Re-request anyway: if the user dismissed
-            // it via a system gesture we want it back, and this click is
-            // a fresh user activation.
-            requestFullscreenSafe();
+            // Deliberately does NOT re-request fullscreen. Fullscreen is
+            // entered once at the scene pick and persists; re-requesting
+            // here re-fires Android's bright "swipe down to exit full
+            // screen" toast every time the user moves between Lush and
+            // Nightstand — which is several times a night, each one a
+            // flash of white at someone trying to fall asleep. Same
+            // reasoning as the wake-tap path below. If the user dismissed
+            // fullscreen with a system gesture, that was a choice; honour
+            // it rather than fighting them with a toast.
             setDisplayMode('nightstand');
           }}
           className="ui-label text-stone-300 hover:text-stone-200
