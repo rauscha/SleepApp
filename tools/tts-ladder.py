@@ -61,6 +61,10 @@ CLASSIC_WPM = 90
 # The rungs are 5 wpm apart, so anything inside 0.75 is indistinguishable.
 WPM_TOLERANCE = 0.75
 MAX_REFINEMENTS = 5
+# Kokoro degrades badly outside this range — a request that needs a speed
+# beyond it wants a different lever, not a more extreme multiplier.
+SPEED_FLOOR = 0.45
+SPEED_CEIL = 1.5
 
 
 def load_script(path):
@@ -238,36 +242,56 @@ def main():
         # the artifact someone listens to. Closing the loop on the raw audio
         # instead left two rungs of the first ladder 7-10 wpm out and in the
         # wrong order, which would have quietly invalidated the experiment.
+        best = None  # (error, speed, pause, minutes) of the closest attempt
         for attempt in range(MAX_REFINEMENTS + 1):
             if audio is None or attempt > 0:
                 audio = synth(pipeline, segments, args.voice, speed)
             with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
                 wav = tmp.name
+            # Must keep a .mp3 extension: ffmpeg picks its muxer from the
+            # extension, and a '.try' suffix made it fail with exit 234.
+            candidate = mp3 if best is None else mp3 + '.try.mp3'
             try:
                 assemble(audio, pause, wav)
-                normalise(wav, mp3)
+                normalise(wav, candidate)
             finally:
                 os.unlink(wav)
-            actual = duration(mp3)
+            actual = duration(candidate)
             got_wpm = words / (actual / 60)
-            if abs(got_wpm - wpm) <= WPM_TOLERANCE or attempt == MAX_REFINEMENTS:
-                if abs(got_wpm - wpm) > WPM_TOLERANCE:
-                    print(f'    WARNING: {stem} settled at {got_wpm:.1f} wpm, '
-                          f'{got_wpm - wpm:+.1f} off target')
+            err = abs(got_wpm - wpm)
+            # Keep the closest attempt, not the last one. Without this a
+            # diverging search overwrites a good render with a bad one.
+            if best is None or err < best[0]:
+                if candidate != mp3:
+                    os.replace(candidate, mp3)
+                best = (err, speed, pause, actual / 60)
+            elif candidate != mp3 and os.path.exists(candidate):
+                os.unlink(candidate)
+
+            if err <= WPM_TOLERANCE or attempt == MAX_REFINEMENTS:
                 break
+
             if lever == 'pause':
-                # Absorb the residual in the gaps; speech is fixed here.
+                # Speech length is fixed in this arm; absorb the residual in
+                # the gaps.
                 pause += (words / wpm * 60 - actual) / gaps
                 if pause < 0:
                     print(f'    {wpm} wpm unreachable at speed {speed}; skipped')
-                    audio = None
                     break
             else:
-                speed *= got_wpm / wpm
+                # INVERSE. Rendering too fast means the speed must come DOWN.
+                # Getting this backwards made every retry worse: 150 wpm
+                # walked 156 -> 162 -> 174 -> 190 -> 251 -> 351 before giving
+                # up. wpm is roughly proportional to speed, so this converges
+                # in one or two steps.
+                speed = max(SPEED_FLOOR, min(SPEED_CEIL, speed * wpm / got_wpm))
             print(f'    {stem}: {got_wpm:.1f} -> retry for {wpm:.0f} '
                   f'(speed {speed:.3f}, gaps {pause:.2f}s)')
-        if audio is None:
-            continue
+
+        err, speed, pause, got_minutes = best
+        actual = got_minutes * 60
+        if err > WPM_TOLERANCE:
+            print(f'    WARNING: {stem} settled {err:+.1f} wpm off target')
         row = {'file': os.path.basename(mp3), 'targetWpm': wpm,
                'actualWpm': round(words / (actual / 60), 1),
                'lever': lever, 'speed': round(speed, 3),
