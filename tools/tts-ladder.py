@@ -58,6 +58,9 @@ SAMPLE_RATE = 24000          # Kokoro's native rate
 DEFAULT_PAUSE_SECONDS = 0.6  # the "short gaps" constant for the speed ladder
 CLASSIC_PAUSE_SECONDS = 2.5  # what the craft sources ask for
 CLASSIC_WPM = 90
+# The rungs are 5 wpm apart, so anything inside 0.75 is indistinguishable.
+WPM_TOLERANCE = 0.75
+MAX_REFINEMENTS = 5
 
 
 def load_script(path):
@@ -92,8 +95,13 @@ def synth(pipeline, segments, voice, speed):
                            if hasattr(audio, 'detach') else np.asarray(audio))
         if chunks:
             out.append(np.concatenate(chunks))
-        print(f'    segment {i + 1}/{len(segments)}', end='\r', flush=True)
-    print(' ' * 40, end='\r')
+        if os.isatty(1):
+            print(f'    segment {i + 1}/{len(segments)}', end='\r', flush=True)
+    if os.isatty(1):
+        # Clear the progress line only — writing spaces unconditionally also
+        # erased the refinement messages when output was piped to a file,
+        # which is exactly when you need to read them.
+        print(' ' * 40, end='\r')
     return out
 
 
@@ -199,15 +207,20 @@ def main():
             pause = CLASSIC_PAUSE_SECONDS
             speech_needed = total_target - gaps * pause
             speed = base_speech / speech_needed if speech_needed > 0 else 1.0
-            audio = synth(pipeline, segments, args.voice, speed)
+            audio = None
         elif lever == 'speed':
             pause = args.pause
             speech_needed = total_target - gaps * pause
             if speech_needed <= 0:
                 print(f'  {wpm} wpm: impossible with {pause}s gaps — skipped')
                 continue
+            # Kokoro's speed parameter is close to but not exactly linear in
+            # duration, so solving once lands a couple of wpm off. The rungs
+            # are only 5 wpm apart, so refine: measure what we actually got
+            # and re-solve against that. A render is ~15 s on the 4060 Ti,
+            # which is cheap enough to buy an exact ladder.
             speed = base_speech / speech_needed
-            audio = synth(pipeline, segments, args.voice, speed)
+            audio = None
         else:
             speed = args.base_speed
             pause = (total_target - base_speech) / gaps
@@ -219,15 +232,42 @@ def main():
 
         tag = 'classic' if args.classic else f'{int(wpm)}wpm-{lever}'
         stem = f'{name}-{tag}'
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
-            wav = tmp.name
-        try:
-            assemble(audio, pause, wav)
-            mp3 = os.path.join(args.out, f'{stem}.mp3')
-            normalise(wav, mp3)
-        finally:
-            os.unlink(wav)
-        actual = duration(mp3)
+        mp3 = os.path.join(args.out, f'{stem}.mp3')
+
+        # Measure the ENCODED file and re-solve against it, because that is
+        # the artifact someone listens to. Closing the loop on the raw audio
+        # instead left two rungs of the first ladder 7-10 wpm out and in the
+        # wrong order, which would have quietly invalidated the experiment.
+        for attempt in range(MAX_REFINEMENTS + 1):
+            if audio is None or attempt > 0:
+                audio = synth(pipeline, segments, args.voice, speed)
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
+                wav = tmp.name
+            try:
+                assemble(audio, pause, wav)
+                normalise(wav, mp3)
+            finally:
+                os.unlink(wav)
+            actual = duration(mp3)
+            got_wpm = words / (actual / 60)
+            if abs(got_wpm - wpm) <= WPM_TOLERANCE or attempt == MAX_REFINEMENTS:
+                if abs(got_wpm - wpm) > WPM_TOLERANCE:
+                    print(f'    WARNING: {stem} settled at {got_wpm:.1f} wpm, '
+                          f'{got_wpm - wpm:+.1f} off target')
+                break
+            if lever == 'pause':
+                # Absorb the residual in the gaps; speech is fixed here.
+                pause += (words / wpm * 60 - actual) / gaps
+                if pause < 0:
+                    print(f'    {wpm} wpm unreachable at speed {speed}; skipped')
+                    audio = None
+                    break
+            else:
+                speed *= got_wpm / wpm
+            print(f'    {stem}: {got_wpm:.1f} -> retry for {wpm:.0f} '
+                  f'(speed {speed:.3f}, gaps {pause:.2f}s)')
+        if audio is None:
+            continue
         row = {'file': os.path.basename(mp3), 'targetWpm': wpm,
                'actualWpm': round(words / (actual / 60), 1),
                'lever': lever, 'speed': round(speed, 3),
