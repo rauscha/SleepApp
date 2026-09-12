@@ -142,7 +142,16 @@ minutes. This is core audio design, not an implementation detail.
 4. **Voice the stack like a mix**, not like a flat sum: the closest /
    primary element rides loudest (~0.55–0.60), supporting layers sit at
    0.25–0.35, and the synth bed underneath at ~0.10–0.16 to glue the
-   spectrum. Sparse "event" layers (distant thunder, occasional dockside)
+   spectrum. **Every layer also declares a `maxVolume` ceiling** (2026-09-12,
+   DECISIONS.md): the Mixer slider's full travel maps onto `[0, maxVolume]`
+   instead of `[0, 1]`. `defaultVolume` is still the real gain and a ceiling
+   never changes how a scene sounds — it just stops three quarters of each
+   slider being levels nobody would choose. The rule is **2× the voiced
+   default, capped at 1.0**, so primary elements keep the full range;
+   `sceneCatalogue.test.ts` enforces that a ceiling is at least the default
+   and leaves real headroom. Departures from the 2× rule need a reason
+   (forest-night's `night-ambience` is 0.22/0.60 — Andrew found the crickets
+   hot and would never go past 0.6). Sparse "event" layers (distant thunder, occasional dockside)
    sit quieter still (~0.18–0.20) and use a long mostly-silent loop. The
    synth bed is no longer a live Web-Audio `NoiseGenerator`: it's a
    pre-rendered 887s noise loop (`public/audio/_bed/<color>.opus` — the 5th

@@ -4,7 +4,8 @@
   "description": "Steady surf rolling against a sand beach from a hotel window, crashing waves a little farther out, and the occasional distant rigging of a shipyard across the bay.",
   "synth": {
     "color": "brown",
-    "defaultVolume": 0.12
+    "defaultVolume": 0.12,
+    "maxVolume": 0.24
   },
   "tinnitus": {
     "enabledByDefault": false,
@@ -44,7 +45,8 @@
           "url": "/audio/ocean-night/waves/wave-5.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/ocean-night/waves/wave-5.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 1.0
     },
     {
       "id": "waves-far",
@@ -69,7 +71,8 @@
           "url": "/audio/ocean-night/waves-far/far-3.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/ocean-night/waves-far/far-3.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 0.6
     },
     {
       "id": "dockside-distant",
@@ -94,7 +97,8 @@
           "url": "/audio/ocean-night/dockside-distant/dock-3.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/ocean-night/dockside-distant/dock-3.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 0.36
     }
   ]
 }

@@ -628,6 +628,80 @@ describe('HowlScene — snapshot for debug markers', () => {
   });
 });
 
+describe('HowlScene — Mixer ceilings', () => {
+  const capped = (): SceneDefinition =>
+    makeDef({
+      synth: { color: 'brown', defaultVolume: 0.1, maxVolume: 0.2 },
+      elements: [
+        {
+          id: 'rain',
+          label: 'Rain',
+          loopOffsetSeconds: 251,
+          defaultVolume: 0.5,
+          maxVolume: 1,
+          variants: [{ id: 'rain-1', url: '/audio/test/rain-1.mp3' }],
+        },
+        {
+          id: 'wind',
+          label: 'Wind',
+          loopOffsetSeconds: 409,
+          defaultVolume: 0.3,
+          maxVolume: 0.6,
+          variants: [{ id: 'wind-1', url: '/audio/test/wind-1.mp3' }],
+        },
+      ],
+    });
+
+  it('exposes each layer ceiling, defaulting to the full range', () => {
+    const scene = new HowlScene(capped(), 1, fakeFactory, firstVariant);
+    const byId = new Map(scene.getLayers().map((l) => [l.id, l]));
+    expect(byId.get('test-scene:wind')!.maxVolume).toBe(0.6);
+    expect(byId.get('test-scene:rain')!.maxVolume).toBe(1);
+    expect(byId.get('test-scene:synth-bed')!.maxVolume).toBe(0.2);
+  });
+
+  it('starts at the scene default, which the ceiling does not change', () => {
+    const scene = new HowlScene(capped(), 1, fakeFactory, firstVariant);
+    scene.start(0);
+    // The whole point: a ceiling rescales the control, it does not re-voice
+    // the mix. The layer comes up at exactly its defaultVolume.
+    expect(bySrc('wind-1').fades.at(-1)).toEqual([0, 0.3, 0]);
+  });
+
+  it('refuses a level above the ceiling', () => {
+    const scene = new HowlScene(capped(), 1, fakeFactory, firstVariant);
+    scene.start(0);
+    scene.setLayerVolume('test-scene:wind', 0.95);
+    expect(scene.getLayers().find((l) => l.id === 'test-scene:wind')!.getVolume())
+      .toBe(0.6);
+  });
+
+  it('clamps a saved level that predates a lowered ceiling', () => {
+    // The user had pushed this layer to 0.9 when it had no ceiling. Their
+    // intent was "as loud as it goes", so it lands on the new top.
+    const scene = new HowlScene(capped(), 1, fakeFactory, firstVariant, {
+      'test-scene:wind': 0.9,
+    });
+    scene.start(0);
+    expect(bySrc('wind-1').fades.at(-1)).toEqual([0, 0.6, 0]);
+  });
+
+  it('puts every layer back to its scene default on reset', () => {
+    const scene = new HowlScene(capped(), 1, fakeFactory, firstVariant, {
+      'test-scene:wind': 0.6,
+      'test-scene:synth-bed': 0.2,
+    });
+    scene.start(0);
+
+    scene.resetLayerVolumes();
+
+    const byId = new Map(scene.getLayers().map((l) => [l.id, l.getVolume()]));
+    expect(byId.get('test-scene:wind')).toBe(0.3);
+    expect(byId.get('test-scene:synth-bed')).toBe(0.1);
+    expect(byId.get('test-scene:rain')).toBe(0.5);
+  });
+});
+
 describe('HowlScene — saved Mixer levels', () => {
   it('starts a layer at its saved level instead of the scene default', () => {
     const scene = new HowlScene(makeDef(), 1, fakeFactory, firstVariant, {

@@ -4,7 +4,8 @@
   "description": "Soft canopy wind, scattered birds at distance, a slow creek behind it all.",
   "synth": {
     "color": "pink",
-    "defaultVolume": 0.18
+    "defaultVolume": 0.18,
+    "maxVolume": 0.36
   },
   "tinnitus": {
     "enabledByDefault": false,
@@ -39,7 +40,8 @@
           "url": "/audio/forest-day/creek-trickle/creek-4.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-day/creek-trickle/creek-4.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 0.8
     },
     {
       "id": "wind-in-leaves",
@@ -59,7 +61,8 @@
           "url": "/audio/forest-day/wind-in-leaves/wind-2.opus",
           "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-day/wind-in-leaves/wind-2.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 1.0
     },
     {
       "id": "distant-birds",
@@ -84,7 +87,8 @@
           "url": "/audio/forest-day/distant-birds/birds-3.opus",
           "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-day/distant-birds/birds-3.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 0.5
     }
   ]
 }

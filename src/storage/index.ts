@@ -8,6 +8,7 @@ export {
   setSetting,
   getLayerVolumes,
   rememberLayerVolume,
+  forgetLayerVolumes,
   getAllSettings,
   resetSettings,
   DEFAULT_SETTINGS,

@@ -413,6 +413,13 @@ export class HowlLayer {
   readonly url: string;
   /** This layer's loop length in seconds. */
   readonly periodSeconds: number;
+  /**
+   * Ceiling for this layer's mix level — the Mixer slider's full travel maps
+   * onto [0, maxVolume]. See SceneElementDefinition.maxVolume for why. The
+   * level stored here is always the real gain, so the ceiling costs the
+   * engine nothing; it only rescales the control.
+   */
+  readonly maxVolume: number;
   private readonly howl: HowlLike;
   /** This layer's mix level in [0,1] (the value the mixer slider shows). */
   private target: number;
@@ -440,13 +447,15 @@ export class HowlLayer {
     target: number,
     outer: number,
     factory: HowlFactory,
-    periodSeconds = 0
+    periodSeconds = 0,
+    maxVolume = 1
   ) {
     this.id = id;
     this.label = label;
     this.url = src[0] ?? '';
     this.periodSeconds = periodSeconds;
-    this.target = clamp01(target);
+    this.maxVolume = clamp01(maxVolume) || 1;
+    this.target = Math.min(clamp01(target), this.maxVolume);
     this.outer = clamp01(outer);
     this.howl = factory({
       src,
@@ -552,12 +561,12 @@ export class HowlLayer {
     };
   }
 
-  /** Mixer slider — set this layer's mix level. */
+  /** Mixer slider — set this layer's mix level (real gain, not slider units). */
   setVolume(v: number): void {
     // An explicit mixer action is a deliberate user choice: it supersedes any
     // in-flight fade-to-silence, so clear the guard before applying.
     this.silenceFadeEndsAt = 0;
-    this.target = clamp01(v);
+    this.target = Math.min(clamp01(v), this.maxVolume);
     if (this.started && !this.disposed) this.howl.volume(this.effective());
   }
 
@@ -682,38 +691,45 @@ export class HowlScene {
     // offsets so it never resyncs with them). It rides underneath like the
     // old Web-Audio NoiseGenerator bed, just played natively so it survives
     // the night with everything else.
-    const mix = (layerId: string, fallback: number): number => {
+    const mix = (layerId: string, fallback: number, ceiling: number): number => {
       const saved = volumeOverrides[layerId];
+      // A level saved before this layer had a ceiling (or before the ceiling
+      // was lowered) is clamped rather than discarded — the user's intent was
+      // "as loud as I could make it", and that is now the ceiling.
       return typeof saved === 'number' && Number.isFinite(saved)
-        ? clamp01(saved)
+        ? Math.min(clamp01(saved), ceiling)
         : fallback;
     };
     if (definition.synth) {
       const id = `${definition.id}:synth-bed`;
+      const ceiling = definition.synth.maxVolume ?? 1;
       layers.push(
         new HowlLayer(
           id,
           'Synth bed',
           [resolvePublicUrl(`/audio/_bed/${definition.synth.color}.opus`)],
-          mix(id, definition.synth.defaultVolume),
+          mix(id, definition.synth.defaultVolume, ceiling),
           this.master,
           factory,
-          SYNTH_BED_LOOP_SECONDS
+          SYNTH_BED_LOOP_SECONDS,
+          ceiling
         )
       );
     }
     for (const el of definition.elements) {
       const variant = pickVariant(el);
       const id = `${definition.id}:${el.id}`;
+      const ceiling = el.maxVolume ?? 1;
       layers.push(
         new HowlLayer(
           id,
           el.label,
           [resolvePublicUrl(variant.url)],
-          mix(id, el.defaultVolume),
+          mix(id, el.defaultVolume, ceiling),
           this.master,
           factory,
-          el.loopOffsetSeconds
+          el.loopOffsetSeconds,
+          ceiling
         )
       );
     }
@@ -736,6 +752,29 @@ export class HowlScene {
   setLayerVolume(id: string, v: number): void {
     const layer = this.layers.find((l) => l.id === id);
     if (layer) layer.setVolume(v);
+  }
+
+  /**
+   * Put every layer back to the level its scene JSON asks for. Needed
+   * because saved Mixer levels outrank the defaults, so a scene re-voiced
+   * in the JSON would otherwise never be heard by anyone who had touched a
+   * slider once.
+   */
+  resetLayerVolumes(): void {
+    const defaults = new Map<string, number>();
+    if (this.definition.synth) {
+      defaults.set(
+        `${this.definition.id}:synth-bed`,
+        this.definition.synth.defaultVolume
+      );
+    }
+    for (const el of this.definition.elements) {
+      defaults.set(`${this.definition.id}:${el.id}`, el.defaultVolume);
+    }
+    for (const layer of this.layers) {
+      const value = defaults.get(layer.id);
+      if (value !== undefined) layer.setVolume(value);
+    }
   }
 
   setMaster(master: number): void {

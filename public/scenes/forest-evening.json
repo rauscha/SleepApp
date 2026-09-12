@@ -4,7 +4,8 @@
   "description": "Light rain dripping through a cloud forest at dusk \u2014 wind in the tree tops, a slow creek behind it, quiet birds settling for the night.",
   "synth": {
     "color": "brown",
-    "defaultVolume": 0.1
+    "defaultVolume": 0.1,
+    "maxVolume": 0.2
   },
   "tinnitus": {
     "enabledByDefault": false,
@@ -34,7 +35,8 @@
           "url": "/audio/forest-evening/forest-rain/forest-3.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-evening/forest-rain/forest-3.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 1.0
     },
     {
       "id": "wind-in-leaves",
@@ -59,7 +61,8 @@
           "url": "/audio/forest-evening/wind-in-leaves/wind-3.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-evening/wind-in-leaves/wind-3.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 0.6
     },
     {
       "id": "distant-birds",
@@ -79,7 +82,8 @@
           "url": "/audio/forest-evening/distant-birds/birds-2.opus",
           "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-evening/distant-birds/birds-2.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 0.4
     },
     {
       "id": "creek-trickle",
@@ -104,7 +108,8 @@
           "url": "/audio/forest-evening/creek-trickle/creek-3.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-evening/creek-trickle/creek-3.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 0.5
     }
   ],
   "driftsTo": {

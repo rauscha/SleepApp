@@ -4,7 +4,8 @@
   "description": "Slow wood fire close at hand with a distant room-mic crackle behind it. Crackles steady, never sharp.",
   "synth": {
     "color": "brown",
-    "defaultVolume": 0.14
+    "defaultVolume": 0.14,
+    "maxVolume": 0.28
   },
   "tinnitus": {
     "enabledByDefault": false,
@@ -34,7 +35,8 @@
           "url": "/audio/fireplace/fire-close/close-3.opus",
           "attribution": "FOBOS PLANET (YouTube) \u2014 see /audio/fireplace/fire-close/close-3.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 1.0
     },
     {
       "id": "fire-distant",
@@ -54,7 +56,8 @@
           "url": "/audio/fireplace/fire-distant/distant-2.opus",
           "attribution": "FOBOS PLANET (YouTube) \u2014 see /audio/fireplace/fire-distant/distant-2.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 0.7
     }
   ]
 }

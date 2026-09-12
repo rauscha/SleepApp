@@ -791,3 +791,40 @@ markers are for: mark a wrap you can hear, and `tools/review-markers.py
 Consequence for the seam backlog: re-cutting the 12 variants still over 3 dB
 is worth doing, but it was never going to fix a tick on its own. Judge those
 files by ear *after* this change is on the phone.
+
+## Mixer ceilings: spend the slider on the range you'd actually use (2026-09-12)
+
+Andrew, after a full night on forest-night: the crickets are too hot, and
+"there's no way I would ever go past the current ~60%". Both halves of that
+are worth fixing, and they are separate problems.
+
+The level was a one-line re-voicing: `night-ambience` 0.30 → 0.22.
+
+The slider was the real issue, and it is not specific to that layer. Gain is
+linear amplitude, so on a layer voiced at 0.25 the top three quarters of the
+slider are levels no one would ever choose and the range that matters is
+crushed into the bottom. Every element (and the synth bed) now declares a
+`maxVolume`, and the slider's full travel maps onto `[0, maxVolume]`.
+
+- **`defaultVolume` still means real gain, and a ceiling changes nothing
+  audible.** The layer comes up at exactly the level the JSON asks for; only
+  the control is rescaled. That is what makes this safe to apply to all nine
+  scenes at once without re-auditioning them.
+- **The rule is 2× the voiced default, capped at 1.0.** Uniform and
+  explainable, roughly doubles slider resolution, and leaves primary elements
+  (0.55–0.60) at full range — those are the ones you might genuinely want
+  loud. `sceneCatalogue.test.ts` enforces ceiling ≥ default with real
+  headroom, so a new scene cannot ship with a slider that starts above its
+  own top. forest-night's `night-ambience` is the one departure: 0.22 default
+  against Andrew's stated 0.60 ceiling rather than the formula's 0.44.
+- **Saved levels are clamped, not discarded.** A level saved before a ceiling
+  existed meant "as loud as I could make it", so it lands on the new top
+  rather than being thrown away.
+- **"Reset to scene defaults" is now in the Mixer.** Saved levels outrank the
+  JSON (2026-09-11), so without it a re-voiced scene would never be heard by
+  anyone who had touched a slider once — including this very change.
+
+Still linear *within* the ceiling. A perceptual curve is the better answer to
+"the top half of the slider is useless" in general and Andrew has asked for
+it; it is deliberately a separate change, after he has heard these ceilings,
+because it alters the feel of every layer at once.

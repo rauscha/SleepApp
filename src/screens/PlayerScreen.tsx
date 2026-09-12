@@ -25,7 +25,12 @@ import { SLEEP_TIMER_FADE_SECONDS } from '../audio/SleepTimer';
 import type { HowlScene } from '../audio/howl/HowlScene';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { scenePlayerBackground } from '../lib/sceneBackground';
-import { getSetting, rememberLayerVolume, setSetting } from '../storage';
+import {
+  forgetLayerVolumes,
+  getSetting,
+  rememberLayerVolume,
+  setSetting,
+} from '../storage';
 import { tapFeedback } from '../utils/haptics';
 import type { MarkerTrigger } from '../diagnostics/markers';
 
@@ -451,18 +456,39 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
               <LayerSlider
                 key={layer.id}
                 label={layer.label}
-                value={layer.getVolume()}
-                onChange={(v) => {
-                  scene.setLayerVolume(layer.id, v);
+                // The slider works in its own 0-1 travel, mapped onto this
+                // layer's ceiling. Gain is linear amplitude, so on a layer
+                // voiced at 0.25 the top of a full-range slider is levels
+                // nobody would choose and the useful range is crushed into
+                // the bottom. The engine still stores real gain.
+                value={layer.getVolume() / layer.maxVolume}
+                onChange={(travel) => {
+                  const gain = travel * layer.maxVolume;
+                  scene.setLayerVolume(layer.id, gain);
                   // Remember it: the Mixer is how the brief says to tune the
                   // synth bed by ear, and every level was being thrown away
                   // at the end of the scene, so the next start came back at
                   // the scene JSON's defaults.
-                  rememberLayerVolume(layer.id, v);
+                  rememberLayerVolume(layer.id, gain);
                   setTick((t) => t + 1);
                 }}
               />
             ))}
+            <button
+              onClick={() => {
+                // Saved levels outrank the scene JSON, so without this a
+                // re-voiced scene would never be heard by anyone who had
+                // touched a slider once.
+                scene.resetLayerVolumes();
+                forgetLayerVolumes(scene.definition.id);
+                setTick((t) => t + 1);
+              }}
+              className="w-full ui-label text-stone-300 hover:text-stone-100
+                         transition-colors duration-slow px-3 py-2"
+              style={{ minHeight: 44 }}
+            >
+              Reset to scene defaults
+            </button>
           </div>
         )}
       </div>

@@ -4,6 +4,7 @@ import {
   DEFAULT_SETTINGS,
   __invalidateCacheForTests,
   getAllSettings,
+  forgetLayerVolumes,
   getLayerVolumes,
   getSetting,
   rememberLayerVolume,
@@ -194,6 +195,29 @@ describe('remembered Mixer levels', () => {
     rememberLayerVolume('a:one', 4);
     rememberLayerVolume('a:two', -1);
     expect(getLayerVolumes()).toEqual({ 'a:one': 1, 'a:two': 0 });
+  });
+
+  it('forgets one scene without touching the others', () => {
+    rememberLayerVolume('forest-night:wind-in-leaves', 0.5);
+    rememberLayerVolume('forest-night:synth-bed', 0.08);
+    rememberLayerVolume('forest-day:wind-in-leaves', 0.4);
+
+    forgetLayerVolumes('forest-night');
+
+    expect(getLayerVolumes()).toEqual({ 'forest-day:wind-in-leaves': 0.4 });
+  });
+
+  it('is a no-op for a scene with nothing saved', () => {
+    rememberLayerVolume('forest-day:wind-in-leaves', 0.4);
+    forgetLayerVolumes('ocean-night');
+    expect(getLayerVolumes()).toEqual({ 'forest-day:wind-in-leaves': 0.4 });
+  });
+
+  it('does not match a scene whose id is a prefix of another', () => {
+    // 'forest' must not take 'forest-night' with it.
+    rememberLayerVolume('forest-night:wind-in-leaves', 0.5);
+    forgetLayerVolumes('forest');
+    expect(getLayerVolumes()).toEqual({ 'forest-night:wind-in-leaves': 0.5 });
   });
 
   it('survives a cold reload', () => {

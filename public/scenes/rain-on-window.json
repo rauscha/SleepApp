@@ -4,7 +4,8 @@
   "description": "Steady rain against glass, distant rain on pavement, occasional far-off rumble. No thunder cracks \u2014 only the bass of weather a few miles off.",
   "synth": {
     "color": "brown",
-    "defaultVolume": 0.16
+    "defaultVolume": 0.16,
+    "maxVolume": 0.32
   },
   "tinnitus": {
     "enabledByDefault": false,
@@ -34,7 +35,8 @@
           "url": "/audio/rain-on-window/rain-on-glass/glass-3.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/rain-on-window/rain-on-glass/glass-3.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 1.0
     },
     {
       "id": "rain-pavement",
@@ -59,7 +61,8 @@
           "url": "/audio/rain-on-window/rain-pavement/pavement-3.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/rain-on-window/rain-pavement/pavement-3.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 0.6
     },
     {
       "id": "distant-thunder-rumble",
@@ -79,7 +82,8 @@
           "url": "/audio/rain-on-window/distant-thunder-rumble/rumble-2.opus",
           "attribution": "Pixabay \u2014 see /audio/rain-on-window/distant-thunder-rumble/rumble-2.json. Low-passed at 600 Hz during processing."
         }
-      ]
+      ],
+      "maxVolume": 0.44
     }
   ]
 }

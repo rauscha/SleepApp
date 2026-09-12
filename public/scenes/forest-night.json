@@ -4,7 +4,8 @@
   "description": "Wind moving through dark canopy, night insects far off, a slow creek behind it. No birds \u2014 the woods after dark.",
   "synth": {
     "color": "brown",
-    "defaultVolume": 0.16
+    "defaultVolume": 0.16,
+    "maxVolume": 0.32
   },
   "tinnitus": {
     "enabledByDefault": false,
@@ -39,7 +40,8 @@
           "url": "/audio/forest-day/creek-trickle/creek-4.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-day/creek-trickle/creek-4.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 0.64
     },
     {
       "id": "wind-in-leaves",
@@ -59,14 +61,15 @@
           "url": "/audio/forest-day/wind-in-leaves/wind-2.opus",
           "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/forest-day/wind-in-leaves/wind-2.json for source + license. Reused across forest-day and forest-night."
         }
-      ]
+      ],
+      "maxVolume": 0.9
     },
     {
       "id": "night-ambience",
       "label": "Night insects (distant)",
       "loopOffsetSeconds": 199,
       "crossfadeSeconds": 5,
-      "defaultVolume": 0.3,
+      "defaultVolume": 0.22,
       "variantRotation": "random",
       "variants": [
         {
@@ -84,7 +87,8 @@
           "url": "/audio/forest-night/night-ambience/night-5.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/forest-night/night-ambience/night-5.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 0.6
     }
   ]
 }

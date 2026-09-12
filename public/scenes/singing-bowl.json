@@ -4,7 +4,8 @@
   "description": "Deep bronze bowl drone with a slow shimmer of higher bowls overhead. Designed as a sound-bath bed under meditations.",
   "synth": {
     "color": "brown",
-    "defaultVolume": 0.08
+    "defaultVolume": 0.08,
+    "maxVolume": 0.16
   },
   "tinnitus": {
     "enabledByDefault": false,
@@ -34,7 +35,8 @@
           "url": "/audio/singing-bowl/bowl-drone/drone-3.opus",
           "attribution": "Locally generated with audiocraft MusicGen-medium \u2014 see /audio/singing-bowl/bowl-drone/drone-3.json for prompt + license."
         }
-      ]
+      ],
+      "maxVolume": 1.0
     },
     {
       "id": "bowl-shimmer",
@@ -54,7 +56,8 @@
           "url": "/audio/singing-bowl/bowl-shimmer/shimmer-2.opus",
           "attribution": "Locally generated with audiocraft MusicGen-medium \u2014 see /audio/singing-bowl/bowl-shimmer/shimmer-2.json for prompt + license."
         }
-      ]
+      ],
+      "maxVolume": 0.56
     }
   ]
 }

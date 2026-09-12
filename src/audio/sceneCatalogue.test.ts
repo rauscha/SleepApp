@@ -155,6 +155,12 @@ describe('scene catalogue conformance', () => {
         // Hard bounds: nothing silent, nothing hot enough to dominate/clip.
         expect(scene.synth.defaultVolume).toBeGreaterThanOrEqual(0.08);
         expect(scene.synth.defaultVolume).toBeLessThanOrEqual(0.2);
+        const bedCeiling = scene.synth.maxVolume ?? 1;
+        expect(
+          bedCeiling,
+          `${scene.id}: synth bed maxVolume ${bedCeiling} below its default`
+        ).toBeGreaterThanOrEqual(scene.synth.defaultVolume);
+        expect(bedCeiling).toBeLessThanOrEqual(1);
         // Soft: CLAUDE.md voicing — synth bed 0.10–0.16.
         if (scene.synth.defaultVolume < 0.1 || scene.synth.defaultVolume > 0.16) {
           warnings.push(
@@ -167,6 +173,21 @@ describe('scene catalogue conformance', () => {
             `${scene.id}/${el.id}: volume ${el.defaultVolume} out of sane range`
           ).toBeGreaterThan(0);
           expect(el.defaultVolume).toBeLessThanOrEqual(0.62);
+
+          // Mixer ceiling (2026-09-12): the slider's travel maps onto
+          // [0, maxVolume], so it must be at least the voiced default —
+          // otherwise the scene starts above its own slider's top — and it
+          // has to leave real headroom to be worth having.
+          const ceiling = el.maxVolume ?? 1;
+          expect(
+            ceiling,
+            `${scene.id}/${el.id}: maxVolume ${ceiling} below defaultVolume ${el.defaultVolume}`
+          ).toBeGreaterThanOrEqual(el.defaultVolume);
+          expect(ceiling).toBeLessThanOrEqual(1);
+          expect(
+            ceiling,
+            `${scene.id}/${el.id}: maxVolume ${ceiling} leaves no headroom over ${el.defaultVolume}`
+          ).toBeGreaterThanOrEqual(Math.min(1, el.defaultVolume * 1.5));
           // Soft: primary ~0.55–0.60, support 0.25–0.35, events <=~0.20.
           const inBand =
             (el.defaultVolume >= 0.55 && el.defaultVolume <= 0.6) ||

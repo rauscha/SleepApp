@@ -177,6 +177,20 @@ export function rememberLayerVolume(layerId: string, volume: number): void {
   setSetting('layerVolumes', { ...current, [layerId]: clamped });
 }
 
+/**
+ * Drop the saved Mixer levels for one scene, so its JSON defaults apply
+ * again. Keyed by the `<sceneId>:` prefix every layer id carries.
+ */
+export function forgetLayerVolumes(sceneId: string): void {
+  const current = read().layerVolumes;
+  const prefix = `${sceneId}:`;
+  const next = Object.fromEntries(
+    Object.entries(current).filter(([id]) => !id.startsWith(prefix))
+  );
+  if (Object.keys(next).length === Object.keys(current).length) return;
+  setSetting('layerVolumes', next);
+}
+
 export function getAllSettings(): UserSettings {
   return structuredClone(read());
 }

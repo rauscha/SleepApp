@@ -4,7 +4,8 @@
   "description": "Steady rain deep in the rainforest, softer rain a little farther off, muffled thunder behind it all.",
   "synth": {
     "color": "brown",
-    "defaultVolume": 0.1
+    "defaultVolume": 0.1,
+    "maxVolume": 0.2
   },
   "tinnitus": {
     "enabledByDefault": false,
@@ -44,7 +45,8 @@
           "url": "/audio/monsoon/rain/rain-5.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/monsoon/rain/rain-5.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 1.0
     },
     {
       "id": "rain-distant",
@@ -64,7 +66,8 @@
           "url": "/audio/monsoon/rain-distant/distant-2.opus",
           "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/monsoon/rain-distant/distant-2.json for source + license."
         }
-      ]
+      ],
+      "maxVolume": 0.6
     },
     {
       "id": "thunder-rumble",
@@ -84,7 +87,8 @@
           "url": "/audio/monsoon/thunder-rumble/rumble-2.opus",
           "attribution": "freetousesounds sound library \u2014 see /audio/monsoon/thunder-rumble/rumble-2.json for license. Low-passed at 600 Hz, sparse event layer."
         }
-      ]
+      ],
+      "maxVolume": 0.4
     }
   ]
 }

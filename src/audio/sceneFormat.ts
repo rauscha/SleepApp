@@ -27,6 +27,8 @@ export interface SceneDefinition {
     color: NoiseColor;
     /** Default volume in [0, 1]. */
     defaultVolume: number;
+    /** Mixer ceiling for the bed — see SceneElementDefinition.maxVolume. */
+    maxVolume?: number;
   };
 
   /** Tinnitus masking layer config. */
@@ -77,6 +79,22 @@ export interface SceneElementDefinition {
   crossfadeSeconds?: number;
   /** Default volume in [0, 1]. */
   defaultVolume: number;
+  /**
+   * Ceiling for this layer's Mixer slider, in [0, 1]. The slider's full
+   * travel maps onto `[0, maxVolume]` rather than `[0, 1]`.
+   *
+   * Why: gain is linear amplitude, so on a layer voiced at 0.25 the top
+   * three quarters of the slider are levels nobody would ever choose, and
+   * the range that matters is squeezed into the bottom. Capping a layer at
+   * roughly twice its voiced default spends the whole slider on the useful
+   * range and roughly doubles its resolution. It does NOT change how a
+   * scene sounds: `defaultVolume` is still the real gain, and the ceiling
+   * only rescales the control.
+   *
+   * Omitted means 1 (the full range), which is right for a scene's primary
+   * element — the one you might genuinely want loud.
+   */
+  maxVolume?: number;
   /** Variant rotation policy. */
   variantRotation?: 'sequential' | 'random';
 }
