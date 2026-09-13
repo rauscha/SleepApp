@@ -1,3 +1,144 @@
+# Session hand-off — 2026-09-13 (machine: tikiserv)
+# Newest block. Everything below is prior history; this supersedes it for
+# REPO STATE.
+
+## STATE
+- `main` at `80ce638`, clean, pushed, single worktree. **No PR workflow in
+  this repo** — commit straight to main (CLAUDE.md "Commit discipline").
+- Green: `npx tsc --noEmit` clean, `npx vitest run` **360/360**, `npx vite
+  build` clean. No audio bytes changed this session, CACHE_VERSION still v12.
+- On tikiserv, prefix tool-shell commands with `source ~/.nvm/nvm.sh`.
+
+## Shipped this session
+1. **Mixer ceilings** (`maxVolume` per element + synth bed, all 9 scenes).
+   Slider travel maps onto `[0, maxVolume]` = 2x the voiced default, capped
+   at 1.0. Does NOT change how anything sounds — `defaultVolume` is still
+   real gain. forest-night `night-ambience` re-voiced 0.30 -> 0.22 with a
+   0.60 ceiling (Andrew: the crickets were too hot).
+2. **Perceptual taper** (`src/audio/taper.ts`) on every volume slider —
+   constant dB per unit travel, 30 dB range, true silence in the bottom 5%.
+   Stored values are still real gain; the taper converts only at the edge.
+   The on-screen % is now thumb position, not amplitude.
+3. **The "silence until I tap around" bug** — NOT caused by the native-loop
+   change (reproduced on 62a6487, before any of it). Cause: Howler registers
+   its autoplay-unlock listeners lazily on first Howl construction, which
+   here happens *inside* the scene-pick tap, so the unlock is deferred a
+   gesture and then `load()`s every element, aborting in-flight media
+   requests (`net::ERR_ABORTED`). Fixed by `primeAudioUnlock()` at startup,
+   plus rebuild-on-loaderror and a bounded start retry.
+4. **night-train no longer plays a forest creek** — it was paired with
+   `forest-night`. Repointed to `rain-on-window` as a stopgap.
+
+## The pace experiment — ANSWERED
+Andrew listened to the 120-150 wpm ladder: **125 wpm is the pick**, and the
+90 wpm "best practice" render was hated ("I want to murder the 90 wpm
+narrator"). This **refutes** the research claim that sleep narration needs
+<=90 wpm — see `notes/tts-research-2026-09-12.md` §4b.
+
+His hypothesis for why, which fits the data better than the literature:
+he needs enough words per second to *occupy* attention; narration he can
+outpace leaves spare capacity for rumination. Consequences recorded in the
+note: perceived slowness comes from **voice character** (low, gravelly,
+accented) not from rate, and his hypothesis predicts he wants SHORTER
+pauses, not longer — untested and directly contradicts the craft sources.
+
+## Local TTS is set up and fast
+- `~/venvs/tts` — Python 3.12, torch 2.6.0+cu124, kokoro 0.9.4, spaCy model
+  pre-installed (uv venvs have no pip; Kokoro's phonemiser needs the model).
+- **~60x realtime on the 4060 Ti.** 14 min of speech in 14 s.
+- **Thermals are a non-issue**: 3 min sustained burn peaked 68C against an
+  83C threshold, 142W of a 160W limit, zero throttling. `~/tools/gpu-watch.py`.
+- `tools/tts-ladder.py` renders a story at a ladder of gross-wpm targets.
+  **Known limit:** Kokoro's `speed` is discontinuous — 0.780 -> 159.7 wpm,
+  0.811 -> 155.8, 0.830 -> 141.1, nothing yields ~150. The tool oscillates
+  and warns rather than lying. The fix (NOT built): render once and
+  pitch-preserving time-stretch to each target.
+
+## AWAITING ANDREW'S EAR — voice audition already on his phone
+15 files sent: 6 American males and 4 blends at exactly 125 wpm (same
+passage, same gaps), plus 4 "under a scene bed" mixes at app levels —
+including the **ElevenLabs voice given identical treatment**, to test his
+hunch that Kokoro's shortfall may not matter under a bed. Also
+`ELEVENLABS-stone-reference.mp3` as the dry yardstick.
+Kokoro has 54 voices (28 English). Voice **blending is built in** (comma-
+separated = averaged embeddings) and `speed` can be a callable over chunk
+index, so the read can slow as a story progresses.
+
+## Train scene — SOURCING COMPLETE, cutting not started
+Andrew's design: **interior train ride + rain on window + one other.**
+- **Rain on glass already ships** at 409s with 3 variants, full quality,
+  costs nothing to reuse.
+- **The thunk problem:** exterior pass-bys have no rail-joint rhythm, and no
+  filter can add it. Andrew's muffling idea (lowpass + light reverb) was
+  right for *tone* — he liked 1200 Hz ("light"), called 550 Hz a spaceship —
+  but the rhythm has to be in the source.
+- **Solved by buying FTUS TRAINS_02** (48/24 repack). On tikiserv at
+  `~/sounds/ftus/TRAINS_02` (373 files, 12 GB). The target file is a
+  **Thailand first-class private cabin, windows closed, "Railway Clicks",
+  602 s** — two 251 s variants from one take. A 515 s second take exists.
+- Because the treatment lowpasses at 1200 Hz anyway, source bandwidth above
+  that is irrelevant — which is why the 24 kHz freesound interior was
+  *wrongly* rejected earlier, and why 48/24 is plenty.
+- **Third element still unchosen.** Suggestion on record: distant thunder
+  rumble (we ship it, weather-consistent, re-cut 251 -> 199 for coprimality).
+
+## Also on tikiserv now
+- `~/sounds/ftus/loops` — **166 loop-length (>=257 s) takes, 18.3 GB**:
+  76 RAIN_01, 48 WIND_02, 42 WATER_05. Short names + `manifest.csv` mapping
+  back to the original filename/duration/location. Verified: count, size and
+  a random duration spot-check all pass.
+  These cover **8 of the 12 variants still over 3 dB** in the seam audit
+  (wind-1 9.8 dB, wave-3 8.4, far-1 7.8, forest-2 4.6, rumble-2 3.8,
+  birds-2 3.8, far-2 3.8, wind-2 3.5).
+- `~/sounds/train-candidates` — two YouTube greps. `vXCB1zGGFiY` (Swiss
+  journey, 8.5 h, 48 kHz) is a genuine continuous recording. `c5abhbJSmXY`
+  is **a 27-second loop repeated for 10 hours** — delete it, and note the
+  lesson: sleep-ambience uploads must be measured, not trusted.
+
+## New machine-level tools (outside the repo, `~/tools/`)
+- `gpu-watch.py` — wraps a job, reports peak temp/power/clocks and any
+  throttling by cause. Encodes this box's quirks (driver 595 renamed the
+  fields; this card rejects `hw_power_brake`; nvidia-smi exits 0 on a bad
+  field name and poisons the whole query, so each is probed).
+- `loop-detect.py` — is this audio a real recording or a short loop? Plus
+  bandwidth. This is what caught the 27-second fake.
+
+## Windows cleanup (done, with Andrew's confirmation)
+Deleted from `D:\Sounds`: 16 ORTF3D zips, `picked`, `final` — **189.4 GB
+freed**, all re-downloadable from Gumroad. `normalized` KEPT (it is work
+product: his front-ORTF-pair + dynaudnorm output, not re-downloadable;
+mirrored at `~/sounds/normalized`). The three new zips (RAIN_01, WIND_02,
+WATER_05, ~39.5 GB) are extracted in two places and **safe to delete**.
+
+## Next up
+1. **[ANDREW] The voice audition on his phone** — pick a voice, and say
+   whether Kokoro-under-a-bed is distinguishable from ElevenLabs-under-a-bed.
+   That single answer decides whether the library can be rendered locally.
+2. **Cut the train scene.** Needs a plan first (Andrew asked for plans before
+   execution). Thailand cabin -> 2x 251 s variants; rain-on-glass reused at
+   409; third element TBD; then `tools/loopify-scenes.py`.
+3. **Re-cut the 8 reachable seams** from `~/sounds/ftus/loops`.
+4. **Fix the ElevenLabs Studio endpoints** in `tools/gen-story.ts` (5 paths,
+   `/v1/projects` -> `/v1/studio/projects`) — the 405 was our bug.
+5. Strip the in-app generator (PENDING-DECISIONS 0C; generated stories on
+   his phone may be discarded).
+6. Still open from before: device night with debug markers; the native-loop
+   fix is IN but unmeasured on real hardware.
+
+## Watch out for
+- **`pgrep -f <script>` matches the waiting shell itself.** A wait loop using
+  it deadlocked for 1h45m doing nothing this session. Wait on a file, not a
+  process name.
+- **Don't edit a render tool and go straight to a 20-minute job.** Three
+  separate bugs in `tts-ladder.py` each took minutes to surface. Validate on
+  a 10-second input first.
+- **Windows: `\\?\` works for writing but breaks `Get-ChildItem`.** Long
+  paths are already enabled system-wide there, so plain paths enumerate fine.
+- Marker renders and ladder renders are gitignored (`notes/marker-renders/`,
+  `notes/tts-ladder/`).
+
+---
+
 # Session hand-off — 2026-09-11b (machine: tikiserv)
 # Newest block. Everything below is prior history; this supersedes it for
 # REPO STATE.

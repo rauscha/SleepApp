@@ -1,5 +1,22 @@
 # Pending decisions / queued actions
 
+## 0D. OPEN 2026-09-13 — the two answers that unblock everything else
+
+1. **[ANDREW] The voice audition is on your phone** (15 files). Pick a voice,
+   and crucially say whether `BEDMIX-am-michael` is distinguishable from
+   `BEDMIX-ELEVENLABS` — same passage, same scene bed, same levels. If they
+   are not, the whole library can be rendered locally for free and re-rendered
+   on a whim; if they are, ElevenLabs stays for narration and Kokoro becomes
+   the fast iteration tool.
+2. **[ANDREW] Third element for the train scene.** Interior cabin + rain on
+   glass are settled. Suggestion on record: distant thunder rumble (already
+   ships, weather-consistent, re-cut 251 -> 199 to keep offsets coprime).
+
+**Settled this session:** 125 wpm is the narration pace (90 wpm was hated,
+refuting the craft sources); ceilings + a perceptual taper ship on every
+volume slider; the train scene's source is FTUS TRAINS_02's Thailand
+first-class cabin (602 s, "Railway Clicks").
+
 ## 0C. DECIDED 2026-09-12 — the library becomes hand-made, not generated
 
 Andrew: this "really needs to be a dead simple straightforward APP of an app,
