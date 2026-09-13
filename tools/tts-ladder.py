@@ -235,7 +235,10 @@ def main():
             audio = base
 
         tag = 'classic' if args.classic else f'{int(wpm)}wpm-{lever}'
-        stem = f'{name}-{tag}'
+        # The voice belongs in the filename: auditioning several voices at one
+        # rate otherwise has every render overwrite the last.
+        vtag = re.sub(r'[^a-z0-9]+', '-', args.voice.lower()).strip('-')
+        stem = f'{name}-{tag}-{vtag}'
         mp3 = os.path.join(args.out, f'{stem}.mp3')
 
         # Measure the ENCODED file and re-solve against it, because that is
