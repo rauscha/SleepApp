@@ -54,3 +54,42 @@ def gross_wpm(words: int, total_seconds: float) -> float:
     notes/tts-research-2026-09-12.md §4b.
     """
     return words * 60.0 / total_seconds if total_seconds > 0 else 0.0
+
+
+def chunk_segment(text: str, max_chars: int) -> list[str]:
+    """Split a segment on sentence boundaries into pieces under max_chars.
+
+    Every one of these engines has a practical input ceiling, and they do not
+    report hitting it — Chatterbox silently truncated 480-character segments,
+    which surfaced only as an implausible 227.9 wpm "natural rate" because the
+    full word count was being credited to partial audio. Chunking below the
+    ceiling is the fix; `plausible_wpm` is the alarm for next time.
+
+    Pieces are concatenated with no gap between them, so this changes where
+    the engine breathes, never where the script's pauses fall.
+    """
+    if len(text) <= max_chars:
+        return [text]
+    sentences = re.findall(r"[^.!?]+[.!?]+\s*|[^.!?]+$", text)
+    chunks, cur = [], ""
+    for s in sentences:
+        if cur and len(cur) + len(s) > max_chars:
+            chunks.append(cur.strip())
+            cur = s
+        else:
+            cur += s
+    if cur.strip():
+        chunks.append(cur.strip())
+    return chunks
+
+
+# A coarse smoke alarm only. It was originally (85, 210) on the assumption
+# that an implausible rate meant truncation — then transcription proved
+# Chatterbox really does read at ~260 wpm with every word present. Rate cannot
+# distinguish "fast" from "cut off"; only `tools/tts-verify.py` can. These
+# bounds now catch gross breakage (silence, a single word, a runaway loop).
+PLAUSIBLE_WPM = (60.0, 320.0)
+
+
+def plausible_wpm(wpm: float) -> bool:
+    return PLAUSIBLE_WPM[0] <= wpm <= PLAUSIBLE_WPM[1]

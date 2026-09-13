@@ -47,6 +47,10 @@ VENVS = {
 }
 # Below/above this, pitch-preserving stretch starts to smear consonants.
 TEMPO_FLOOR, TEMPO_CEIL = 0.65, 1.6
+# Every one of these engines truncates silently past some input length, so
+# nothing is ever handed a segment whole. 300 is under Chatterbox's practical
+# ceiling and the same for all of them, which keeps the renders comparable.
+MAX_CHUNK_CHARS = 300
 # Rungs in the old ladder were 5 wpm apart; inside this, candidates are
 # indistinguishable in pace and only the voice differs.
 WPM_TOLERANCE = 0.75
@@ -94,8 +98,20 @@ def render_chatterbox(segments, args):
 
 def render_styletts2(segments, args):
     import numpy as np
-    from styletts2 import tts as s2
-    m = s2.StyleTTS2()
+    import torch
+    # StyleTTS2's loader predates torch 2.6 flipping torch.load's
+    # weights_only default to True, so its checkpoints refuse to load:
+    # "Unsupported global: GLOBAL builtins.getattr". Restore the old
+    # behaviour just while the model loads. Safe only because these are
+    # the upstream yl4579 LibriTTS weights and nothing user-supplied is
+    # unpickled here.
+    _load = torch.load
+    torch.load = lambda *a, **k: _load(*a, **{**k, "weights_only": False})
+    try:
+        from styletts2 import tts as s2
+        m = s2.StyleTTS2()
+    finally:
+        torch.load = _load
     kw = {"target_voice_path": args.reference} if args.reference else {}
     out = []
     for text in segments:
@@ -181,21 +197,44 @@ def main() -> int:
 
     import numpy as np
     import soundfile as sf
-    from tts_text import DEFAULT_PAUSE_SECONDS, TARGET_LUFS, gross_wpm, load_script
+    from tts_text import (DEFAULT_PAUSE_SECONDS, PLAUSIBLE_WPM, TARGET_LUFS,
+                          chunk_segment, gross_wpm, load_script, plausible_wpm)
 
     pause_s = DEFAULT_PAUSE_SECONDS if args.pause is None else args.pause
     segments, words, softly = load_script(args.script)
-    print(f"{args.engine}: {len(segments)} segments, {words} words, "
-          f"{softly} [softly] dropped")
+
+    # Flatten to chunks, remembering which segment each came from: chunks
+    # inside a segment join with no gap, only segment joins get a pause.
+    pieces, owner = [], []
+    for i, seg in enumerate(segments):
+        for piece in chunk_segment(seg, MAX_CHUNK_CHARS):
+            pieces.append(piece)
+            owner.append(i)
+    print(f"{args.engine}: {len(segments)} segments -> {len(pieces)} chunks, "
+          f"{words} words, {softly} [softly] dropped")
 
     import time
     t0 = time.time()
-    chunks, sr = ENGINES[args.engine](segments, args)
+    rendered, sr = ENGINES[args.engine](pieces, args)
     render_s = time.time() - t0
+
+    # Rejoin chunks into one array per segment.
+    chunks = []
+    for i in range(len(segments)):
+        parts = [r for r, o in zip(rendered, owner) if o == i]
+        chunks.append(np.concatenate(parts) if len(parts) > 1 else parts[0])
 
     speech_s = sum(len(c) for c in chunks) / sr
     pause_total = pause_s * (len(chunks) - 1)
     natural = gross_wpm(words, speech_s + pause_total)
+
+    if not plausible_wpm(natural):
+        sys.exit(
+            f"refusing to continue: measured natural rate {natural:.1f} wpm is "
+            f"outside {PLAUSIBLE_WPM[0]:.0f}-{PLAUSIBLE_WPM[1]:.0f}. The render "
+            f"is wrong, not fast — most likely the engine truncated a chunk, so "
+            f"{words} words are being credited to {speech_s:.0f}s of partial "
+            f"audio. Stretching this would produce a confident-sounding lie.")
 
     # Hit the target exactly by stretching speech only, so the gaps stay put.
     want_total = words * 60.0 / args.wpm
