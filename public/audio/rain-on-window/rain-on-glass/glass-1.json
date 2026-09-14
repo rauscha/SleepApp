@@ -7,5 +7,14 @@
   "outputFormat": "48 kHz / 128k / stereo Opus",
   "replaceWhen": "once the rest of the app is built",
   "qualityWarning": "mono source duplicated to stereo, loses spatial width",
-  "notes": "Re-encoded from Pixabay source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3. Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
+  "notes": "Re-encoded from Pixabay source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3. Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless.",
+  "processing": {
+    "tonalRepair": {
+      "date": "2026-09-14",
+      "eventsRemoved": 3,
+      "tool": "tools/repair-tonal-events.py",
+      "why": "Narrow tonal intrusions (bird calls) audible on every loop. The FTUS source name for the rain-on-glass takes reads 'Birds and Crows', so they were documented at selection and missed. Spectral repair rather than a re-cut: sample count and the gapless 6s fade-wrap are preserved exactly, so the prime loop offset and seam are untouched.",
+      "cost": "One extra generation of Opus 128k across the whole file, unavoidable when the source is already lossy. Integrated loudness unchanged at measurement precision."
+    }
+  }
 }

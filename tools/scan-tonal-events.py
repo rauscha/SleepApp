@@ -44,7 +44,23 @@ def scan(path: Path, threshold: float):
     freqs = librosa.fft_frequencies(sr=sr, n_fft=4096)
     band = (freqs >= BAND[0]) & (freqs <= BAND[1])
     Sb = S[band]
+    # A spectral *peak*, not merely the loudest bin. Taking the max alone
+    # makes a steep slope at the band edge look like an event: ocean far-2
+    # produced 105 "events" all pinned within 100 Hz of the 2.5 kHz boundary,
+    # where real bird calls sat at 5.3 kHz with a wide spread. Require the
+    # winning bin to stand above the bins on BOTH sides of it, which a slope
+    # never does.
+    idx = Sb.argmax(axis=0)
+    frames = np.arange(Sb.shape[1])
+    interior = (idx > 2) & (idx < Sb.shape[0] - 3)
+    left = Sb[np.clip(idx - 3, 0, None), frames]
+    right = Sb[np.clip(idx + 3, None, Sb.shape[0] - 1), frames]
+    peak = Sb[idx, frames]
+    prominence = np.minimum(peak / (left + 1e-12), peak / (right + 1e-12))
+    is_peak = interior & (20 * np.log10(prominence) > 6.0)
+
     ratio = 20 * np.log10(Sb.max(axis=0) / (np.median(Sb, axis=0) + 1e-12))
+    ratio = np.where(is_peak, ratio, 0.0)
     times = np.arange(len(ratio)) * 2048 / sr
 
     # Material with almost no energy in the band breaks the ratio: a bass
@@ -91,7 +107,10 @@ def main() -> int:
         total += len(events)
         if args.quiet and not events:
             continue
-        rel = p.relative_to(REPO) if p.is_absolute() else p
+        try:
+            rel = p.relative_to(REPO)
+        except ValueError:
+            rel = p          # scanning something outside the repo is fine
         print(f"{str(rel):<62} {len(events):>2} event(s)  {dur:.0f}s")
         for a, b, r in events[:10]:
             span = f"{a:.1f}s" if b - a < 0.5 else f"{a:.1f}-{b:.1f}s"

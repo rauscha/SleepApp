@@ -15,7 +15,14 @@
     "loopOffsetSeconds": 409,
     "loudnorm": "two-pass linear, I=-23.84 LUFS, TP=-1.0 dBTP",
     "sampleRate": 48000,
-    "bitDepth": 24
+    "bitDepth": 24,
+    "tonalRepair": {
+      "date": "2026-09-14",
+      "eventsRemoved": 3,
+      "tool": "tools/repair-tonal-events.py",
+      "why": "Narrow tonal intrusions (bird calls) audible on every loop. The FTUS source name for the rain-on-glass takes reads 'Birds and Crows', so they were documented at selection and missed. Spectral repair rather than a re-cut: sample count and the gapless 6s fade-wrap are preserved exactly, so the prime loop offset and seam are untouched.",
+      "cost": "One extra generation of Opus 128k across the whole file, unavoidable when the source is already lossy. Integrated loudness unchanged at measurement precision."
+    }
   },
   "notes": "Front ORTF pair from 8ch ORTF 3D master; see notes/personal-sounds-selection-2026-08-17.md Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless. Encoded as Opus (128k) \u2014 see DECISIONS.md 'Ship scene audio as Opus, not MP3'.",
   "trimmedTo": "409s",
