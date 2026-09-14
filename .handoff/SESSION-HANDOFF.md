@@ -113,6 +113,12 @@ ffmpeg at `C:\tools\ffmpeg\bin\ffmpeg.exe`.
 6. Strip the in-app generator (PENDING-DECISIONS 0C).
 
 ## Watch out for
+- **Never write a bare `until <cond>; do sleep; done` to wait on a job.**
+  Use `~/tools/waitfor.sh <marker> <log> [timeout] [poll] [stall]` — it waits
+  on a file, always carries a deadline, and exits 0 found / 2 timed out / 3
+  log stopped growing. Two orphans were left running this session, and the
+  pgrep-matches-itself trap below was repeated despite already being written
+  down here. Check the real process before reporting a job "still running".
 - **A classifier with no "none of the above" class answers confidently
   anyway.** Always run a positive control it should get right and a negative
   control it should have no class for.
