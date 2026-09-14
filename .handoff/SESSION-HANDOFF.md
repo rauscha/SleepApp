@@ -43,12 +43,12 @@ Half right. Full write-up in `notes/voice-identity-2026-09-13.md`.
   German p=0.011 — the same numbers it gives stone. Its 16 labels are all
   non-English L1s with no native-English escape class.
 
-## Engine audition: built, rendered, staged, NOT sent
-`notes/engine-audition-2026-09-14.md` is the full record. 23 files in
-`/tmp/audition2/send` — 12 `BED-*` (under the real rain-on-window bed,
-including `BED-ELEVENLABS-stone` as yardstick) and 11 `DRY-*`.
-**Deliberately not pushed**: Taildrop raises one Android notification per
-file and this finished after midnight. Send on his word.
+## Engine audition: built, rendered, SENT (31 files)
+`notes/engine-audition-2026-09-14.md` is the full record. 31 files in
+`/tmp/audition2/send`, all Taildropped to pixel-8-pro — 16 `BED-*` (under
+the real rain-on-window bed, including `BED-ELEVENLABS-stone` as the
+yardstick) and 15 `DRY-*`. Four engines x four references, minus XTTS's
+absent default voice.
 
 - Everything is held constant but the voice: same passage, **exactly 125.0
   wpm on every file**, 0.6 s gaps inserted by the tool, -19.5 LUFS, and
@@ -66,8 +66,7 @@ file and this finished after midnight. Send on his word.
   everything else to be SLOOOOW". The only thing needing fast TTS is a
   separate webapp that reads long text aloud while he drives, where Kokoro
   stays right. For SleepApp: **voice quality first, licence second, speed not
-  at all.** Higgs' glacial rate is therefore not disqualifying, and it has
-  the gentlest stretch measured (113.6 wpm natural, 1.10x).
+  at all.**
 - **Three of the four engines are personal-use-only** (XTTS CPML, Higgs
   Boson non-commercial, StyleTTS2's weights ship no licence at all;
   Chatterbox is MIT but watermarks every output). Fine under the brief,
@@ -101,10 +100,11 @@ ffmpeg at `C:\tools\ffmpeg\bin\ffmpeg.exe`.
 
 ## Next up
 1. **[ANDREW] Listen to the staged set** and say the word to send it.
-2. **Higgs' three reference renders** are still running on crane-desk
-   (`C:\higgs\out`); the default one measured 113.6 wpm natural. Its
-   transformers port warns some params were randomly initialised because
-   they are missing from the checkpoint — weight its result carefully.
+2. **Higgs is DONE and sent.** All four rendered on crane-desk in full bf16
+   (10.9 GB VRAM), 140.5-167.5 wpm natural, verified **0.985-0.993, the
+   highest similarity of any engine**. Its transformers port still warns some
+   params were randomly initialised because they are missing from the
+   checkpoint — weight it carefully despite the clean transcripts.
 3. **Cut the train scene.** Cabin 251 x2 + rain-on-glass 409 + thunder 199.
    Source located: `~/sounds/ftus/TRAINS_02/.../Private Cabin ... 03` (601.7 s)
    and `... 02` (514.8 s), both 4-channel 48 kHz.

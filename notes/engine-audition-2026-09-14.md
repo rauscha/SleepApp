@@ -47,7 +47,7 @@ all passing.
 | StyleTTS2 | 174.4 | 156.1 | 151.5 | 142.5 |
 | Chatterbox | 235.2 | 153.9 | 203.5 | 142.1 |
 | XTTS v2 | (none) | 132.5 | 129.7 | 150.3 |
-| Higgs v3 | 113.6 | pending | pending | pending |
+| Higgs v3 | 160.6 | 161.1 | 167.5 | 140.5 |
 
 **Every engine tracks its reference's pace.** This matters more than it
 looks: Chatterbox's default voice reads at 235 wpm and reaching 125 would
@@ -70,7 +70,7 @@ Measured throughput, kept for reference only:
 | StyleTTS2 | ~2.5x |
 | XTTS v2 | ~0.9x |
 | Chatterbox | ~0.6x, and it watermarks every output |
-| Higgs v3 | very slow — >16 min for one passage on a 4080 |
+| Higgs v3 | ~0.2-0.4x, 5-10 min per render on a 4080 |
 
 This was first written up as a headline finding, on the reasoning that
 leaving Kokoro's 60x ends "re-render the library on a whim". **Andrew says
@@ -80,9 +80,16 @@ separate little webapp that reads long text aloud on his phone while he
 drives home — a different project, where Kokoro stays the right answer.
 
 So for SleepApp the choice is **voice quality first, licence second, and
-speed not at all.** In particular Higgs' glacial rate is not disqualifying,
-which matters because it has the gentlest stretch of any engine measured
-(113.6 wpm natural, 1.10x to reach 125).
+speed not at all.**
+
+**Two claims about Higgs here were wrong and are corrected above**, both from
+trusting a one-sentence smoke test where model-load time dominated. It does
+not run at 113.6 wpm (that was a single short sentence); on the full passage
+it runs 140.5-167.5, needing 0.74-0.89x like everything else. And it is not
+"very slow" — 0.2-0.4x realtime, comparable to Chatterbox. **XTTS remains
+the engine closest to 125 unprompted.** The lesson is the same one the
+truncation scare taught: a 10-second validation catches crashes, not
+behaviour. Measure behaviour on real input.
 
 ## Licences — all three usable, none unencumbered
 
@@ -117,4 +124,8 @@ its result carefully rather than trust it.
    found — not on tikiserv, not in digi-me (its `voice/` is a PLAN.md stub),
    not in writing-style (transcripts only), and not in a deep search of
    crane-desk's D:, user profile or GDrive. Deferred by his call.
-3. Higgs' three reference renders are still running on crane-desk.
+3. **Higgs is done** — all four rendered on crane-desk in full bf16 (10.9 GB
+   VRAM), fetched, and verified at **0.985-0.993 similarity, the highest of
+   any engine**. Sent with the rest. Its transformers port still warns that
+   some params were randomly initialised because they are missing from the
+   checkpoint, so weight it carefully despite the clean transcripts.
