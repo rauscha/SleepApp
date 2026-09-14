@@ -56,9 +56,21 @@ MAX_CHUNK_CHARS = 300
 WPM_TOLERANCE = 0.75
 
 
+def venv_python(engine: str) -> Path:
+    """Interpreter for an engine. TTS_VENV_<ENGINE> overrides the default,
+    which is how this runs on crane-desk, where the venvs live under
+    C:\\venvs and the layout is Scripts/python.exe rather than bin/python."""
+    override = os.environ.get(f"TTS_VENV_{engine.upper()}")
+    if override:
+        return Path(override)
+    base = VENVS[engine]
+    win = base / "Scripts" / "python.exe"
+    return win if win.exists() else base / "bin" / "python"
+
+
 def reexec(engine: str) -> None:
     """Hand over to the engine's own interpreter if we aren't in it."""
-    want = VENVS[engine] / "bin" / "python"
+    want = venv_python(engine)
     if not want.exists():
         sys.exit(f"no venv for {engine}: {want} does not exist")
     if Path(sys.executable).resolve() != want.resolve():
@@ -171,10 +183,13 @@ ENGINES = {
 
 # --- assembly --------------------------------------------------------------
 
+FFMPEG = os.environ.get("FFMPEG", "ffmpeg")
+
+
 def stretch(path_in: Path, path_out: Path, tempo: float) -> None:
     """Pitch-preserving time-stretch. rubberband beats atempo on speech."""
     subprocess.run(
-        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(path_in),
+        [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-i", str(path_in),
          "-filter:a", f"rubberband=tempo={tempo:.6f}:pitchq=quality",
          str(path_out)], check=True)
 
@@ -283,7 +298,7 @@ def main() -> int:
         out_path = Path(args.output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(
-            ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(merged),
+            [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-i", str(merged),
              "-af", f"loudnorm=I={TARGET_LUFS}:TP=-1.0:LRA=7:linear=true",
              "-ar", "48000", str(out_path)], check=True)
 
