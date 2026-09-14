@@ -60,19 +60,29 @@ were run.
 **XTTS sits closest to 125 unprompted** (129.7-150.3), so it needs the least
 stretch of the three local engines and carries the least risk of smearing.
 
-## Practicality
+## Speed is NOT a selection criterion (Andrew, 2026-09-13)
 
-| engine | speed | note |
-|---|---|---|
-| Kokoro | 60x realtime | the whole library re-renders in seconds |
-| StyleTTS2 | ~2.5x | four renders in 3 minutes |
-| XTTS v2 | ~0.9x | ~2.5 min per render |
-| Chatterbox | ~0.6x | ~3 min per render, and it watermarks every output |
-| Higgs v3 | very slow | >16 min for one passage on a 4080; measurement pending |
+Measured throughput, kept for reference only:
 
-Anything below Kokoro's 60x ends "re-render the library on a whim". At
-StyleTTS2's rate the library is an overnight job; at Higgs' rate it may not
-be feasible at all.
+| engine | speed |
+|---|---|
+| Kokoro | 60x realtime |
+| StyleTTS2 | ~2.5x |
+| XTTS v2 | ~0.9x |
+| Chatterbox | ~0.6x, and it watermarks every output |
+| Higgs v3 | very slow — >16 min for one passage on a 4080 |
+
+This was first written up as a headline finding, on the reasoning that
+leaving Kokoro's 60x ends "re-render the library on a whim". **Andrew says
+that does not matter here:** the library is an offline batch, and "fine for
+everything else to be SLOOOOW". The only thing that needs fast TTS is a
+separate little webapp that reads long text aloud on his phone while he
+drives home — a different project, where Kokoro stays the right answer.
+
+So for SleepApp the choice is **voice quality first, licence second, and
+speed not at all.** In particular Higgs' glacial rate is not disqualifying,
+which matters because it has the gentlest stretch of any engine measured
+(113.6 wpm natural, 1.10x to reach 125).
 
 ## Licences — all three usable, none unencumbered
 

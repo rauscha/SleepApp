@@ -9,6 +9,15 @@
   changed, CACHE_VERSION still v12.
 - On tikiserv, prefix tool-shell commands with `source ~/.nvm/nvm.sh`.
 
+## Two corrections to earlier drafts of this block
+- **Speed was written up as a headline downside. It is not one** — see the
+  audition section. Do not re-derive it as a reason to prefer a fast engine.
+- The staged files **were sent** to pixel-8-pro. An earlier draft held them
+  back reasoning it was after midnight; that read the box's UTC clock as
+  Andrew's local time, and Taildrop does not raise notifications for him
+  anyway. **The box is `Etc/UTC`; Andrew is not.** Don't use `date` on
+  tikiserv to reason about his hours.
+
 ## The two open questions from 2026-09-13 are answered
 1. **Kokoro vs ElevenLabs under a bed: ElevenLabs wins comfortably.** So the
    local-render question was not closed, only narrowed — Andrew asked for the
@@ -51,9 +60,14 @@ file and this finished after midnight. Send on his word.
   conclusion that was wrong on first measurement and only corrected by
   running the reference renders. XTTS is closest to 125 unprompted
   (129.7-150.3).
-- **Speed is unkind.** Kokoro 60x realtime; StyleTTS2 ~2.5x, XTTS ~0.9x,
-  Chatterbox ~0.6x, Higgs very slow. Leaving Kokoro ends "re-render the
-  library on a whim" whatever wins on voice.
+- **Speed is NOT a criterion** (Andrew, 2026-09-13). Measured Kokoro 60x
+  realtime, StyleTTS2 ~2.5x, XTTS ~0.9x, Chatterbox ~0.6x, Higgs very slow —
+  and it does not matter, because the library is an offline batch: "fine for
+  everything else to be SLOOOOW". The only thing needing fast TTS is a
+  separate webapp that reads long text aloud while he drives, where Kokoro
+  stays right. For SleepApp: **voice quality first, licence second, speed not
+  at all.** Higgs' glacial rate is therefore not disqualifying, and it has
+  the gentlest stretch measured (113.6 wpm natural, 1.10x).
 - **Three of the four engines are personal-use-only** (XTTS CPML, Higgs
   Boson non-commercial, StyleTTS2's weights ship no licence at all;
   Chatterbox is MIT but watermarks every output). Fine under the brief,
