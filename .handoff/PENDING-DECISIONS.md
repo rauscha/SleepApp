@@ -1,5 +1,31 @@
 # Pending decisions / queued actions
 
+## 0E. OPEN 2026-09-14 — the audition is rendered and staged, waiting on ears
+
+1. **[ANDREW] Listen to the 23 staged files** in `/tmp/audition2/send` and say
+   the word to Taildrop them (held back deliberately — one Android
+   notification per file, finished after midnight). The `BED-*` files against
+   `BED-ELEVENLABS-stone` answer whether any local engine is good enough; the
+   `DRY-*` files pick a voice. Full record:
+   `notes/engine-audition-2026-09-14.md`.
+2. **[ANDREW] Your own voice as a reference** — wanted, not found. Not on
+   tikiserv, not in digi-me (`voice/` is a PLAN.md stub), not in
+   writing-style (transcripts only), and not in a deep search of crane-desk's
+   D:, user profile or GDrive. He chose to skip it this round; point at the
+   files and it becomes a fifth reference.
+3. **[ANDREW, eventually] Three of the four engines are personal-use-only.**
+   XTTS is Coqui CPML non-commercial, Higgs is Boson research/non-commercial,
+   StyleTTS2's weights repo ships no licence file at all, and Chatterbox is
+   MIT but watermarks every output. All fine while SleepApp is a one-user
+   app. Worth a conscious decision rather than a default.
+
+**Settled this session:** ElevenLabs beats Kokoro under a bed comfortably, so
+local is not yet good enough and the other engines were tried; the train
+scene's third element is distant thunder rumble (re-cut 251 -> 199); and the
+`stone` voice is a tuned native-English voice, England-leaning with an
+American pull — **not Herzog and not German**, proved by a Herzog control
+that the classifier failed to detect German in at all.
+
 ## 0D. OPEN 2026-09-13 — the two answers that unblock everything else
 
 1. **[ANDREW] The voice audition is on your phone** (15 files). Pick a voice,

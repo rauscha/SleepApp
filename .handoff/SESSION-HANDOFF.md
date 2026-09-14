@@ -1,3 +1,121 @@
+# Session hand-off — 2026-09-14 (machine: tikiserv)
+# Newest block. Everything below is prior history; this supersedes it for
+# REPO STATE.
+
+## STATE
+- `main` at `4cca32e`, clean, pushed, single worktree. No PRs in this repo.
+- Green: `npx tsc --noEmit` clean, `npx vitest run` **360/360**. No app code
+  was touched all session — every commit is tools + notes. No audio bytes
+  changed, CACHE_VERSION still v12.
+- On tikiserv, prefix tool-shell commands with `source ~/.nvm/nvm.sh`.
+
+## The two open questions from 2026-09-13 are answered
+1. **Kokoro vs ElevenLabs under a bed: ElevenLabs wins comfortably.** So the
+   local-render question was not closed, only narrowed — Andrew asked for the
+   other four engines to be tried before picking any voice, and for more
+   British options.
+2. **Train scene third element: distant thunder rumble**, re-cut 251 -> 199
+   for coprimality. Still uncut; see "Next up".
+
+## The stone voice is not Herzog and not German
+Andrew's hypothesis was a Herzog-like accent, tuned rather than cloned.
+Half right. Full write-up in `notes/voice-identity-2026-09-13.md`.
+- The regional classifier passes all controls and ranks by how cleanly a
+  voice sits in one accent class: synthetic British 100% of windows,
+  synthetic American 88%, **stone 72% (england, with 19% voting us)**,
+  real Herzog 46% across four labels. stone sits near the natives, not near
+  Herzog — England-leaning with an American pull, and less "pure" than a
+  clean regional voice, which supports tuned-not-cloned.
+- Speaker-embedding cosine: **stone vs Herzog +0.044**, against a 0.95-0.99
+  same-voice ceiling and Herzog-vs-himself-across-three-recordings at 0.80.
+  stone is further from Herzog than from a generic Kokoro American (+0.238).
+- **The L1 classifier with a `German` class is unusable here** and a control
+  is what proved it: it scores 180 s of real Herzog as Vietnamese p=0.959,
+  German p=0.011 — the same numbers it gives stone. Its 16 labels are all
+  non-English L1s with no native-English escape class.
+
+## Engine audition: built, rendered, staged, NOT sent
+`notes/engine-audition-2026-09-14.md` is the full record. 23 files in
+`/tmp/audition2/send` — 12 `BED-*` (under the real rain-on-window bed,
+including `BED-ELEVENLABS-stone` as yardstick) and 11 `DRY-*`.
+**Deliberately not pushed**: Taildrop raises one Android notification per
+file and this finished after midnight. Send on his word.
+
+- Everything is held constant but the voice: same passage, **exactly 125.0
+  wpm on every file**, 0.6 s gaps inserted by the tool, -19.5 LUFS, and
+  references all normalised to -23 LUFS (they arrived 15 dB apart).
+- Every render transcript-verified, 0.949-0.988 similarity, all passing.
+- **Every engine tracks its reference's pace.** Chatterbox's default reads at
+  235 wpm and would need a 0.53x stretch; with `stone` it runs 153.9 and
+  needs 0.80x. The pace problem is its default voice, not the engine — a
+  conclusion that was wrong on first measurement and only corrected by
+  running the reference renders. XTTS is closest to 125 unprompted
+  (129.7-150.3).
+- **Speed is unkind.** Kokoro 60x realtime; StyleTTS2 ~2.5x, XTTS ~0.9x,
+  Chatterbox ~0.6x, Higgs very slow. Leaving Kokoro ends "re-render the
+  library on a whim" whatever wins on voice.
+- **Three of the four engines are personal-use-only** (XTTS CPML, Higgs
+  Boson non-commercial, StyleTTS2's weights ship no licence at all;
+  Chatterbox is MIT but watermarks every output). Fine under the brief,
+  and it narrows what this app could ever become.
+
+## New tools, all general and committed
+- `tools/accent-id.py` — two classifiers over identical windows, per-window
+  vote spread next to the averaged verdict. **Always pass controls**; the
+  whole finding above rests on them.
+- `tools/voice-similarity.py` — speaker-embedding cosine that computes its
+  own same-voice ceiling and different-voice range every run, so a bare
+  number is never reported alone.
+- `tools/tts-audition.py` — renders any of five engines at an exact wpm by
+  measuring the natural rate and pitch-preserving stretching the speech only.
+  Re-execs into the engine's venv; `TTS_VENV_<ENGINE>` and `FFMPEG` override
+  paths for crane-desk.
+- `tools/tts-verify.py` — faster-whisper transcript check. **Rate cannot
+  detect truncation**: Chatterbox measured 235 wpm and every word was there.
+- `tools/tts_text.py` — the `[pause]`/`[softly]` contract, shared with
+  tts-ladder so the engines cannot diverge from it.
+- `tools/bedmix.py` — replaces a /tmp shell script that had the bed **9-17 dB
+  hotter than the app** and loudnorm'd voice+bed together. That fixture is
+  what the earlier Kokoro verdict was measured on; a too-loud bed hides more,
+  so it flattered Kokoro and ElevenLabs still won. The verdict is safe, the
+  fixture was not.
+
+## Venvs (uv hardlinks, so 5 venvs cost ~10 GB not 25)
+`~/venvs/{tts,accent,chatterbox,styletts2,xtts,higgs}`, all torch
+2.6.0+cu124. crane-desk has `C:\venvs\higgs` (torch 2.8+cu129) and a working
+ffmpeg at `C:\tools\ffmpeg\bin\ffmpeg.exe`.
+
+## Next up
+1. **[ANDREW] Listen to the staged set** and say the word to send it.
+2. **Higgs' three reference renders** are still running on crane-desk
+   (`C:\higgs\out`); the default one measured 113.6 wpm natural. Its
+   transformers port warns some params were randomly initialised because
+   they are missing from the checkpoint — weight its result carefully.
+3. **Cut the train scene.** Cabin 251 x2 + rain-on-glass 409 + thunder 199.
+   Source located: `~/sounds/ftus/TRAINS_02/.../Private Cabin ... 03` (601.7 s)
+   and `... 02` (514.8 s), both 4-channel 48 kHz.
+4. Re-cut the 8 reachable seams from `~/sounds/ftus/loops`.
+5. Fix the ElevenLabs Studio endpoints in `tools/gen-story.ts` (5 paths).
+6. Strip the in-app generator (PENDING-DECISIONS 0C).
+
+## Watch out for
+- **A classifier with no "none of the above" class answers confidently
+  anyway.** Always run a positive control it should get right and a negative
+  control it should have no class for.
+- **Rate cannot distinguish "fast" from "truncated".** Only transcription can.
+- `speechbrain` pulls torchaudio 2.11 built against CUDA 13 — pin torchaudio
+  to match torch or it dies on `libcudart.so.13`.
+- Chatterbox needs `pkg_resources`, removed in setuptools 84. Pin
+  `setuptools<81`. It fails as `'NoneType' object is not callable` because
+  perth swallows the ImportError.
+- StyleTTS2 predates torch 2.6's `weights_only=True` default; the harness
+  restores the old behaviour for the model load only.
+- Disk: 98 GB total and audio working sets dominate. `~/sounds/ftus/loops`
+  (18 GB) frees once the 8 seams are cut; TRAINS_02's INTERIOR is 11 GB and
+  only 2 files are needed, but Andrew chose to keep the folder.
+
+---
+
 # Session hand-off — 2026-09-13 (machine: tikiserv)
 # Newest block. Everything below is prior history; this supersedes it for
 # REPO STATE.
