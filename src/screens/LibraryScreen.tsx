@@ -42,7 +42,7 @@ export interface ContentItem {
   type: 'meditation' | 'story';
   title: string;
   description: string;
-  /** Resolved URL for the audio. */
+  /** Resolved URL for the audio, always a file under public/. */
   audioUrl: string;
   /** Bed scene id to play underneath while this content plays. Stories
    *  leave the bed running after narration ends so the room stays

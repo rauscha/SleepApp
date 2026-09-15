@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { getAudioEngine } from './audio/AudioEngine';
 import { getHowlScenePlayer } from './audio/howl/HowlScenePlayer';
 import { fetchSceneDefinition, fetchSceneIndex } from './audio/sceneRegistry';
@@ -126,7 +126,6 @@ export function App() {
   }, [coordinator]);
 
   const [activeContent, setActiveContent] = useState<ContentItem | null>(null);
-  const blobUrlRef = useRef<string | null>(null);
 
   // ── History-based back-button handling ──────────────────────────────
   //
@@ -146,16 +145,8 @@ export function App() {
       /* history disabled (rare; sandboxed iframe) */
     }
     const onPopState = () => {
-      // User pressed back — return to Tonight rather than leaving the app.
-      // Run the same content-leave cleanup as "← Library" (bug M5): if a
-      // content blob URL is live, revoke it and clear the active content,
-      // or hardware-back from the content player leaks a story's ~45 MB
-      // blob for the page's lifetime. blobUrlRef is a ref so this closure
-      // (empty-deps effect) always sees the current value.
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
+      // User pressed back — return to Tonight rather than leaving the app,
+      // running the same content-leave cleanup as "← Library".
       setActiveContent(null);
       setScreen('tonight');
       try {
@@ -172,14 +163,6 @@ export function App() {
   const playContent = useCallback(
     async (item: ContentItem) => {
       await ensureUnlocked();
-      // Revoke any previous content blob before overwriting the ref — a
-      // back-to-back play of two stories would otherwise strand the first
-      // one's ~45 MB object URL for the page's lifetime (bug M5).
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
-      if (item.audioUrl.startsWith('blob:')) blobUrlRef.current = item.audioUrl;
       setActiveContent(item);
       setScreen('content-player');
     },
@@ -187,10 +170,6 @@ export function App() {
   );
 
   const leaveContentPlayer = useCallback(() => {
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
-    }
     setActiveContent(null);
     setScreen('library');
   }, []);
