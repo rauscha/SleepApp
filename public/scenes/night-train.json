@@ -1,0 +1,79 @@
+{
+  "id": "night-train",
+  "label": "Night train",
+  "description": "A first-class sleeper cabin with the windows closed \u2014 railway clicks and rumble underfoot, rain against the glass, weather a long way off.",
+  "synth": {
+    "color": "brown",
+    "defaultVolume": 0.1,
+    "maxVolume": 0.2
+  },
+  "tinnitus": {
+    "enabledByDefault": false,
+    "defaultVolume": 0.2
+  },
+  "elements": [
+    {
+      "id": "cabin",
+      "label": "Sleeper cabin",
+      "loopOffsetSeconds": 251,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.58,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "cabin-1",
+          "url": "/audio/night-train/cabin/cabin-1.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. Ambisonic B-format master, decoded to stereo. See /audio/night-train/cabin/cabin-1.json for source + license."
+        },
+        {
+          "id": "cabin-2",
+          "url": "/audio/night-train/cabin/cabin-2.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. Ambisonic B-format master, decoded to stereo. See /audio/night-train/cabin/cabin-2.json for source + license."
+        }
+      ],
+      "maxVolume": 1.0
+    },
+    {
+      "id": "rain-on-glass",
+      "label": "Rain on the window",
+      "loopOffsetSeconds": 409,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.3,
+      "variantRotation": "random",
+      "variants": [
+        {
+          "id": "glass-1",
+          "url": "/audio/rain-on-window/rain-on-glass/glass-1.opus",
+          "attribution": "Pixabay \u2014 see /audio/rain-on-window/rain-on-glass/glass-1.json. Shared with the rain-on-window scene. Flagged for replacement (mono source)."
+        },
+        {
+          "id": "glass-3",
+          "url": "/audio/rain-on-window/rain-on-glass/glass-3.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. Shared with the rain-on-window scene. See /audio/rain-on-window/rain-on-glass/glass-3.json for source + license."
+        }
+      ],
+      "maxVolume": 0.6
+    },
+    {
+      "id": "distant-thunder-rumble",
+      "label": "Distant thunder (rumble only)",
+      "loopOffsetSeconds": 199,
+      "crossfadeSeconds": 5,
+      "defaultVolume": 0.18,
+      "variantRotation": "sequential",
+      "variants": [
+        {
+          "id": "rumble-1",
+          "url": "/audio/night-train/distant-thunder-rumble/rumble-1.opus",
+          "attribution": "Free To Use Sounds \u2014 Muffled Thunder Sounds Behind Closed Door (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. Assembled sparse layer, low-passed at 600 Hz. See /audio/night-train/distant-thunder-rumble/rumble-1.json."
+        },
+        {
+          "id": "rumble-2",
+          "url": "/audio/night-train/distant-thunder-rumble/rumble-2.opus",
+          "attribution": "Free To Use Sounds \u2014 Muffled Thunder Sounds Behind Closed Door (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. Assembled sparse layer, low-passed at 600 Hz. See /audio/night-train/distant-thunder-rumble/rumble-2.json."
+        }
+      ],
+      "maxVolume": 0.36
+    }
+  ]
+}

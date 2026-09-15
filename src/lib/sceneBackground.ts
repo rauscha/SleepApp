@@ -17,6 +17,7 @@ const SCENE_PHOTOS: Record<string, string> = {
   'ocean-night':    resolvePublicUrl('/scenes/photos/ocean-night.jpg'),
   'fireplace':      resolvePublicUrl('/scenes/photos/fireplace.jpg'),
   'singing-bowl':   resolvePublicUrl('/scenes/photos/singing-bowl.jpg'),
+  // night-train has no photo yet — see SCENE_GRADIENTS below.
 };
 
 const SCENE_GRADIENTS: Record<string, [string, string]> = {
@@ -28,6 +29,11 @@ const SCENE_GRADIENTS: Record<string, [string, string]> = {
   'monsoon':        ['#1A2228', '#0B0D10'],
   'ocean-night':    ['#10202A', '#0B0D10'],
   'fireplace':      ['#2A1810', '#0B0D10'],
+  // night-train is the one scene running on its gradient rather than a
+  // photo: choosing the photograph is Andrew's call, and the roadmap already
+  // has an open item about off-brief imagery. A warm interior over a cold
+  // window is the look to match when one is picked.
+  'night-train':    ['#231C22', '#0B0D10'],
   'singing-bowl':   ['#1E1A10', '#0B0D10'],
 };
 

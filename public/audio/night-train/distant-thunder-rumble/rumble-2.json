@@ -1,0 +1,32 @@
+{
+  "source": "Free To Use Sounds \u2014 Muffled Thunder Sounds Behind Closed Door (Indonesia)",
+  "url": "https://www.freetousesounds.com/",
+  "license": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. Original sounds may not be redistributed in their original form; the shipped Opus is a derivative (downmixed, levelled, trimmed). See https://freetousesounds.com/license-agreement",
+  "downloadedAt": "2026-09-15",
+  "destination": "night-train/distant-thunder-rumble/rumble-2",
+  "processing": {
+    "lengthSeconds": 232.0,
+    "targetLufs": -25.0,
+    "measuredLufs": -25.0,
+    "appliedGainDb": 3.2,
+    "lowpassHz": 600.0,
+    "eventFadeSeconds": 2.0,
+    "events": [
+      {
+        "atSeconds": 68.0,
+        "source": "freetousesounds - Muffled Thunder Sounds Behind Closed Doo - 24 THUN-LR_Indonesia-Weather, Thunder, Light Rain, Muffled, Interior, Behind Closed Door, Hotel Air System, Night, .ogg"
+      },
+      {
+        "atSeconds": 161.0,
+        "source": "freetousesounds - Muffled Thunder Sounds Behind Closed Doo - 27 THUN-LR_Indonesia-Weather, Thunder, Light Rain, Muffled, Interior, Behind Closed Door, Hotel Air System, Night, .ogg"
+      }
+    ],
+    "builtBy": "tools/build-sparse-event-layer.py",
+    "loopStartSeconds": 0,
+    "loopOffsetSeconds": 199,
+    "loopStartRationale": "start chosen so the 6s before the wrap and the 6s after it sit at the same level at P=199s; trimming from 0 put a fade-in against a settled tail"
+  },
+  "notes": "Assembled, not found: clips 24, 27 placed at 68s, 161s in a 232s otherwise-silent track by tools/build-sparse-event-layer.py, low-passed at 600 Hz so it is rumble only with no sharp cracks, then a single fixed gain to -25.0 LUFS \u2014 loudnorm pumps on a track that is mostly silence. Same recipe as monsoon/thunder-rumble, different clips. A closed-door recording is the right timbre for a scene heard from inside a sealed sleeper cabin. Seamless-looped to 199s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless. Encoded as Opus (128k) \u2014 see DECISIONS.md 'Ship scene audio as Opus, not MP3'.",
+  "trimmedTo": "199s",
+  "outputFormat": "48 kHz / 128k / stereo Opus"
+}

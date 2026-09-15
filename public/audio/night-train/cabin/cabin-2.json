@@ -1,0 +1,29 @@
+{
+  "source": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased)",
+  "recId": "TRAINS_02/INTERIOR/02",
+  "bundleFile": "TRNInt-W,Y,Z,X_Thailand-Trains, Interior, Room Tone, Private Cabin, First Class, Windows Closed, Railway Clicks, Rumble, Squeak, Movements, Overnight Trains, Bangkok, Chiangmai, 02_FTUS_WOSB.wav",
+  "url": "https://www.freetousesounds.com/",
+  "license": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. Original sounds may not be redistributed in their original form; the shipped Opus is a derivative (downmixed, levelled, trimmed). See https://freetousesounds.com/license-agreement",
+  "downloadedAt": "2026-09-15",
+  "destination": "night-train/cabin/cabin-2",
+  "processing": {
+    "channelLayout": "ambix",
+    "downmix": "pan=stereo|c0=0.387827*c0+0.271479*c1|c1=0.644618*c0-0.451232*c1",
+    "downmixRationale": "first-order B-format (AmbiX/ACN: W, Y, Z, X) decoded to stereo as L = W + 0.7Y, R = W - 0.7Y; the mono sum is 2W, the omni capsule. Z and X unused - no height or depth to put them in.",
+    "channelBalanceDb": 4.41,
+    "channelBalanceRationale": "measured standing L/R difference, halved onto each channel: the cabin really is louder on one side, but a bed played for eight hours should not leave one ear hotter all night",
+    "leveling": "dynaudnorm=f=400:g=101:r=0.5:p=0.9:m=8",
+    "loudnorm": "two-pass linear, I=-20.81 LUFS, TP=-1.0 dBTP, LRA=11",
+    "lengthSeconds": 514.8,
+    "sampleRate": 48000,
+    "bitDepth": 24,
+    "loopStartSeconds": 170,
+    "loopOffsetSeconds": 251,
+    "loopStartRationale": "start chosen so the 6s before the wrap and the 6s after it sit at the same level at P=251s; trimming from 0 put a fade-in against a settled tail"
+  },
+  "notes": "Private first-class sleeper cabin, windows closed: railway clicks, rumble, occasional squeak. Downmixed from ambisonic B-format and levelled by tools/level-ftus.py. Checked before shipping: faster-whisper with VAD finds zero speech segments in either cabin variant, and the tonal events tools/scan-tonal-events.py reports are the railway squeaks themselves \u2014 this bed is metallic by nature, so the scanner's usual 'narrow and tonal means intruder' reading does not hold here. Seamless-looped to 251s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless. Encoded as Opus (128k) \u2014 see DECISIONS.md 'Ship scene audio as Opus, not MP3'.",
+  "recordedWith": "ZOOM F6 + Rode NT-SF1 (first-order ambisonic mic) \u2014 from the master's BWF metadata, which is what confirms the W,Y,Z,X filename prefix is a real B-format layout and not a naming quirk",
+  "recordedAt": "Bangkok \u2013 Chiang Mai overnight sleeper, 2022-02-10",
+  "trimmedTo": "251s",
+  "outputFormat": "48 kHz / 128k / stereo Opus"
+}
