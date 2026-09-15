@@ -6,10 +6,16 @@
 - `main` at the tip of this block's commits, clean, pushed, single worktree.
   No PRs in this repo.
 - Green: `npx tsc --noEmit` clean, `npx eslint src` clean, `npx vitest run`
-  **283/283**, `npm run build` clean. The count fell from 360 because the
-  deleted code's tests went with it; 10 new tests were added.
-- No audio bytes changed. CACHE_VERSION still v13.
+  **287/287**, `npm run build` clean. The count fell from 360 because the
+  deleted code's tests went with it; 14 new tests were added.
+- **Ten scenes now.** No existing audio bytes changed, so CACHE_VERSION
+  stays v13 — `/audio/` is cache-first and the four new files are fetched
+  on first play.
 - On tikiserv, prefix tool-shell commands with `source ~/.nvm/nvm.sh`.
+
+## Two things got done this session
+1. **PENDING-DECISIONS 0C** — the in-app generator, stripped in full.
+2. **The train scene** — cut, voiced and shipped as `night-train`.
 
 ## Done this session: PENDING-DECISIONS 0C, the whole thing
 The in-app story generator is gone. It was decided on 2026-09-12 and had
@@ -58,18 +64,39 @@ files in `public/`.
 - The README is stale in other ways this session did not cause (Phase 3 "in
   progress", three starter scenes). Left alone rather than quietly rewritten.
 
+## The train scene — DONE, one thing outstanding
+`night-train`: cabin 251 x2, rain-on-glass 409 (shared with rain-on-window),
+distant thunder 199 x2. Pairwise coprime, conformance test green, no new soft
+warnings.
+
+- The cabin masters are **ambisonic B-format**, not a stereo pair — the
+  `TRNInt-W,Y,Z,X_` filename prefix is a real layout tag and the BWF metadata
+  ("ZOOM F6, Rode NTSF 1") confirms it. `level-ftus.py --layout ambix`
+  handles it; the k=0.7 width was validated against the same cabin's M/S
+  capture, agreeing within 2.0 dB RMS over ten octave bands.
+- Wrap steps on the shipped files: **cabin 0.06 and 0.03 dB, the two
+  cleanest in the catalogue**; thunder 0.00 (it wraps in silence). Trimming
+  from zero would have left 13.3 and 11.3 dB.
+- Checked for intrusions BEFORE shipping: faster-whisper with VAD finds zero
+  speech in either cabin variant. Several neighbouring files in that FTUS
+  folder are tagged "Staff Chatting" and would have put a voice on a 251 s
+  metronome all night.
+- **[ANDREW] The scene has no photograph** and runs on its gradient. That is
+  the only thing it is missing; picking the image is your call.
+
 ## Next up
 1. **[ANDREW] The voice audition is still waiting on ears** — 31 files on
    pixel-8-pro, `BED-*` against `BED-ELEVENLABS-stone`. Nothing downstream
    moves until a voice is picked: 7 of 10 meditation scripts are written and
    unrendered, waiting only on voice + engine.
-2. **Cut the train scene.** Cabin 251 x2 + rain-on-glass 409 + thunder 199.
-   Source located: `~/sounds/ftus/TRAINS_02/.../Private Cabin ... 03`
-   (601.7 s) and `... 02` (514.8 s), both 4-channel 48 kHz.
-3. Re-cut the 8 reachable seams from `~/sounds/ftus/loops`.
-4. Fix the ElevenLabs Studio endpoints in `tools/gen-story.ts` (5 paths).
-5. Roadmap `[ASK]`/`[DEVICE]` items for v1.0: replace 3 off-brief photos
-   (4.3), decide the meditation catalogue (6.5), device pass + tag (5.2).
+2. Re-cut the reachable seams from `~/sounds/ftus/loops`. The audit still
+   reports **12 of 71 variants over 3 dB**, worst first: singing-bowl's
+   shimmer-2 at 19.0 dB, drone-2 at 17.1, shimmer-1 at 10.1, then
+   forest-evening/wind-1 at 9.8 and ocean-night/wave-3 at 8.4.
+3. Fix the ElevenLabs Studio endpoints in `tools/gen-story.ts` (5 paths).
+4. Roadmap `[ASK]`/`[DEVICE]` items for v1.0: replace 3 off-brief photos
+   (4.3) — now 4, with night-train — decide the meditation catalogue (6.5),
+   device pass + tag (5.2).
 
 ## Watch out for
 - **Everything in the 2026-09-14 block below still applies** — the waiter

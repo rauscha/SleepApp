@@ -26,6 +26,15 @@ scene's third element is distant thunder rumble (re-cut 251 -> 199); and the
 American pull — **not Herzog and not German**, proved by a Herzog control
 that the classifier failed to detect German in at all.
 
+## 0F. OPEN 2026-09-15 — the train scene ships without a photograph
+
+`night-train` is cut, voiced, conformance-green and in the catalogue. It is
+the only scene with no photo, so it draws its gradient instead — supported,
+but off-brief ("Photography, not illustration"). Roadmap 4.3 already asks you
+to replace three off-brief photos; this makes four. The look to match is a
+warm cabin interior against a cold window. Everything else about the scene is
+finished.
+
 ## 0D. OPEN 2026-09-13 — the two answers that unblock everything else
 
 1. **[ANDREW] The voice audition is on your phone** (15 files). Pick a voice,
@@ -34,9 +43,12 @@ that the classifier failed to detect German in at all.
    are not, the whole library can be rendered locally for free and re-rendered
    on a whim; if they are, ElevenLabs stays for narration and Kokoro becomes
    the fast iteration tool.
-2. **[ANDREW] Third element for the train scene.** Interior cabin + rain on
-   glass are settled. Suggestion on record: distant thunder rumble (already
-   ships, weather-consistent, re-cut 251 -> 199 to keep offsets coprime).
+2. ~~**Third element for the train scene.**~~ SETTLED and BUILT 2026-09-15:
+   distant thunder at 199 s. It was not re-cut from the shipped rain-on-window
+   rumble in the end — re-cutting an already-seamed lossy loop would have been
+   a second generation over a wrap that was already fitted. It was assembled
+   fresh from the FTUS closed-door thunder clips instead, which is also the
+   right timbre for weather heard from inside a sealed cabin.
 
 **Settled this session:** 125 wpm is the narration pace (90 wpm was hated,
 refuting the craft sources); ceilings + a perceptual taper ship on every
