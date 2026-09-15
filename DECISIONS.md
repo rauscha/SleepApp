@@ -865,3 +865,59 @@ volume in both the Player and Settings, and the story/meditation Background.
 What this looks like on forest-night: every layer's thumb starts around 80%
 of travel (71% for the re-voiced crickets), each 10% of travel is 3.0 dB, and
 the whole slider is usable instead of just its bottom third.
+
+---
+
+## The library is hand-made, not generated (decided 2026-09-12, executed 2026-09-15)
+
+Andrew: this "really needs to be a dead simple straightforward APP of an app,
+not something where we've bolted on gen AI cause its cool". So the in-app
+story generator is gone, and with it every surface that existed to serve it.
+Five commits, each revertible on its own:
+
+1. the generator screen, the `storyGenerator` service and its tests, the
+   route, and the Library's "Generate new story" call-to-action;
+2. the generated-story read path, `src/storage/assets.ts`, `storyExcerpt`,
+   and the IndexedDB database itself;
+3. the Settings "AI features" section, `src/storage/apiKeys.ts`, and both
+   API keys in `UserSettings`;
+4. the content blob-URL bookkeeping in `App`, which could no longer fire;
+5. the README's claim that the app generates anything.
+
+**3,612 lines deleted against 305 added. The app now makes no network call
+to any AI service at runtime** — it fetches JSON indexes and audio files from its own origin,
+and nothing else.
+
+**The data went too, deliberately.** Asked whether to preserve the stories
+already on his phone, Andrew said: "I don't love the generated ones on my
+phone, they can disappear, i'm not worried about the wasted work." So there
+is no migration and no promotion into the bundled library.
+`dropGeneratedStoryDatabase()` in `src/storage/persistence.ts` deletes the
+`sleep-app` IndexedDB on every launch. Leaving it would have stranded 25–40
+MB of WAV per story on the device with no code left that could open it, so
+nothing could ever reclaim the space. Deleting an absent database succeeds,
+which is what makes every-launch safe instead of needing a one-shot flag; the
+success event's `oldVersion` distinguishes a real cleanup from "nothing was
+here" so the lifecycle log does not claim a cleanup forever.
+
+**What survived and why.** `requestPersistentStorage` stays, for a different
+reason than it was written: what it now protects is the service worker's
+audio cache. An evicted scene variant is a scene that goes silent mid-night.
+`isStoragePersistent` had no caller left and went. The bedtime hours stay
+because `tonightGreeting` reads the same clock, but `isBedtime` — which
+existed only to grey out the Generate button between 9pm and 6am — is gone.
+The four bundled stories and every meditation are untouched: they were always
+files in `public/`, served statically, and that is now the only kind of
+content the app has.
+
+**What this closes off.** There is no bring-your-own-key path any more, so
+the app cannot be handed to another user with a "add your own keys" story.
+That was never the plan — this is a one-user app — but it is now a structural
+fact rather than a setting. Adding content means running `tools/gen-story.ts`
+or `tools/gen-meditation.ts` at the desk and committing the output, which is
+also what makes the narration voice a deliberate choice per file instead of
+whatever the phone was configured with.
+
+**Still open at the time of writing:** 7 of 10 meditation scripts in
+`public/meditations/*.txt` are written and unrendered, waiting on the voice
+and engine decision from the audition.

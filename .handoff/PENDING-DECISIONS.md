@@ -43,22 +43,30 @@ refuting the craft sources); ceilings + a perceptual taper ship on every
 volume slider; the train scene's source is FTUS TRAINS_02's Thailand
 first-class cabin (602 s, "Railway Clicks").
 
-## 0C. DECIDED 2026-09-12 — the library becomes hand-made, not generated
+## 0C. DONE 2026-09-15 — the library is hand-made, not generated
 
+Decided 2026-09-12, executed 2026-09-15 in five commits (6b945f7..2607a5c).
 Andrew: this "really needs to be a dead simple straightforward APP of an app,
-not something where we've bolted on gen AI cause its cool". So:
+not something where we've bolted on gen AI cause its cool".
 
-- **Strip the in-app generation feature.** ~2,500 lines across
-  `src/screens/StoryGeneratorScreen.tsx`, `src/services/storyGenerator.ts`
-  (+ its test), `src/storage/apiKeys.ts`, `src/lib/storyExcerpt.ts` (+ test),
-  plus the references in `App.tsx`, `SettingsScreen.tsx` (both API-key
-  fields) and `src/storage/`. The app ships a fixed library.
-- **Generated stories in IndexedDB can be DROPPED.** Andrew, asked whether to
-  preserve the ones already on his phone: "I don't love the generated ones on
-  my phone, they can disappear, i'm not worried about the wasted work." So
-  `LibraryScreen`'s user-story read path goes too — no migration, no promotion
-  into the bundled library, no keeping the read path alive for old data.
-- **Instead: more hand-authored stories and meditations, male and female
+- **The in-app generation feature is stripped.** 3,612 lines deleted against
+  305 added. The generator screen, the `storyGenerator` service and its
+  tests, `src/storage/apiKeys.ts`, `src/lib/storyExcerpt.ts`,
+  `src/storage/assets.ts` and the Settings "AI features" section are all
+  gone, along with the dead blob-URL bookkeeping in `App` and `isBedtime`,
+  which only ever greyed out the Generate button. **The app now makes no
+  network call to any AI service at runtime.** Full write-up in DECISIONS.md,
+  "The library is hand-made, not generated".
+- **The generated stories are deleted, not migrated.** Andrew, asked whether
+  to preserve the ones already on his phone: "I don't love the generated ones
+  on my phone, they can disappear, i'm not worried about the wasted work."
+  `dropGeneratedStoryDatabase()` in `src/storage/persistence.ts` deletes the
+  `sleep-app` IndexedDB on every launch — leaving it would strand 25-40 MB of
+  WAV per story with no code left that could ever reclaim it. **Andrew will
+  see this happen on his next app open; the stories will simply not be there.**
+- **[ANDREW] Your `.env.local` still holds the two removed keys.** Nothing
+  reads them now. They are still live keys sitting on disk.
+- **STILL OPEN — more hand-authored stories and meditations, male and female
   voices.** Note **7 of 10 meditation scripts are already written and
   unrendered** (`public/meditations/*.txt` — down-the-staircase, lake-at-dusk,
   long-exhale, quiet-shuffle, tense-and-release, under-a-slow-sky, warm-room,

@@ -1,3 +1,87 @@
+# Session hand-off — 2026-09-15 (machine: tikiserv)
+# Newest block. Everything below is prior history; this supersedes it for
+# REPO STATE.
+
+## STATE
+- `main` at the tip of this block's commits, clean, pushed, single worktree.
+  No PRs in this repo.
+- Green: `npx tsc --noEmit` clean, `npx eslint src` clean, `npx vitest run`
+  **283/283**, `npm run build` clean. The count fell from 360 because the
+  deleted code's tests went with it; 10 new tests were added.
+- No audio bytes changed. CACHE_VERSION still v13.
+- On tikiserv, prefix tool-shell commands with `source ~/.nvm/nvm.sh`.
+
+## Done this session: PENDING-DECISIONS 0C, the whole thing
+The in-app story generator is gone. It was decided on 2026-09-12 and had
+been sitting undone through three sessions of voice work. Five commits,
+each revertible on its own, **3,612 lines deleted against 305 added**:
+
+1. `6b945f7` the generator screen, the `storyGenerator` service and its 67
+   tests, the route, the Library's Generate call-to-action, and `isBedtime`
+   (which only ever greyed that button out between 9pm and 6am).
+2. `9ea6f2b` the generated-story read path, `src/storage/assets.ts`,
+   `storyExcerpt`, the fake-IndexedDB test helper — **and the database
+   itself**.
+3. `c8f5b69` the Settings "AI features" section, `src/storage/apiKeys.ts`,
+   both keys in `UserSettings`, and the three `VITE_` variables in
+   `.env.example`.
+4. `7f418ed` the content blob-URL bookkeeping in `App`, which could no
+   longer fire now that every `ContentItem` is a path under `public/`.
+5. `2607a5c` the README's claim that the app generates anything.
+
+**The app now makes no network call to any AI service at runtime.** It
+fetches JSON indexes and audio from its own origin and nothing else. The
+four bundled stories and every meditation are untouched — they were always
+files in `public/`.
+
+## Two things Andrew will notice, both intended
+- **His generated stories will be gone on next app open.**
+  `dropGeneratedStoryDatabase()` in `src/storage/persistence.ts` deletes the
+  `sleep-app` IndexedDB on every launch. This is his call, quoted in 0C: "I
+  don't love the generated ones on my phone, they can disappear." Leaving the
+  database would have stranded 25-40 MB of WAV per story with nothing able to
+  reclaim it. It reports `deleted` vs `absent` into the lifecycle log, so the
+  Diagnostics panel will show which happened.
+- **Settings has no API-key fields any more.** Nothing read them. His
+  `.env.local` on this box still holds real values for the two removed
+  variables — live keys on disk that nothing uses.
+
+## Deliberately not touched
+- `tools/gen-story.ts` and `tools/gen-meditation.ts` still exist and still
+  work. They are the desk-side path that renders the library, and they read
+  `ANTHROPIC_API_KEY` / `ELEVEN_LABS_API_KEY` unprefixed from `process.env`,
+  never through Vite. Fixing gen-story's five stale ElevenLabs Studio
+  endpoints is still on the list below.
+- `requestPersistentStorage` survives, for a reason now written down in the
+  code: it protects the service worker's audio cache, not story blobs. An
+  evicted scene variant is a scene that goes silent mid-night.
+- The README is stale in other ways this session did not cause (Phase 3 "in
+  progress", three starter scenes). Left alone rather than quietly rewritten.
+
+## Next up
+1. **[ANDREW] The voice audition is still waiting on ears** — 31 files on
+   pixel-8-pro, `BED-*` against `BED-ELEVENLABS-stone`. Nothing downstream
+   moves until a voice is picked: 7 of 10 meditation scripts are written and
+   unrendered, waiting only on voice + engine.
+2. **Cut the train scene.** Cabin 251 x2 + rain-on-glass 409 + thunder 199.
+   Source located: `~/sounds/ftus/TRAINS_02/.../Private Cabin ... 03`
+   (601.7 s) and `... 02` (514.8 s), both 4-channel 48 kHz.
+3. Re-cut the 8 reachable seams from `~/sounds/ftus/loops`.
+4. Fix the ElevenLabs Studio endpoints in `tools/gen-story.ts` (5 paths).
+5. Roadmap `[ASK]`/`[DEVICE]` items for v1.0: replace 3 off-brief photos
+   (4.3), decide the meditation catalogue (6.5), device pass + tag (5.2).
+
+## Watch out for
+- **Everything in the 2026-09-14 block below still applies** — the waiter
+  harness, the pgrep self-match trap, controls on every classifier, and
+  "rate cannot distinguish fast from truncated".
+- Deleting an IndexedDB database that does not exist **succeeds**. That is
+  what makes the every-launch delete safe, but it also means a naive
+  implementation reports a cleanup forever; the success event's `oldVersion`
+  is the only way to tell the two apart.
+
+---
+
 # Session hand-off — 2026-09-14 (machine: tikiserv)
 # Newest block. Everything below is prior history; this supersedes it for
 # REPO STATE.
