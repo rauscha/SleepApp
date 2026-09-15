@@ -18,9 +18,3 @@ export {
   dropGeneratedStoryDatabase,
 } from './persistence';
 export type { DropDatabaseOutcome } from './persistence';
-export {
-  getAnthropicApiKey,
-  getElevenLabsApiKey,
-  hasAnthropicEnvKey,
-  hasElevenLabsEnvKey,
-} from './apiKeys';

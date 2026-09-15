@@ -39,12 +39,6 @@ export interface UserSettings {
     meditationVoiceId: 'hush' | 'ember' | 'glen';
   };
 
-  /** ElevenLabs API key. Stored locally only. NEVER phone-home. */
-  elevenLabsApiKey: string | null;
-
-  /** Anthropic Claude API key, used for story generation. */
-  anthropicApiKey: string | null;
-
   /** UI display mode. */
   displayMode: 'lush' | 'nightstand';
 

@@ -2,10 +2,10 @@
 //
 // Sections:
 //   Playback  — master volume, default sleep timer
-//   AI features — ElevenLabs + Anthropic API key fields (live, Phase 4)
 //
-// Keys are stored in localStorage only and never leave the device.
-// Fields use type=password with a show/hide toggle.
+// There is no API-key section any more: the in-app story generator that
+// needed those keys was removed on 2026-09-15, so the app makes no network
+// call to any AI service and has nothing to store.
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { getAudioEngine } from '../audio/AudioEngine';
@@ -37,12 +37,7 @@ import {
   type OfflineStatus,
   type PrecacheProgress,
 } from '../services/offlinePrecache';
-import {
-  getAllSettings,
-  hasAnthropicEnvKey,
-  hasElevenLabsEnvKey,
-  setSetting,
-} from '../storage';
+import { getAllSettings, setSetting } from '../storage';
 
 const TIMER_OPTIONS: Array<{ label: string; value: number | null }> = [
   { label: 'Off',    value: null },
@@ -61,7 +56,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
   const engine = useMemo(() => getAudioEngine(), []);
   const [settings, setSettings] = useState(() => getAllSettings());
 
-  function update<K extends 'masterVolume' | 'defaultTimerMinutes' | 'elevenLabsApiKey' | 'anthropicApiKey' | 'narrationSundown' | 'debugMarkers'>(
+  function update<K extends 'masterVolume' | 'defaultTimerMinutes' | 'narrationSundown' | 'debugMarkers'>(
     key: K,
     value: (typeof settings)[K]
   ) {
@@ -167,39 +162,6 @@ export function SettingsScreen(_props: SettingsScreenProps) {
           files are skipped, so tapping this again is safe.
         </p>
         <OfflineDownloadPanel />
-      </section>
-
-      <div className="h-px bg-ink-700 mb-8" />
-
-      {/* ── AI features ──────────────────────────────────────────────── */}
-      <section className="mb-8 px-1">
-        <h2 className="font-serif text-stone-300 text-lg mb-2">AI features</h2>
-        <p className="body-text text-stone-300 mb-2">
-          Your keys are stored in this browser only and are never sent
-          anywhere except directly to ElevenLabs and Anthropic from your
-          device.
-        </p>
-        <p className="body-text text-stone-300 italic mb-5">
-          Stored unencrypted on this device — anyone with access to this
-          unlocked browser can read them. Consider rotating quarterly.
-        </p>
-
-        <ApiKeyField
-          label="ElevenLabs API key"
-          placeholder="elevenlabs_…"
-          hint="Used for voice synthesis · ~$1–3 per story"
-          value={settings.elevenLabsApiKey ?? ''}
-          envOverride={hasElevenLabsEnvKey()}
-          onChange={(v) => update('elevenLabsApiKey', v || null)}
-        />
-        <ApiKeyField
-          label="Anthropic API key"
-          placeholder="sk-ant-…"
-          hint="Used to write story scripts · ~$0.10 per story"
-          value={settings.anthropicApiKey ?? ''}
-          envOverride={hasAnthropicEnvKey()}
-          onChange={(v) => update('anthropicApiKey', v || null)}
-        />
       </section>
 
       <div className="h-px bg-ink-700 mb-8" />
@@ -729,62 +691,3 @@ function DiagButton({
   );
 }
 
-function ApiKeyField({
-  label,
-  placeholder,
-  hint,
-  value,
-  envOverride = false,
-  onChange,
-}: {
-  label: string;
-  placeholder: string;
-  hint: string;
-  value: string;
-  envOverride?: boolean;
-  onChange: (v: string) => void;
-}) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <div className="mb-5">
-      <label className="block">
-        <span className="block body-text text-stone-300 mb-1">{label}</span>
-        <span className="block body-text text-stone-300 mb-2">{hint}</span>
-        {envOverride ? (
-          <p className="body-text text-moon-300 bg-ink-800 rounded-soft px-3 py-2.5">
-            Loaded from build env — no entry needed.
-          </p>
-        ) : (
-          <div className="relative">
-            <input
-              type={visible ? 'text' : 'password'}
-              value={value}
-              placeholder={placeholder}
-              onChange={(e) => onChange(e.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-              className="w-full bg-ink-800 text-stone-200 body-text rounded-soft
-                         px-3 py-2.5 pr-16 border border-ink-600
-                         placeholder-stone-500 focus:outline-none
-                         focus:border-moon-600 transition-colors"
-              aria-label={label}
-            />
-            {value && (
-              <button
-                type="button"
-                onClick={() => setVisible((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2
-                           ui-label text-stone-300 hover:text-stone-200
-                           transition-colors px-2 py-2"
-                style={{ minHeight: 44 }}
-                aria-label={visible ? 'Hide key' : 'Show key'}
-              >
-                {visible ? 'hide' : 'show'}
-              </button>
-            )}
-          </div>
-        )}
-      </label>
-    </div>
-  );
-}

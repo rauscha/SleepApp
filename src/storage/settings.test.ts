@@ -94,8 +94,6 @@ describe('settings merge covers every key', () => {
       hasCalibrated: true,
     },
     voices: { storyVoiceId: 'stone', meditationVoiceId: 'glen' },
-    elevenLabsApiKey: 'el-key',
-    anthropicApiKey: 'sk-ant-key',
     displayMode: 'nightstand',
     defaultTimerMinutes: 90,
     narrationSundown: false,

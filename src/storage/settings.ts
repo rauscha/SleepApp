@@ -33,8 +33,6 @@ export const DEFAULT_SETTINGS: UserSettings = {
     storyVoiceId: 'tide',
     meditationVoiceId: 'hush',
   },
-  elevenLabsApiKey: null,
-  anthropicApiKey: null,
   displayMode: 'lush',
   defaultTimerMinutes: null,
   layerVolumes: {},
