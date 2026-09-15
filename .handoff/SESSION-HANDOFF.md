@@ -13,9 +13,10 @@
   on first play.
 - On tikiserv, prefix tool-shell commands with `source ~/.nvm/nvm.sh`.
 
-## Two things got done this session
+## Three things got done this session
 1. **PENDING-DECISIONS 0C** — the in-app generator, stripped in full.
 2. **The train scene** — cut, voiced and shipped as `night-train`.
+3. **The singing bowls, rebuilt** — the catalogue's three worst seams.
 
 ## Done this session: PENDING-DECISIONS 0C, the whole thing
 The in-app story generator is gone. It was decided on 2026-09-12 and had
@@ -84,15 +85,43 @@ warnings.
 - **[ANDREW] The scene has no photograph** and runs on its gradient. That is
   the only thing it is missing; picking the image is your call.
 
+## The singing bowls — rebuilt, and this one wants your ear
+The audit's three worst variants were all this scene: shimmer-2 stepped
+**19.0 dB** across its wrap every 409 s, drone-2 17.1, shimmer-1 10.1. All
+five are now under 0.8 dB, and the catalogue goes from 12 of 71 over 3 dB
+to 8.
+
+- **The cause was slack, not material.** The shimmer stitch ran 435 s and was
+  trimmed to 420 for a 409 s loop — an eleven-second window for seamfit to
+  find a level-matched start in, against a bed that swells over tens of
+  seconds. Stitches are now 555 s (shimmer) and 435 s (drone).
+- **Levels are unchanged within 0.4 dB** of the old shipped files, so
+  `defaultVolume` still means what you voiced it to mean. The scene JSON is
+  byte-identical.
+- **[ANDREW] What did change is dynamics.** The old build's single-pass
+  loudnorm was compressing (dynamic mode — it also undershot its own target
+  by 2-3 dB). With one fixed gain instead, loudness range goes 18-19 -> 23 LU
+  on the drone and 15 -> 20 on the shimmer. Same integrated loudness, wider
+  swings. Arguably right for a sound bath; still a judgement call on a scene
+  you tuned by ear. **Say the word and it comes back out** — the old files are
+  one `git revert` away.
+- CACHE_VERSION **v13 -> v14**: audio bytes changed, so every install
+  re-downloads.
+
 ## Next up
 1. **[ANDREW] The voice audition is still waiting on ears** — 31 files on
    pixel-8-pro, `BED-*` against `BED-ELEVENLABS-stone`. Nothing downstream
    moves until a voice is picked: 7 of 10 meditation scripts are written and
    unrendered, waiting only on voice + engine.
-2. Re-cut the reachable seams from `~/sounds/ftus/loops`. The audit still
-   reports **12 of 71 variants over 3 dB**, worst first: singing-bowl's
-   shimmer-2 at 19.0 dB, drone-2 at 17.1, shimmer-1 at 10.1, then
-   forest-evening/wind-1 at 9.8 and ocean-night/wave-3 at 8.4.
+2. Re-cut the remaining seams. After the bowl rebuild the audit reports
+   **8 of 71 variants over 3 dB**, worst first: forest-evening/wind-1 at
+   9.8 dB, ocean-night/wave-3 at 8.4, ocean-night/far-1 at 7.8,
+   forest-evening/forest-2 at 4.6, then four between 3.5 and 3.9. These are
+   field recordings, so the fix is a longer source rather than a longer
+   stitch — check `~/sounds/ftus/loops` before assuming a re-cut is
+   reachable. **The bowl lesson generalises: look at the slack first.**
+   `assembledSeconds - loopOffset - 6` is the whole search range seamfit
+   gets, and under about 30 s it cannot beat a slow swell.
 3. Fix the ElevenLabs Studio endpoints in `tools/gen-story.ts` (5 paths).
 4. Roadmap `[ASK]`/`[DEVICE]` items for v1.0: replace 3 off-brief photos
    (4.3) — now 4, with night-train — decide the meditation catalogue (6.5),
