@@ -125,8 +125,10 @@ def main():
                    for at, p in events],
         "builtBy": "tools/build-sparse-event-layer.py",
     }
-    json.dump(side, open(os.path.splitext(a.out)[0] + ".build.json", "w",
-                         encoding="utf-8"), indent=2)
+    with open(os.path.splitext(a.out)[0] + ".build.json", "w",
+              encoding="utf-8") as f:
+        json.dump(side, f, indent=2)
+        f.write("\n")
 
 
 if __name__ == "__main__":

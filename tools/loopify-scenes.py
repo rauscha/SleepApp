@@ -73,6 +73,16 @@ OUTPUT_BITRATE = "128k"  # transparent for field-recording ambience + noise beds
 # trims and synth beds alike — targets 48000 Hz now, not the source's rate.
 OPUS_SR = 48000
 
+def write_json(obj, path):
+    """json.dump leaves no trailing newline, so every scene JSON this script
+    rewrote showed up in git as "\\ No newline at end of file" against the
+    hand-written ones. Cosmetic, but it put noise in the diff of every audio
+    change."""
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2)
+        f.write("\n")
+
+
 def probe_duration(path):
     out = subprocess.check_output(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
@@ -241,7 +251,7 @@ def update_sidecar(path, period, renamed_from=None, seam=None):
                 f"two ends meet at the same level (a few dB across minutes is "
                 f"inaudible drift, a step at the wrap is not)")
         j["processing"] = proc
-    json.dump(j, open(sc, "w", encoding="utf-8"), indent=2)
+    write_json(j, sc)
     if old_sc != sc and os.path.exists(old_sc):
         os.remove(old_sc)
 
@@ -361,7 +371,7 @@ def loopify_scenes():
         for (_sf, _sd, variant, _p, _el) in holders:
             variant["url"] = new_url
         for scene_file, scene_dict in {h[0]: h[1] for h in holders}.items():
-            json.dump(scene_dict, open(scene_file, "w", encoding="utf-8"), indent=2)
+            write_json(scene_dict, scene_file)
             updated_scene_files.add(scene_file)
         os.remove(path)  # old-extension source, now unreferenced anywhere
     for scene_file in sorted(updated_scene_files):

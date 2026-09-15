@@ -202,7 +202,9 @@ def main():
         },
         "notes": f"Downmixed ({a.layout}) and levelled by tools/level-ftus.py.",
     }
-    json.dump(side, open(os.path.join(a.outdir, stem + ".json"), "w", encoding="utf-8"), indent=2)
+    with open(os.path.join(a.outdir, stem + ".json"), "w", encoding="utf-8") as f:
+        json.dump(side, f, indent=2)
+        f.write("\n")
 
 
 if __name__ == "__main__":
