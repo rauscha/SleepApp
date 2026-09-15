@@ -1,10 +1,23 @@
 {
   "source": "audiocraft MusicGen-medium (locally generated)",
-  "stems": "2+1+2+1+2+1+2 (75s stems)",
-  "license": "Generated locally with Meta audiocraft MusicGen-medium. Weights are CC-BY-NC 4.0 (research/non-commercial), released under audiocraft license. Generated audio is original output; the sidecar records the exact prompt + seed for reproducibility.",
+  "stems": "2+1+2+1+2+1+2+1+2 (75s stems)",
+  "license": "Generated locally with Meta audiocraft MusicGen-medium. Weights are CC-BY-NC 4.0 (research/non-commercial), released under the audiocraft license. Generated audio is original output; the sidecar records the exact prompt for reproducibility.",
   "generatedAt": "2026-05-31",
+  "rebuiltAt": "2026-09-15",
+  "processing": {
+    "stitch": "15s triangular acrossfades between 75s stems",
+    "assembledSeconds": 555.0,
+    "loopOffsetSeconds": 409,
+    "searchSlackSeconds": 140.0,
+    "slackRationale": "tools/seamfit.py needs room to move the loop start past a swell; the original build left 5s for the shimmer and it shipped a 19 dB step at the wrap",
+    "levelling": "single measured gain of -8.85 dB to -25.85 LUFS",
+    "levellingRationale": "not loudnorm: in one pass it runs dynamic mode, which gates and pumps on long quiet material and can introduce the very level steps it is being asked to remove",
+    "sampleRate": 48000,
+    "loopStartSeconds": 78,
+    "loopStartRationale": "start chosen so the 6s before the wrap and the 6s after it sit at the same level at P=409s; trimming from 0 put a fade-in against a settled tail"
+  },
+  "notes": "Nine-segment alternation of the two MusicGen shimmer stems into a 555s bed, starting on shimmer-2. Quieter than the drone (-25 vs -23 LUFS) so it sits under the primary. Rebuilt 2026-09-15: the seven-segment original was trimmed to 420s for a 409s loop, leaving a 5-second search window and a 19 dB step at the wrap. Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless. Encoded as Opus (128k) \u2014 see DECISIONS.md 'Ship scene audio as Opus, not MP3'.",
+  "promptHint": "prompt: set of small bronze singing bowls, gentle held tones, slow overtone beating, mid-high airy resonance, meditation ambient bed, instrumental only, no percussion, no drums, no melody, no rhythm, steady, seamless",
   "trimmedTo": "409s",
-  "outputFormat": "48 kHz / 128k / stereo Opus",
-  "notes": "Same 7-segment alternation as shimmer-1, swapped starting stem so variant rotation begins with a different timbre. Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless.",
-  "promptHint": "prompt: set of small bronze singing bowls, gentle held tones, slow overtone beating, mid-high airy resonance, meditation ambient bed, instrumental only, no percussion, no drums, no melody, no rhythm, steady, seamless"
+  "outputFormat": "48 kHz / 128k / stereo Opus"
 }
