@@ -2,7 +2,7 @@
 
 > The One Thing: *Put me to sleep and let me stay there.*
 
-Personal sleep app — soundscapes, AI-generated sleep stories, and AI-generated guided meditations. Progressive Web App. Single user, no accounts, no backend in v1.
+Personal sleep app — soundscapes, sleep stories, and guided meditations. Progressive Web App. Single user, no accounts, no backend, no generation at runtime: the stories and meditations are files that ship with the build, rendered ahead of time by the scripts in `tools/`.
 
 The app is in active development. Phases 1 and 2 are complete; Phase 3 (the real Tonight UI) is in progress.
 
@@ -13,7 +13,7 @@ The app is in active development. Phases 1 and 2 are complete; Phase 3 (the real
 - Master bus with soft limiter (`src/audio/MasterBus.ts`) — DynamicsCompressorNode tuned as a brick-wall limiter, plus exponential fade-to-silence for the sleep timer.
 - Synthesized white / pink / brown noise (`src/audio/NoiseGenerator.ts` + `public/worklets/noise-processor.js`) — true infinite generation per sample, no period.
 - Seamless file-loop layer (`src/audio/FileLayer.ts`) — equal-power crossfade, variant rotation, incommensurate loop offsets, 3-iteration pipeline for iOS Safari robustness.
-- Storage abstraction (`src/storage/`) — settings in localStorage, audio assets in IndexedDB.
+- Storage abstraction (`src/storage/`) — settings in localStorage. (Audio assets were in IndexedDB until the in-app generator was removed; the app now reads everything from `public/` through the service worker cache.)
 - Tinnitus engine (`ToneMatcher.ts`, `TinnitusMaskLayer.ts`) — built, shelved from UI pending better UX design.
 
 **Phase 2 — Scenes**
@@ -32,7 +32,7 @@ The app is in active development. Phases 1 and 2 are complete; Phase 3 (the real
 
 See `NEXT_STEPS.md` for the current priority list. Short version:
 - **Phase 3 remaining:** sleep timer chip, Nightstand mode, Settings screen.
-- **Phase 4:** pre-generated meditations (bundled), on-demand sleep stories (ElevenLabs + Claude, user's own API keys).
+- **Phase 4:** bundled meditations and bundled sleep stories. On-demand in-app generation was built and then removed on 2026-09-15 — see DECISIONS.md, "The library is hand-made, not generated".
 - **Phase 5:** PWA manifest, iOS overnight device test, service worker.
 
 ## Running it
@@ -71,9 +71,9 @@ src/
 │       └── testPad.ts          # In-browser test tone (dev harness only)
 ├── storage/
 │   ├── index.ts                # Public surface — import from here
-│   ├── types.ts                # UserSettings + StoryMetadata + StoredAudioAsset
+│   ├── types.ts                # UserSettings + bundled content metadata
 │   ├── settings.ts             # localStorage backend
-│   └── assets.ts               # IndexedDB backend
+│   └── persistence.ts          # Storage durability + legacy-DB disposal
 ├── App.tsx                     # Phase-1 dev harness
 ├── main.tsx                    # React entry
 └── index.css                   # Tailwind + a few dark-mode globals
