@@ -1,28 +1,18 @@
-// Library — lists bundled meditations, bundled stories, and user-generated
-// stories.
+// Library — lists the bundled meditations and the bundled sleep stories.
 //
 // Meditations: fetched from /meditations/index.json (static, bundled).
-// Bundled stories: fetched from /stories/index.json (static, bundled).
-// User stories: fetched from IndexedDB via listStories().
+// Stories: fetched from /stories/index.json (static, bundled).
 //
-// Tapping a meditation or a bundled story navigates to ContentPlayerScreen
-// with a direct URL. Tapping a user-generated story loads its audio from
-// IndexedDB, creates a blob URL, and navigates with that URL (revoked on
-// back). Bundled stories are read-only — no delete button.
+// Everything here is a file that shipped with the build, so tapping any card
+// navigates to ContentPlayerScreen with a direct URL. There is no per-user
+// content, no IndexedDB read, and nothing to delete — the in-app generator
+// that once wrote into this list was removed on 2026-09-15.
 
 import { useCallback, useEffect, useState } from 'react';
 import { resolvePublicUrl } from '../lib/baseUrl';
-import { storyExcerpt } from '../lib/storyExcerpt';
-import {
-  getStoryAudio,
-  listStories,
-  deleteStory,
-  isStoragePersistent,
-} from '../storage';
 import type {
   BundledStoryMetadata,
   MeditationMetadata,
-  StoryMetadata,
 } from '../storage/types';
 
 async function fetchMeditationIndex(): Promise<MeditationMetadata[]> {
@@ -36,9 +26,8 @@ async function fetchMeditationIndex(): Promise<MeditationMetadata[]> {
 async function fetchBundledStoryIndex(): Promise<BundledStoryMetadata[]> {
   const url = resolvePublicUrl('/stories/index.json');
   const res = await fetch(url);
-  // A missing index file (404) is fine — it just means no bundled
-  // stories ship with this build. Errors are swallowed silently so a
-  // bad fetch doesn't break the user-generated stories list below it.
+  // A missing index file (404) is fine — it just means no stories ship with
+  // this build, and the tab shows its empty state.
   if (!res.ok) return [];
   try {
     const data = (await res.json()) as { stories: BundledStoryMetadata[] };
@@ -53,7 +42,7 @@ export interface ContentItem {
   type: 'meditation' | 'story';
   title: string;
   description: string;
-  /** Resolved URL or blob URL for the audio. Caller owns revocation. */
+  /** Resolved URL for the audio. */
   audioUrl: string;
   /** Bed scene id to play underneath while this content plays. Stories
    *  leave the bed running after narration ends so the room stays
@@ -78,77 +67,15 @@ export function LibraryScreen({ onPlay }: LibraryScreenProps) {
   const [tab, setTab] = useState<Tab>('meditations');
   const [meditations, setMeditations] = useState<MeditationMetadata[]>([]);
   const [meditationError, setMeditationError] = useState<string | null>(null);
-  const [bundledStories, setBundledStories] = useState<BundledStoryMetadata[]>([]);
-  const [stories, setStories] = useState<StoryMetadata[]>([]);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [storyError, setStoryError] = useState<{ id: string; message: string } | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  // Distinct from per-story playback errors: this is a failure to LIST the
-  // saved stories at all. It used to be swallowed (.catch(console.error)),
-  // so a transient IndexedDB read failure — e.g. right after the OS resumes a
-  // backgrounded PWA overnight — showed an empty list that looked like the
-  // stories had vanished (B7). Surface it with a retry instead.
-  const [storyListError, setStoryListError] = useState<string | null>(null);
-  // Whether this origin's storage is persistent. null = not yet checked.
-  // When false, saved stories can be evicted by the OS under storage
-  // pressure, so we warn and point at Export (B7).
-  const [persistent, setPersistent] = useState<boolean | null>(null);
+  const [stories, setStories] = useState<BundledStoryMetadata[]>([]);
 
   useEffect(() => {
     fetchMeditationIndex()
       .then(setMeditations)
       .catch((err) => setMeditationError(String(err)));
-    // Bundled stories swallow their own errors — see fetchBundledStoryIndex.
-    void fetchBundledStoryIndex().then(setBundledStories);
+    // Stories swallow their own errors — see fetchBundledStoryIndex.
+    void fetchBundledStoryIndex().then(setStories);
   }, []);
-
-  const refreshStories = useCallback(() => {
-    listStories()
-      .then((s) => {
-        setStories(s);
-        setStoryListError(null);
-      })
-      .catch((err) => {
-        // Don't clobber an already-loaded list with [] on a transient read
-        // failure — keep whatever we last showed and surface a retry. An
-        // empty list that's really empty still renders the EmptyState.
-        console.error('[LibraryScreen] listStories failed:', err);
-        setStoryListError(
-          err instanceof Error ? err.message : String(err)
-        );
-      });
-  }, []);
-
-  useEffect(() => {
-    if (tab === 'stories') refreshStories();
-  }, [tab, refreshStories]);
-
-  // Re-read the saved stories (and re-check storage persistence) whenever the
-  // app returns to the foreground. A PWA resumed after the OS suspended it
-  // overnight may have failed its initial read or had its IndexedDB connection
-  // dropped; without this the Stories tab can sit on a stale/empty list until
-  // a manual reload (B7, the "stories disappeared at night" report).
-  useEffect(() => {
-    const onForeground = () => {
-      if (document.visibilityState === 'visible' && tab === 'stories') {
-        refreshStories();
-        void isStoragePersistent().then(setPersistent);
-      }
-    };
-    document.addEventListener('visibilitychange', onForeground);
-    window.addEventListener('focus', onForeground);
-    return () => {
-      document.removeEventListener('visibilitychange', onForeground);
-      window.removeEventListener('focus', onForeground);
-    };
-  }, [tab, refreshStories]);
-
-  // Check storage persistence when the Stories tab is shown. If storage is
-  // not persistent, generated stories can be evicted under pressure, so we
-  // warn and steer the user toward Export.
-  useEffect(() => {
-    if (tab === 'stories') void isStoragePersistent().then(setPersistent);
-  }, [tab]);
 
   const handlePlayMeditation = useCallback(
     (m: MeditationMetadata) => {
@@ -166,36 +93,6 @@ export function LibraryScreen({ onPlay }: LibraryScreenProps) {
   );
 
   const handlePlayStory = useCallback(
-    async (story: StoryMetadata) => {
-      setLoadingId(story.id);
-      setStoryError(null);
-      try {
-        const asset = await getStoryAudio(story.id);
-        if (!asset) throw new Error('Audio not found — try regenerating.');
-        const blob = new Blob([asset.data], { type: asset.mimeType });
-        const audioUrl = URL.createObjectURL(blob);
-        onPlay({
-          id: story.id,
-          type: 'story',
-          title: story.title,
-          description: story.theme,
-          audioUrl,
-          sceneId: story.sceneId,
-        });
-      } catch (err) {
-        console.error('[LibraryScreen] story load failed:', err);
-        setStoryError({
-          id: story.id,
-          message: err instanceof Error ? err.message : String(err),
-        });
-      } finally {
-        setLoadingId(null);
-      }
-    },
-    [onPlay]
-  );
-
-  const handlePlayBundledStory = useCallback(
     (story: BundledStoryMetadata) => {
       const audioUrl = resolvePublicUrl(`/stories/${story.audioPath}`);
       onPlay({
@@ -208,50 +105,6 @@ export function LibraryScreen({ onPlay }: LibraryScreenProps) {
       });
     },
     [onPlay]
-  );
-
-  // Export a generated story's audio to a file the user can keep, so a paid
-  // story survives storage eviction or an app reinstall. Pulls the blob from
-  // IndexedDB and triggers a download.
-  const handleDownloadStory = useCallback(async (story: StoryMetadata) => {
-    setStoryError(null);
-    try {
-      const asset = await getStoryAudio(story.id);
-      if (!asset) throw new Error('Audio not found — try regenerating.');
-      const blob = new Blob([asset.data], { type: asset.mimeType });
-      const url = URL.createObjectURL(blob);
-      const ext = asset.mimeType.includes('wav') ? 'wav' : 'mp3';
-      const safe = (story.title || 'sleep-story')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '')
-        .slice(0, 60);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${safe || 'sleep-story'}.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    } catch (err) {
-      setStoryError({
-        id: story.id,
-        message: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }, []);
-
-  const handleConfirmDelete = useCallback(
-    async (id: string) => {
-      try {
-        await deleteStory(id);
-        setConfirmDeleteId((current) => (current === id ? null : current));
-        refreshStories();
-      } catch (err) {
-        console.error('[LibraryScreen] delete failed:', err);
-      }
-    },
-    [refreshStories]
   );
 
   function fmtDuration(s: number): string {
@@ -316,59 +169,20 @@ export function LibraryScreen({ onPlay }: LibraryScreenProps) {
       {/* ── Stories ──────────────────────────────────────────────────── */}
       {tab === 'stories' && (
         <div className="flex-1">
-          {storyListError && (
-            <div className="mb-4 px-1">
-              <p className="text-ember-400 body-text">
-                Couldn't load your saved stories. They're not gone — this is a
-                read error.
-              </p>
-              <button
-                onClick={refreshStories}
-                className="ui-label text-moon-300 hover:text-moon-200 mt-1"
-                style={{ minHeight: 44 }}
-              >
-                Try again
-              </button>
-            </div>
-          )}
-          {persistent === false && stories.length > 0 && (
-            <p className="ui-label text-stone-300 italic mb-4 px-1">
-              Your device hasn't granted permanent storage, so it may clear
-              generated stories to free space. Export the ones you want to keep
-              (↓ on each card).
-            </p>
-          )}
-          {bundledStories.length === 0 && stories.length === 0 && !storyListError && (
+          {stories.length === 0 && (
             <EmptyState
               heading="No stories yet"
               body="This build didn't ship any. Check back after the next update."
             />
           )}
           <div className="space-y-3">
-            {bundledStories.map((s) => (
-              <ContentCard
-                key={s.id}
-                title={s.title}
-                description={s.theme}
-                meta={fmtDuration(s.durationSeconds)}
-                onPlay={() => handlePlayBundledStory(s)}
-              />
-            ))}
             {stories.map((s) => (
               <ContentCard
                 key={s.id}
                 title={s.title}
                 description={s.theme}
-                excerpt={storyExcerpt(s.script)}
                 meta={fmtDuration(s.durationSeconds)}
-                busy={loadingId === s.id}
-                errorMessage={storyError?.id === s.id ? storyError.message : null}
-                confirmingDelete={confirmDeleteId === s.id}
-                onPlay={() => void handlePlayStory(s)}
-                onDownload={() => void handleDownloadStory(s)}
-                onDelete={() => setConfirmDeleteId(s.id)}
-                onConfirmDelete={() => void handleConfirmDelete(s.id)}
-                onCancelDelete={() => setConfirmDeleteId(null)}
+                onPlay={() => handlePlayStory(s)}
               />
             ))}
           </div>
@@ -381,113 +195,32 @@ export function LibraryScreen({ onPlay }: LibraryScreenProps) {
 function ContentCard({
   title,
   description,
-  excerpt = null,
   meta,
-  busy = false,
-  errorMessage = null,
-  confirmingDelete = false,
   onPlay,
-  onDownload,
-  onDelete,
-  onConfirmDelete,
-  onCancelDelete,
 }: {
   title: string;
   description: string;
-  /** One italic line of the content's own prose (roadmap 6.6). */
-  excerpt?: string | null;
   meta: string;
-  busy?: boolean;
-  errorMessage?: string | null;
-  confirmingDelete?: boolean;
   onPlay: () => void;
-  /** Export the audio to a file (generated stories only). */
-  onDownload?: () => void;
-  onDelete?: () => void;
-  onConfirmDelete?: () => void;
-  onCancelDelete?: () => void;
 }) {
   return (
     <div className="bg-ink-800 rounded-softer px-6 py-4">
       <div className="flex items-start justify-between gap-3 mb-1">
         <h3 className="font-serif text-stone-50 text-lg leading-tight">{title}</h3>
         <div className="flex gap-3 shrink-0 mt-0.5">
-          {confirmingDelete ? (
-            <>
-              <button
-                onClick={onCancelDelete}
-                className="ui-label text-stone-300 hover:text-stone-200
-                           transition-colors duration-slow px-2 py-2"
-                style={{ minHeight: 44 }}
-                aria-label="Cancel delete"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={onConfirmDelete}
-                className="ui-label text-ember-400 hover:text-ember-300
-                           transition-colors duration-slow px-2 py-2"
-                style={{ minHeight: 44 }}
-                aria-label={`Confirm delete ${title}`}
-              >
-                Delete
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={onPlay}
-                disabled={busy}
-                className="ui-label text-moon-300 hover:text-moon-200
-                           transition-colors duration-slow disabled:opacity-40
-                           px-2 py-2"
-                style={{ minHeight: 44 }}
-                aria-label={`Play ${title}`}
-              >
-                {busy ? 'Loading…' : 'Play →'}
-              </button>
-              {onDownload && (
-                <button
-                  onClick={onDownload}
-                  className="ui-label text-stone-300 hover:text-stone-100
-                             transition-colors duration-slow px-2 py-2"
-                  style={{ minHeight: 44, minWidth: 44 }}
-                  aria-label={`Save ${title} to a file`}
-                  title="Save a copy you keep"
-                >
-                  Save
-                </button>
-              )}
-              {onDelete && (
-                <button
-                  onClick={onDelete}
-                  className="ui-label text-stone-300 hover:text-ember-400
-                             transition-colors duration-slow px-2 py-2"
-                  style={{ minHeight: 44, minWidth: 44 }}
-                  aria-label={`Delete ${title}`}
-                >
-                  ×
-                </button>
-              )}
-            </>
-          )}
+          <button
+            onClick={onPlay}
+            className="ui-label text-moon-300 hover:text-moon-200
+                       transition-colors duration-slow px-2 py-2"
+            style={{ minHeight: 44 }}
+            aria-label={`Play ${title}`}
+          >
+            Play →
+          </button>
         </div>
       </div>
       <p className="text-stone-300 body-text mb-1">{description}</p>
-      {excerpt && (
-        <p className="text-stone-300 body-text italic mb-1 leading-relaxed">
-          “{excerpt}”
-        </p>
-      )}
       <p className="text-stone-300 ui-label">{meta}</p>
-      {errorMessage && (
-        <p
-          role="alert"
-          className="text-ember-400 body-text mt-2"
-        >
-          {errorMessage}
-        </p>
-      )}
     </div>
   );
 }

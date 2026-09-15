@@ -2,7 +2,11 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } fro
 import { getAudioEngine } from './audio/AudioEngine';
 import { getHowlScenePlayer } from './audio/howl/HowlScenePlayer';
 import { fetchSceneDefinition, fetchSceneIndex } from './audio/sceneRegistry';
-import { getSetting, requestPersistentStorage } from './storage';
+import {
+  dropGeneratedStoryDatabase,
+  getSetting,
+  requestPersistentStorage,
+} from './storage';
 import { recordEvent } from './diagnostics/lifecycleLog';
 import { isDeepNight, deepNightResumeParams } from './lib/deepNight';
 import { TonightScreen } from './screens/TonightScreen';
@@ -90,11 +94,23 @@ export function App() {
   // Nightstand (black) so the screen never brightens at 3am.
   const [resumeDark, setResumeDark] = useState(false);
 
-  // Ask for persistent storage on launch so the OS can't evict a user's
-  // generated story audio between sessions (they paid to synthesize it).
+  // Ask for persistent storage on launch so the OS can't evict the service
+  // worker's audio cache between sessions — an evicted scene variant is a
+  // scene that goes silent mid-night.
   useEffect(() => {
     void requestPersistentStorage().then((granted) => {
       recordEvent('storage-persist', granted ? 'granted' : 'denied');
+    });
+  }, []);
+
+  // Dispose of the database the removed in-app generator wrote into. Nothing
+  // can read it any more, so its story WAVs (25-40 MB each) would otherwise
+  // sit on the device forever with nothing able to reclaim them. Fire and
+  // forget: it never throws, and a delete of an already-absent database
+  // succeeds, so it is safe on every launch.
+  useEffect(() => {
+    void dropGeneratedStoryDatabase().then((outcome) => {
+      recordEvent('generated-stories-dropped', outcome);
     });
   }, []);
 

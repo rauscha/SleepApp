@@ -2,9 +2,9 @@
 //
 // The brief is firm that no rewrite should be needed when (later) cloud
 // sync arrives. To make that real, ALL data the app persists is described
-// here, and ALL access goes through the typed helpers in settings.ts /
-// assets.ts. A future cloud implementation re-exports the same surface;
-// nothing else changes.
+// here, and ALL access goes through the typed helpers in settings.ts. A
+// future cloud implementation re-exports the same surface; nothing else
+// changes.
 
 export interface UserSettings {
   /** Last-played scene id ('forest-day' etc.). Used to restore on launch. */
@@ -105,26 +105,9 @@ export interface MeditationIndex {
 
 // ---------------------------------------------------------------------------
 
-/** Metadata for a generated sleep story, stored in localStorage. */
-export interface StoryMetadata {
-  id: string;
-  title: string;
-  theme: string;
-  voiceId: string;
-  /** ISO 8601 creation timestamp. */
-  createdAt: string;
-  /** Approximate duration in seconds. */
-  durationSeconds: number;
-  /** The script that was synthesized. Stored for transparency / debug. */
-  script: string;
-  /** Backing scene id played underneath, if any. */
-  sceneId: string | null;
-}
-
 /** Metadata for a single bundled sleep story (shipped with the app).
- *  Lives in public/stories/index.json and is the read-only counterpart
- *  to StoryMetadata — same shape conceptually but the audio is at a
- *  URL instead of in IndexedDB, and the user can't delete it. */
+ *  Lives in public/stories/index.json. Read-only: the audio is a file
+ *  served from public/stories/, so there is nothing to delete. */
 export interface BundledStoryMetadata {
   id: string;
   title: string;
@@ -139,22 +122,10 @@ export interface BundledStoryMetadata {
   /** Path to the MP3 relative to /stories/, e.g. "seaside-village.mp3". */
   audioPath: string;
   /** Backing scene id played underneath during narration, then left
-   *  running so the room doesn't go silent. Same field as StoryMetadata. */
+   *  running so the room doesn't go silent. */
   sceneId?: string | null;
 }
 
 export interface BundledStoryIndex {
   stories: BundledStoryMetadata[];
-}
-
-/** Shape of an audio asset stored in IndexedDB. */
-export interface StoredAudioAsset {
-  /** Asset id — for stories this is the story id. */
-  id: string;
-  /** MIME type, e.g. 'audio/mpeg'. */
-  mimeType: string;
-  /** The audio bytes. */
-  data: ArrayBuffer;
-  /** When the asset was saved. */
-  savedAt: string;
 }
