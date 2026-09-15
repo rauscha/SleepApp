@@ -10,11 +10,11 @@ import { PlayerScreen } from './screens/PlayerScreen';
 import { DeepNightDoor } from './screens/DeepNightDoor';
 import type { ContentItem } from './screens/LibraryScreen';
 
-// Lazy-load post-Tonight screens. Together these pull in Howler (~30 kB),
-// the Library + StoryGenerator UI trees, and the storyGenerator service —
-// none of which is needed for the primary flow (Tonight → Player). The
-// initial bundle now contains only the audio engine + Tonight/Player.
-// A user who only ever taps a scene card never downloads any of this.
+// Lazy-load post-Tonight screens. Together these pull in Howler (~30 kB)
+// and the Library UI tree — neither of which is needed for the primary flow
+// (Tonight → Player). The initial bundle now contains only the audio engine
+// + Tonight/Player. A user who only ever taps a scene card never downloads
+// any of this.
 const SettingsScreen = lazy(() =>
   import('./screens/SettingsScreen').then((m) => ({ default: m.SettingsScreen }))
 );
@@ -24,11 +24,6 @@ const LibraryScreen = lazy(() =>
 const ContentPlayerScreen = lazy(() =>
   import('./screens/ContentPlayerScreen').then((m) => ({
     default: m.ContentPlayerScreen,
-  }))
-);
-const StoryGeneratorScreen = lazy(() =>
-  import('./screens/StoryGeneratorScreen').then((m) => ({
-    default: m.StoryGeneratorScreen,
   }))
 );
 // Dev-only engine harness — its own chunk, only ever imported in dev. The
@@ -47,7 +42,6 @@ type Screen =
   | 'player'
   | 'library'
   | 'content-player'
-  | 'story-generator'
   | 'settings'
   | 'harness'
   | 'deep-night-door';
@@ -251,7 +245,6 @@ export function App() {
             <LibraryScreen
               onBack={() => setScreen('tonight')}
               onPlay={(item) => void playContent(item)}
-              onGenerateStory={() => setScreen('story-generator')}
             />
           </Suspense>
         )}
@@ -264,14 +257,6 @@ export function App() {
               bedSceneId={activeContent.sceneId ?? null}
               bedBehavior={activeContent.type === 'story' ? 'continue' : 'stop-with-content'}
               onBack={leaveContentPlayer}
-            />
-          </Suspense>
-        )}
-        {screen === 'story-generator' && (
-          <Suspense fallback={<ScreenFallback />}>
-            <StoryGeneratorScreen
-              onBack={() => setScreen('library')}
-              onDone={() => setScreen('library')}
             />
           </Suspense>
         )}

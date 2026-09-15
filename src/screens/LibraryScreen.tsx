@@ -10,8 +10,7 @@
 // IndexedDB, creates a blob URL, and navigates with that URL (revoked on
 // back). Bundled stories are read-only — no delete button.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { isBedtime } from '../lib/bedtime';
+import { useCallback, useEffect, useState } from 'react';
 import { resolvePublicUrl } from '../lib/baseUrl';
 import { storyExcerpt } from '../lib/storyExcerpt';
 import {
@@ -71,15 +70,11 @@ export interface LibraryScreenProps {
    */
   onBack?: () => void;
   onPlay: (item: ContentItem) => void;
-  onGenerateStory: () => void;
 }
 
 type Tab = 'meditations' | 'stories';
 
-export function LibraryScreen({
-  onPlay,
-  onGenerateStory,
-}: LibraryScreenProps) {
+export function LibraryScreen({ onPlay }: LibraryScreenProps) {
   const [tab, setTab] = useState<Tab>('meditations');
   const [meditations, setMeditations] = useState<MeditationMetadata[]>([]);
   const [meditationError, setMeditationError] = useState<string | null>(null);
@@ -98,17 +93,6 @@ export function LibraryScreen({
   // When false, saved stories can be evicted by the OS under storage
   // pressure, so we warn and point at Export (B7).
   const [persistent, setPersistent] = useState<boolean | null>(null);
-
-  // Re-evaluate the bedtime window once a minute so the Generate CTA
-  // flips disable state cleanly across the 21:00 / 06:00 boundaries
-  // even if the user is sitting on this screen. Once-a-minute is cheap
-  // and matches how the gate visibly resolves at minute precision.
-  const [nowTick, setNowTick] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowTick(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  const bedtime = useMemo(() => isBedtime(new Date(nowTick)), [nowTick]);
 
   useEffect(() => {
     fetchMeditationIndex()
@@ -312,7 +296,7 @@ export function LibraryScreen({
           {meditations.length === 0 && !meditationError && (
             <EmptyState
               heading="No meditations yet"
-              body="Generate one from the Stories tab."
+              body="This build didn't ship any. Check back after the next update."
             />
           )}
           <div className="space-y-3">
@@ -332,29 +316,6 @@ export function LibraryScreen({
       {/* ── Stories ──────────────────────────────────────────────────── */}
       {tab === 'stories' && (
         <div className="flex-1">
-          <div className="flex flex-col items-end mb-4 px-1 gap-2">
-            <button
-              onClick={onGenerateStory}
-              disabled={bedtime}
-              className="ui-label text-moon-300 hover:text-moon-200
-                         transition-colors duration-slow px-3 py-1.5
-                         border border-moon-700 rounded-soft
-                         disabled:opacity-40 disabled:cursor-not-allowed
-                         disabled:hover:text-moon-300"
-              style={{ minHeight: 44 }}
-              aria-describedby={bedtime ? 'bedtime-note' : undefined}
-            >
-              Generate new story →
-            </button>
-            {bedtime && (
-              <p
-                id="bedtime-note"
-                className="ui-label text-stone-300 italic max-w-xs text-right"
-              >
-                A daytime activity. Try again after 6am.
-              </p>
-            )}
-          </div>
           {storyListError && (
             <div className="mb-4 px-1">
               <p className="text-ember-400 body-text">
@@ -380,7 +341,7 @@ export function LibraryScreen({
           {bundledStories.length === 0 && stories.length === 0 && !storyListError && (
             <EmptyState
               heading="No stories yet"
-              body="Add your ElevenLabs and Anthropic API keys in Settings, then generate a story."
+              body="This build didn't ship any. Check back after the next update."
             />
           )}
           <div className="space-y-3">
