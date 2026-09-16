@@ -158,7 +158,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
         <h2 className="font-serif text-stone-300 text-lg mb-2">Offline</h2>
         <p className="body-text text-stone-300 mb-5">
           Download every scene, meditation, and bundled story so the app
-          plays with no network. About 450 MB total. Already-downloaded
+          plays with no network. About 430 MB total. Already-downloaded
           files are skipped, so tapping this again is safe.
         </p>
         <OfflineDownloadPanel />

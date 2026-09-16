@@ -1,4 +1,7 @@
 {
+  "_heldBack": {
+    "singing-bowl": "Held back 2026-09-16. The MusicGen bed was rejected outright (2026-06-21) and is being replaced by a warm pad/drone, but there is no source to replace it from yet. Scene JSON is in scenes/_held-back/; see the README there."
+  },
   "scenes": [
     {
       "id": "forest-day",
@@ -53,12 +56,6 @@
       "label": "Night train",
       "description": "A sleeper cabin with the windows closed — railway clicks and rumble underfoot, rain on the glass, weather a long way off.",
       "url": "/scenes/night-train.json"
-    },
-    {
-      "id": "singing-bowl",
-      "label": "Singing bowls",
-      "description": "Deep bronze bowl drone with a slow shimmer of higher bowls overhead. Designed as a sound-bath bed under meditations.",
-      "url": "/scenes/singing-bowl.json"
     }
   ]
 }
