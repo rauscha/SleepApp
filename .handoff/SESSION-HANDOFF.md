@@ -16,7 +16,8 @@
 ## Three things got done this session
 1. **PENDING-DECISIONS 0C** — the in-app generator, stripped in full.
 2. **The train scene** — cut, voiced and shipped as `night-train`.
-3. **The singing bowls, rebuilt** — the catalogue's three worst seams.
+3. **The singing-bowl seams** — fixed, on material that should not ship at
+   all. See the correction below; this one was a mistake.
 
 ## Done this session: PENDING-DECISIONS 0C, the whole thing
 The in-app story generator is gone. It was decided on 2026-09-12 and had
@@ -85,35 +86,54 @@ warnings.
 - **[ANDREW] The scene has no photograph** and runs on its gradient. That is
   the only thing it is missing; picking the image is your call.
 
-## The singing bowls — rebuilt, and this one wants your ear
-The audit's three worst variants were all this scene: shimmer-2 stepped
-**19.0 dB** across its wrap every 409 s, drone-2 17.1, shimmer-1 10.1. All
-five are now under 0.8 dB, and the catalogue goes from 12 of 71 over 3 dB
-to 8.
+## CORRECTION — the singing-bowl rebuild was the wrong job
+Andrew caught this on 2026-09-16: "I thought we still need to resource the
+bowls? The old ones were hella disharmonious." He is right, and the decision
+was already on record twice before the work started.
 
-- **The cause was slack, not material.** The shimmer stitch ran 435 s and was
-  trimmed to 420 for a 409 s loop — an eleven-second window for seamfit to
-  find a level-matched start in, against a bed that swells over tens of
-  seconds. Stitches are now 555 s (shimmer) and 435 s (drone).
-- **Levels are unchanged within 0.4 dB** of the old shipped files, so
-  `defaultVolume` still means what you voiced it to mean. The scene JSON is
-  byte-identical.
-- **[ANDREW] What did change is dynamics.** The old build's single-pass
-  loudnorm was compressing (dynamic mode — it also undershot its own target
-  by 2-3 dB). With one fixed gain instead, loudness range goes 18-19 -> 23 LU
-  on the drone and 15 -> 20 on the shimmer. Same integrated loudness, wider
-  swings. Arguably right for a sound bath; still a judgement call on a scene
-  you tuned by ear. **Say the word and it comes back out** — the old files are
-  one `git revert` away.
-- CACHE_VERSION **v13 -> v14**: audio bytes changed, so every install
-  re-downloads.
+- **`notes/scene-audio-flags-2026-06-21.md` rejects all five layers by name**
+  — drone-1 "screeching teapot", drone-2 "industrial ghost music", drone-3
+  "ghost music", shimmer-1 "wrong character (asian flutes/pipes)", shimmer-2
+  "old-school mp3 warble". The 2026-09-10 hand-off repeats it in four words:
+  **"Singing-bowl: replace, don't re-cut."**
+- **What actually stands (2026-07-01, DECISIONS.md "warm pad/drone is the
+  default meditation bed"):** the scene is to be REPLACED by a warm ambient
+  pad/drone, voiced for under-narration (HPF ~80-100 Hz, 200-500 Hz dip,
+  2-4 kHz clear, ~15 dB speech-over-bed). Build route in order: (1) audition
+  99Sounds "Red Fog" and loop-cut it through `loopify-scenes.py`; (2) fall
+  back to DSP synthesis in numpy/ffmpeg. **MusicGen stays rejected.** Real
+  bowls are demoted to an optional later texture.
+- **The 11 real bowl recordings are gone.** Not in `~/sounds` on tikiserv and
+  not on crane-desk (`C:\GDrive\SleepApp\raw-sounds`, `D:\Sounds`) — the
+  only bowl-named files anywhere are the five rejected MusicGen stems. So the
+  2026-06-21 "rebuild from the 11 real recordings" plan is not reachable even
+  if it had not already been superseded.
 
-## Next up
-1. **[ANDREW] The voice audition is still waiting on ears** — 31 files on
+**What the rebuild commit (`1152001`) did and did not do.** It is a real fix
+to a real defect: the loop-start search had an eleven-second window and the
+worst variant stepped 19.0 dB across its wrap; all five are now under 0.8 dB
+and the catalogue went from 12 of 71 over 3 dB to 8. But the material is the
+material — a better seam on a screeching teapot is still a screeching teapot,
+and the scene should not be in the catalogue in this state at all.
+
+**Not reverted, deliberately.** `deploy.yml` publishes to GitHub Pages on
+every push, so CACHE_VERSION v14 is already live and every install will
+re-download once. Reverting would buy a second full re-download and give back
+nothing, since the pad/drone replacement changes these bytes again anyway.
+The tooling work in that commit stands on its own: the slack finding
+generalises to every scene, and `build-singing-bowl-scene.py` becomes the
+loop-cut half of whatever replaces the bed.
+
+
+1. **Replace the singing-bowl bed with the warm pad/drone** — the oldest
+   open item in the catalogue, and the meditation bed depends on it. Route 1
+   (99Sounds "Red Fog") needs a download and then Andrew's ear; route 2 (DSP
+   synthesis) can be built here unattended and auditioned after.
+2. **[ANDREW] The voice audition is still waiting on ears** — 31 files on
    pixel-8-pro, `BED-*` against `BED-ELEVENLABS-stone`. Nothing downstream
    moves until a voice is picked: 7 of 10 meditation scripts are written and
    unrendered, waiting only on voice + engine.
-2. Re-cut the remaining seams. After the bowl rebuild the audit reports
+3. Re-cut the remaining seams. After the bowl rebuild the audit reports
    **8 of 71 variants over 3 dB**, worst first: forest-evening/wind-1 at
    9.8 dB, ocean-night/wave-3 at 8.4, ocean-night/far-1 at 7.8,
    forest-evening/forest-2 at 4.6, then four between 3.5 and 3.9. These are
@@ -122,8 +142,8 @@ to 8.
    reachable. **The bowl lesson generalises: look at the slack first.**
    `assembledSeconds - loopOffset - 6` is the whole search range seamfit
    gets, and under about 30 s it cannot beat a slow swell.
-3. Fix the ElevenLabs Studio endpoints in `tools/gen-story.ts` (5 paths).
-4. Roadmap `[ASK]`/`[DEVICE]` items for v1.0: replace 3 off-brief photos
+4. Fix the ElevenLabs Studio endpoints in `tools/gen-story.ts` (5 paths).
+5. Roadmap `[ASK]`/`[DEVICE]` items for v1.0: replace 3 off-brief photos
    (4.3) — now 4, with night-train — decide the meditation catalogue (6.5),
    device pass + tag (5.2).
 

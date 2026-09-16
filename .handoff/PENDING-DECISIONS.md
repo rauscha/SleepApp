@@ -26,6 +26,39 @@ scene's third element is distant thunder rumble (re-cut 251 -> 199); and the
 American pull — **not Herzog and not German**, proved by a Herzog control
 that the classifier failed to detect German in at all.
 
+## 0G. OPEN 2026-09-16 — the singing-bowl bed still needs replacing
+
+Andrew: "I thought we still need to resource the bowls? The old ones were
+hella disharmonious." Correct, and it was on record. The scene shipping today
+is still the audiocraft MusicGen bed he rejected outright on 2026-06-21, layer
+by layer — "screeching teapot", "industrial ghost music", "ghost music",
+"asian flutes/pipes", "old-school mp3 warble".
+
+**The standing plan is the 2026-07-01 one, not the 2026-06-21 one.** The
+scene is replaced by a **warm ambient pad/drone** (DECISIONS.md "warm
+pad/drone is the default meditation bed"), voiced for under-narration: HPF
+~80-100 Hz, a 200-500 Hz dip, 2-4 kHz left clear for consonants, ~15 dB
+speech-over-bed. Route (1) audition 99Sounds "Red Fog" and loop-cut it; route
+(2) fall back to DSP synthesis in numpy/ffmpeg, the same way the noise beds
+were made. MusicGen stays rejected.
+
+**[ANDREW] Which route?** Route 2 can be built here unattended and
+auditioned afterwards; route 1 needs the library downloaded first and is the
+stated preference. Say which and it gets built.
+
+**The 11 real bowl recordings referenced in the 2026-06-21 plan no longer
+exist** on either machine — searched `~/sounds` on tikiserv and
+`C:\GDrive\SleepApp\raw-sounds` plus `D:\Sounds` on crane-desk; the only
+bowl-named files anywhere are the five rejected MusicGen stems. Bowls as an
+optional later texture would need fresh sourcing.
+
+**A seam fix landed on this scene on 2026-09-15 (`1152001`) and does not
+change any of the above.** It took the worst wrap step from 19.0 dB to 0.74
+by giving the loop-start search room to work, which is a real fix to a real
+defect, but it polished material that is due to be thrown away. Not reverted
+because the deploy already published CACHE_VERSION v14 and a revert would
+cost a second full re-download for nothing.
+
 ## 0F. OPEN 2026-09-15 — the train scene ships without a photograph
 
 `night-train` is cut, voiced, conformance-green and in the catalogue. It is
