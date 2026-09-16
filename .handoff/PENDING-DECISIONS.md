@@ -26,38 +26,53 @@ scene's third element is distant thunder rumble (re-cut 251 -> 199); and the
 American pull — **not Herzog and not German**, proved by a Herzog control
 that the classifier failed to detect German in at all.
 
-## 0G. OPEN 2026-09-16 — the singing-bowl bed still needs replacing
+## 0G. OPEN 2026-09-16 — the bowls are OUT of the catalogue, and need sourcing
 
 Andrew: "I thought we still need to resource the bowls? The old ones were
-hella disharmonious." Correct, and it was on record. The scene shipping today
-is still the audiocraft MusicGen bed he rejected outright on 2026-06-21, layer
-by layer — "screeching teapot", "industrial ghost music", "ghost music",
-"asian flutes/pipes", "old-school mp3 warble".
+hella disharmonious." Then: "We're replacing but need to source them. No
+recordings available." And: "Comment out bowls for now. Don't worry about it
+now."
 
-**The standing plan is the 2026-07-01 one, not the 2026-06-21 one.** The
-scene is replaced by a **warm ambient pad/drone** (DECISIONS.md "warm
-pad/drone is the default meditation bed"), voiced for under-narration: HPF
-~80-100 Hz, a 200-500 Hz dip, 2-4 kHz left clear for consonants, ~15 dB
-speech-over-bed. Route (1) audition 99Sounds "Red Fog" and loop-cut it; route
-(2) fall back to DSP synthesis in numpy/ffmpeg, the same way the noise beds
-were made. MusicGen stays rejected.
+**Done: the scene is held back.** `public/scenes/_held-back/singing-bowl.json`,
+out of every glob, out of `index.json`. Nine scenes ship. Nothing deleted —
+the audio, photo and gradient all stay, so restoring it is moving one file
+back. Reasoning and cost are in `public/scenes/_held-back/README.md`.
 
-**[ANDREW] Which route?** Route 2 can be built here unattended and
-auditioned afterwards; route 1 needs the library downloaded first and is the
-stated preference. Say which and it gets built.
+**Open: THE SOURCE.** This is the whole task and it is not started. The
+standing design decision (2026-07-01, DECISIONS.md "warm pad/drone is the
+default meditation bed") says what the replacement is — a warm ambient
+pad/drone voiced for under-narration: HPF ~80-100 Hz, a 200-500 Hz dip,
+2-4 kHz left clear for consonants, ~15 dB speech-over-bed. What it does not
+have is material.
 
-**The 11 real bowl recordings referenced in the 2026-06-21 plan no longer
-exist** on either machine — searched `~/sounds` on tikiserv and
-`C:\GDrive\SleepApp\raw-sounds` plus `D:\Sounds` on crane-desk; the only
-bowl-named files anywhere are the five rejected MusicGen stems. Bowls as an
-optional later texture would need fresh sourcing.
+Two routes, both from that decision, neither started because Andrew stopped
+this path for now:
+1. **99Sounds "Drones"** — the library the decision calls "Red Fog", which is
+   the artist; the pack is "Drones". 50 drones, 24-bit WAV 44.1 kHz stereo,
+   757 MB, royalty-free including commercial use.
+   `https://99sounds.gumroad.com/l/aonqnz`. **Gated: Gumroad wants an email
+   address**, which is Andrew's to give, not Claude's. Once the zip is in
+   `~/sounds` it loop-cuts through the normal pipeline.
+2. **DSP synthesis** in numpy/ffmpeg — slow detuned partials plus filtered
+   noise, the same route as the pre-rendered noise beds. Buildable here
+   unattended, no third party, no gate.
 
-**A seam fix landed on this scene on 2026-09-15 (`1152001`) and does not
-change any of the above.** It took the worst wrap step from 19.0 dB to 0.74
-by giving the loop-start search room to work, which is a real fix to a real
-defect, but it polished material that is due to be thrown away. Not reverted
-because the deploy already published CACHE_VERSION v14 and a revert would
-cost a second full re-download for nothing.
+**MusicGen stays rejected** and the 11 real bowl recordings the superseded
+2026-06-21 plan named are on neither machine — searched `~/sounds` on
+tikiserv and `C:\GDrive\SleepApp\raw-sounds` plus `D:\Sounds` on
+crane-desk. Bowls as an optional texture on top would need their own fresh
+sourcing.
+
+**Known cost while held back:** `body-scan-01`, `breath-01` and `forest-01`
+name singing-bowl as their bed and now play bare. ContentPlayer warns and
+carries on; it does not break.
+
+**A seam fix landed on this scene on 2026-09-15 (`1152001`) before any of
+this was checked.** It took the worst wrap step from 19.0 dB to 0.74, which
+is a real fix, but on material that was already rejected — the wrong job,
+done well. Not reverted: the deploy had already published CACHE_VERSION v14,
+so a revert costs a second full re-download and returns nothing. The general
+finding in it is still worth having — see "Watch out for" in the hand-off.
 
 ## 0F. OPEN 2026-09-15 — the train scene ships without a photograph
 

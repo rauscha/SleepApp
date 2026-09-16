@@ -16,8 +16,8 @@
 ## Three things got done this session
 1. **PENDING-DECISIONS 0C** — the in-app generator, stripped in full.
 2. **The train scene** — cut, voiced and shipped as `night-train`.
-3. **The singing-bowl seams** — fixed, on material that should not ship at
-   all. See the correction below; this one was a mistake.
+3. **The singing bowls** — seams fixed (the wrong job), then the whole scene
+   held out of the catalogue. Nine scenes ship. See the correction below.
 
 ## Done this session: PENDING-DECISIONS 0C, the whole thing
 The in-app story generator is gone. It was decided on 2026-09-12 and had
@@ -116,7 +116,11 @@ and the catalogue went from 12 of 71 over 3 dB to 8. But the material is the
 material — a better seam on a screeching teapot is still a screeching teapot,
 and the scene should not be in the catalogue in this state at all.
 
-**Not reverted, deliberately.** `deploy.yml` publishes to GitHub Pages on
+**The scene is now held back entirely** (`b05f792`) —
+`public/scenes/_held-back/`, out of every glob and out of `index.json`, with
+the reasoning in a README beside it. Nine scenes ship. Nothing deleted.
+
+**The seam commit was not reverted, deliberately.** `deploy.yml` publishes to GitHub Pages on
 every push, so CACHE_VERSION v14 is already live and every install will
 re-download once. Reverting would buy a second full re-download and give back
 nothing, since the pad/drone replacement changes these bytes again anyway.
@@ -125,10 +129,12 @@ generalises to every scene, and `build-singing-bowl-scene.py` becomes the
 loop-cut half of whatever replaces the bed.
 
 
-1. **Replace the singing-bowl bed with the warm pad/drone** — the oldest
-   open item in the catalogue, and the meditation bed depends on it. Route 1
-   (99Sounds "Red Fog") needs a download and then Andrew's ear; route 2 (DSP
-   synthesis) can be built here unattended and auditioned after.
+1. **Source a replacement bed for the bowls.** PENDING-DECISIONS 0G has the
+   detail. The scene is out of the catalogue now, so nothing is broken and
+   nothing is urgent, but three meditations play bare until it lands. Andrew
+   paused this path on 2026-09-16 — **do not start building a pad until he
+   picks a route.** Route 1 needs him to pull the 99Sounds "Drones" zip past
+   a Gumroad email gate; route 2 is DSP synthesis, buildable here.
 2. **[ANDREW] The voice audition is still waiting on ears** — 31 files on
    pixel-8-pro, `BED-*` against `BED-ELEVENLABS-stone`. Nothing downstream
    moves until a voice is picked: 7 of 10 meditation scripts are written and
