@@ -2,86 +2,95 @@
 
 > The One Thing: *Put me to sleep and let me stay there.*
 
-Personal sleep app — soundscapes, sleep stories, and guided meditations. Progressive Web App. Single user, no accounts, no backend, no generation at runtime: the stories and meditations are files that ship with the build, rendered ahead of time by the scripts in `tools/`.
+A personal sleep PWA for one user: layered ambient soundscapes, narrated sleep
+stories, and guided meditations. No accounts, no backend, no telemetry, and
+**no generative AI at runtime** — the stories and meditations are audio files
+that ship with the build, rendered ahead of time by the scripts in `tools/`.
 
-The app is in active development. Phases 1 and 2 are complete; Phase 3 (the real Tonight UI) is in progress.
+Currently a v1.0 ship candidate.
 
-## What's implemented
+## What it does
 
-**Phase 1 — Audio engine**
-- AudioContext lifecycle management (`src/audio/AudioEngine.ts`) — user-gesture unlock, suspend/resume on visibility change, AudioWorklet loading.
-- Master bus with soft limiter (`src/audio/MasterBus.ts`) — DynamicsCompressorNode tuned as a brick-wall limiter, plus exponential fade-to-silence for the sleep timer.
-- Synthesized white / pink / brown noise (`src/audio/NoiseGenerator.ts` + `public/worklets/noise-processor.js`) — true infinite generation per sample, no period.
-- Seamless file-loop layer (`src/audio/FileLayer.ts`) — equal-power crossfade, variant rotation, incommensurate loop offsets, 3-iteration pipeline for iOS Safari robustness.
-- Storage abstraction (`src/storage/`) — settings in localStorage. (Audio assets were in IndexedDB until the in-app generator was removed; the app now reads everything from `public/` through the service worker cache.)
-- Tinnitus engine (`ToneMatcher.ts`, `TinnitusMaskLayer.ts`) — built, shelved from UI pending better UX design.
+**Scenes.** Nine layered ambient soundscapes. Each is 2–4 ambient elements
+stacked over a quiet noise bed, and each element loops on a *different prime
+number of seconds* — 199, 251, 409, 521, 691, 887. Because those are pairwise
+coprime, the combined sound only repeats at their least common multiple, which
+is tens of hours. This is Brian Eno's *Music for Airports* trick, and it is
+the reason a scene does not start sounding like a tape loop ten minutes in.
+It is the core design of the app, not an implementation detail.
 
-**Phase 2 — Scenes**
-- Multi-layer scene format (`src/audio/sceneFormat.ts`) with JSON scene definitions in `public/scenes/`.
-- `SceneCoordinator` — 8-second cross-scene fade, synthetic fallback when real audio files are missing.
-- 3 starter scenes: Forest midday, Rain on window, Fireplace (Pixabay sources).
-- Surprise Me.
+**Overnight survival.** The thing that makes a sleep app work is still playing
+at 4am. Each layer is a plain looping `<audio>` element owned by the OS, the
+same primitive Spotify and YouTube use, because anything cleverer gets
+suspended when the screen goes off. There is a sleep timer, a Night Drift that
+crossfades one scene into another after a set time, and a "3 a.m. Door" — open
+the app in the small hours with nothing playing and you get a single near-black
+panel offering to put the last scene back on, rather than a bright home screen.
 
-**Phase 3 — Tonight UI (in progress)**
-- Three-screen router: Tonight → Player → (Harness dev tools).
-- Tonight screen: House Blend cards with per-scene gradients (placeholder for real photos), last-played CTA, Surprise me.
-- Player screen: big stop button, master volume, collapsible per-layer mixer.
-- CI workflow (`.github/workflows/ci.yml`): typecheck + test + build on PR and push.
+**Library.** Four narrated sleep stories and three guided meditations, each
+paired with a scene that plays underneath. Story narration fades down over its
+final third so the voice submerges into the bed instead of stopping dead.
 
-## What's next
+**Offline.** A service worker caches the whole catalogue (~430 MB) so the app
+opens and plays with no network.
 
-See `NEXT_STEPS.md` for the current priority list. Short version:
-- **Phase 3 remaining:** sleep timer chip, Nightstand mode, Settings screen.
-- **Phase 4:** bundled meditations and bundled sleep stories. On-demand in-app generation was built and then removed on 2026-09-15 — see DECISIONS.md, "The library is hand-made, not generated".
-- **Phase 5:** PWA manifest, iOS overnight device test, service worker.
+## Design constraints
 
-## Running it
+From the brief, and they are firm:
+
+- No alarm. No notifications, ever. No accounts, no telemetry, no analytics,
+  no ads. No tracking, scoring, or "performance" metrics. No onboarding wall.
+  No end-of-track sounds.
+- Midnight Editorial Minimalism: deep dark ground, warm stone, editorial serif
+  headings, a moonlit sage accent. Photography, never illustration. No loud
+  wellness iconography.
+- Body text at least 16px. Touch targets at least 44×44px.
+
+## Stack
+
+Vite + React + TypeScript, Tailwind, Howler for playback, vitest. No backend.
+Deployed to GitHub Pages on every push to `main`.
 
 ```bash
 npm install
-npm run dev
+npm run dev        # http://localhost:5173
+npm test
+npm run typecheck
+npm run build
 ```
 
-Opens on http://localhost:5173. Tap "Begin" — that's the user gesture that unlocks the AudioContext. Then everything else is sliders and play buttons.
+Audio tooling is Python + ffmpeg; see `tools/`.
 
-**Don't skip the Begin gate.** Browsers refuse to start audio without a user gesture; the page simply has no sound before you've tapped.
-
-## Reading the code
-
-If you only read three files, read these — in order:
-
-1. **`src/audio/AudioEngine.ts`** — the single owner of the AudioContext and the registry of layers. Where the lifecycle bodies are buried.
-2. **`src/audio/FileLayer.ts`** — the most subtle file. The seamless-crossfade scheduling has comments explaining why the timing works the way it does.
-3. **`DECISIONS.md`** — every non-trivial choice I made tonight, with rationale and "reject this" instructions for the ones you might disagree with.
-
-## Files at a glance
+## Layout
 
 ```
-src/
-├── audio/
-│   ├── AudioEngine.ts          # Context lifecycle, master bus owner, layer registry
-│   ├── MasterBus.ts            # Master gain → soft limiter → destination
-│   ├── NoiseGenerator.ts       # Synth bed Layer (wraps the worklet)
-│   ├── TinnitusMaskLayer.ts    # Band-passed white noise Layer
-│   ├── ToneMatcher.ts          # Pure sine for tinnitus calibration
-│   ├── FileLayer.ts            # Seamless looping + variant rotation
-│   ├── crossfade.ts            # Equal-power crossfade math
-│   ├── types.ts                # Layer interface + shared types
-│   └── synth/
-│       └── testPad.ts          # In-browser test tone (dev harness only)
-├── storage/
-│   ├── index.ts                # Public surface — import from here
-│   ├── types.ts                # UserSettings + bundled content metadata
-│   ├── settings.ts             # localStorage backend
-│   └── persistence.ts          # Storage durability + legacy-DB disposal
-├── App.tsx                     # Phase-1 dev harness
-├── main.tsx                    # React entry
-└── index.css                   # Tailwind + a few dark-mode globals
-public/
-└── worklets/
-    └── noise-processor.js      # AudioWorkletProcessor (must be plain JS)
+src/audio/howl/    the production scene engine (HowlScene, HowlScenePlayer)
+src/audio/         shared scene format and types, the volume taper, and a
+                   legacy Web Audio engine kept only for the dev harness
+src/screens/       Tonight, Player, Library, ContentPlayer, Settings, Door
+src/storage/       settings in localStorage; nothing else persists
+src/diagnostics/   page-lifecycle log and the debug-marker store
+public/scenes/     scene definitions as JSON; index.json is the catalogue
+public/audio/      scene variant audio as Opus, with a sidecar per file
+                   recording its source, licence and exactly how it was cut
+tools/             the audio pipeline, the TTS rig, and the loop prober
 ```
 
-## Anti-goals from the brief, restated for emphasis
+## Audio provenance
 
-No alarm clock. No tracking, scoring, or "performance" metrics. No notifications, ever. No accounts, no telemetry, no analytics, no ads. No mandatory onboarding. No end-of-track sounds.
+Every shipped audio file has a `.json` sidecar beside it naming its source,
+its licence, and the processing that produced it — which loop offset it was
+cut to, where in the source the loop starts and why, and what level it was
+normalised to. Sources are a purchased Free To Use Sounds bundle (personal build only), free
+long-form YouTube releases from named field recordists, Pixabay, two
+user-provided recordings, and three synthesized noise beds.
+`public/scenes/photos/NOTICES.md` does the same for imagery, where one of the
+photographs is Andrew's own.
+
+## Working on it
+
+`CLAUDE.md` is the rulebook — scene authoring, the audio-engine invariants,
+and commit discipline. `.handoff/` holds the live state: what is open, what is
+blocked, and who it is waiting on. `DECISIONS.md` is the append-only record of
+why things are the way they are, and it is worth grepping before changing
+anything that involves taste.
