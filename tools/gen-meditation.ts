@@ -36,6 +36,9 @@
  *   --voice   hush | ember | glen | stone | tide  (default: hush)
  *   --id      Filename stem, e.g. "morning-scan" → morning-scan.mp3
  *             (defaults to a kebab-case version of --title)
+ *   --scene   Bed scene id played under the narration, e.g. "rain-on-window".
+ *             Must exist in public/scenes/index.json. Preserved across a
+ *             re-render when omitted.
  *   --script  Path to a .txt file to use instead of generating with Claude.
  *             Stage-direction markers like [pause] are still stripped
  *             before TTS, so you may keep or remove them as you prefer.
@@ -143,6 +146,7 @@ function parseArgs() {
     style:  get('--style', 'body-scan') as 'body-scan' | 'breath-focus' | 'visualization',
     voice:  get('--voice', 'hush') as 'hush' | 'ember' | 'glen',
     id:     get('--id', ''),
+    scene:      get('--scene', ''),
     script: get('--script', ''),
     // Editorial one-line description for the Library card (roadmap 6.5).
     // Falls back to the boilerplate only when omitted — prefer to pass one.
@@ -293,7 +297,7 @@ async function main() {
     process.exit(1);
   }
 
-  const { title, style, voice, id: rawId, script: scriptPath, description } = parseArgs();
+  const { title, style, voice, id: rawId, script: scriptPath, description, scene } = parseArgs();
   const id = rawId || toKebab(title);
   const audioPath = `${id}.mp3`;
   const voiceId = VOICE_IDS[voice];
@@ -360,6 +364,9 @@ async function main() {
     voiceId: string;
     createdAt: string;
     audioPath: string;
+    /** Bed scene played under the narration. Meditations use
+     *  'stop-with-content', so this is purely an underbed for the voice. */
+    sceneId?: string | null;
   }
 
   let index: { meditations: IndexEntry[] } = { meditations: [] };
@@ -385,9 +392,22 @@ async function main() {
     description: existing?.description ?? (description || `A ${style.replace('-', ' ')} meditation.`),
     style:       existing?.style       ?? style,
     durationSeconds,
-    voiceId:     existing?.voiceId     ?? voice,
+    // The voice just rendered, NOT the one that was there before. Keeping
+    // the old value made the index lie the moment something was re-rendered
+    // in a different voice, which is the usual reason to re-render (mirrors
+    // the same fix in tools/gen-story.ts, 2026-09-19).
+    voiceId:     voice,
     createdAt:   existing?.createdAt   ?? new Date().toISOString(),
     audioPath,
+    // Bed scene under the narration. This tool never set it, so every
+    // meditation it generated shipped with no bed at all, and a re-render
+    // dropped one that had been set by hand. Explicit --scene wins, else the
+    // existing value is carried across, else the key is left off.
+    ...(scene
+      ? { sceneId: scene }
+      : existing?.sceneId !== undefined
+        ? { sceneId: existing.sceneId }
+        : {}),
   };
 
   if (existingIdx >= 0) {
