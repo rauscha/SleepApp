@@ -41,6 +41,29 @@ tree and either rewritten, corrected, archived or split.
 - **The v1.1 roadmap now opens with a status block.** Audited item by item:
   **28 of 33 steps are done or obsolete.** Five are open and only one is code.
 
+## Also this session: crane-desk reconciled, and the screen sleeps
+
+**crane-desk had nothing to send.** Its `main` was 63 commits behind with
+zero ahead; the "open commits" impression came from an `origin/main` last
+fetched on 2026-09-10 plus three local branches that look unmerged. All three
+are old working branches whose content is on `main` — verified by content, not
+by commit id, since the work landed squashed: the May scenes, the bundled
+stories, the PWA shell, and the "Cadence overhaul" whose em-dash pause
+transform is sitting in `tools/gen-story.ts` as the 2026-05-28 revision.
+`backup/pre-rebase-2026-05-30` is a May safety copy of scenes that have since
+been re-cut from clean sources in Opus. crane-desk is now fast-forwarded to
+`8c5ebae`, clean apart from one untracked `tools/_build-level-candidates.sh`
+that PENDING-DECISIONS already described as temp. **The three stale branches
+were left in place** — deleting branches is Andrew's call and they are litter,
+not risk.
+
+**The wake lock is now a setting, default off** (`976e028`). See DECISIONS.md
+"Let the screen sleep". This is the B4 contradiction the June review flagged,
+and it was a leftover of the Web Audio keep-alive stack whose premise the
+pivot removed. **Watch the next few overnights:** the 6h run that confirmed
+the pivot held this lock, so the screen-asleep combination is unproven on a
+real device. If a night dies, turn it on before suspecting anything else.
+
 ## The three findings the audit turned up
 Carried into `PENDING-DECISIONS.md` rather than left in an archived file.
 

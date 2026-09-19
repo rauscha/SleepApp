@@ -19,8 +19,9 @@ so this file is only live items.
 
 **Buildable without you**
 - **0B** — 8 of 71 variants still wrap with more than a 3 dB step.
-- **B4 / C6 / variants** — three items carried out of the archived
-  `notes/TODO_PHASE2-2026-05.md`; see "Carried forward" at the bottom.
+- **C6 / variants** — two items carried out of the archived
+  `notes/TODO_PHASE2-2026-05.md`; see "Carried forward" at the bottom. B4,
+  the wake lock, was the third and is fixed.
 - **4** — cleanup chores, on request only.
 
 ## 0G. OPEN 2026-09-16 — the bowls are OUT of the catalogue, and need sourcing
@@ -261,15 +262,16 @@ roadmap 5.2. See DECISIONS.md for the pivot record.
 Three items from `notes/TODO_PHASE2-2026-05.md` were still live when it was
 archived, so they live here now rather than in a file nobody should read.
 
-- **B4 — the wake-lock default contradicts its own decision.** That document
-  says "we must NOT request wake lock by default". The code does:
-  `PlayerScreen.tsx` calls `useWakeLock(scene !== null)`, so the screen is
-  held on for the whole night whenever a scene is playing, and
-  `ContentPlayerScreen.tsx` does the same for narration. The
-  2026-06-12 review (`05-utility.md`) flagged this as a deliberate pivot with
-  **no DECISIONS.md entry and no user setting**. Either write the decision
-  down or add the setting — an always-on screen is a battery and
-  light-in-the-room cost the brief never agreed to.
+- ~~**B4 — the wake-lock default contradicts its own decision.**~~ **FIXED
+  2026-09-19** (`976e028`). Andrew: "We shouldn't keep the screen fully on."
+  It is now the `keepScreenAwake` setting, **default off**, gating both the
+  Player and the ContentPlayer, with the DECISIONS entry the June review
+  asked for. The lock was one third of the Web Audio keep-alive stack and the
+  2026-06-15 pivot removed its premise; the silent loop and element sink went
+  with the pivot and this was missed. **Worth watching on the next few
+  overnights** — the 6h run that confirmed the pivot held this lock, so its
+  contribution was never isolated. If a night dies with the screen asleep,
+  turn it on before assuming anything else.
 - **C6 — the multi-hour audio soak test never ran.** `tools/loop-probe/` and
   `notes/loop-seam-audit-2026-09-02.md` cover the wrap seam; what was
   specified and never done is a long run watching for spectrum
