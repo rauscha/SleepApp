@@ -6,7 +6,7 @@
       "description": "Attention sinks from your feet to your scalp, leaving each part heavy and warm behind it.",
       "style": "body-scan",
       "durationSeconds": 507,
-      "voiceId": "hush",
+      "voiceId": "stone",
       "createdAt": "2026-05-18T00:35:14.694Z",
       "audioPath": "body-scan-01.mp3",
       "sceneId": "singing-bowl"
@@ -17,7 +17,7 @@
       "description": "Settle onto the breath — its weight, the still pause before the next one — and let it slow on its own.",
       "style": "breath-focus",
       "durationSeconds": 438,
-      "voiceId": "ember",
+      "voiceId": "stone",
       "createdAt": "2026-05-18T00:36:45.835Z",
       "audioPath": "breath-01.mp3",
       "sceneId": "singing-bowl"
@@ -28,10 +28,80 @@
       "description": "A windless forest clearing at dusk, held still while the light fades and the quiet settles like silt.",
       "style": "visualization",
       "durationSeconds": 526,
-      "voiceId": "glen",
+      "voiceId": "stone",
       "createdAt": "2026-05-18T00:38:35.885Z",
       "audioPath": "forest-01.mp3",
       "sceneId": "singing-bowl"
+    },
+    {
+      "id": "down-the-staircase",
+      "title": "Down the staircase",
+      "description": "A wide, soft staircase into the warm dark, one slow step down with every breath, until there is nowhere lower to go.",
+      "style": "visualization",
+      "durationSeconds": 480,
+      "voiceId": "stone",
+      "createdAt": "2026-09-19T19:01:51.304Z",
+      "audioPath": "down-the-staircase.mp3"
+    },
+    {
+      "id": "tense-and-release",
+      "title": "Tense and release",
+      "description": "Each muscle pulls gently tight for a breath, then lets go all at once, until the body forgets how to hold on.",
+      "style": "body-scan",
+      "durationSeconds": 481,
+      "voiceId": "stone",
+      "createdAt": "2026-09-19T19:03:26.166Z",
+      "audioPath": "tense-and-release.mp3"
+    },
+    {
+      "id": "lake-at-dusk",
+      "title": "The lake at dusk",
+      "description": "A mirror-still lake as the last light leaves it, the mist settling, the water holding everything quiet.",
+      "style": "visualization",
+      "durationSeconds": 486,
+      "voiceId": "stone",
+      "createdAt": "2026-09-19T19:04:44.705Z",
+      "audioPath": "lake-at-dusk.mp3"
+    },
+    {
+      "id": "warm-room",
+      "title": "The warm room",
+      "description": "A low fire, a heavy blanket, the dark soft against the windows — and you, the last one awake, with nothing left to tend.",
+      "style": "visualization",
+      "durationSeconds": 478,
+      "voiceId": "stone",
+      "createdAt": "2026-09-19T19:07:27.471Z",
+      "audioPath": "warm-room.mp3"
+    },
+    {
+      "id": "long-exhale",
+      "title": "The long exhale",
+      "description": "The out-breath stretches longer than the in, again and again, until letting go is the only thing left to do.",
+      "style": "breath-focus",
+      "durationSeconds": 478,
+      "voiceId": "stone",
+      "createdAt": "2026-09-19T19:08:42.443Z",
+      "audioPath": "long-exhale.mp3"
+    },
+    {
+      "id": "quiet-shuffle",
+      "title": "The quiet shuffle",
+      "description": "A slow drift of small, unrelated images with no thread to follow — the mind, given nothing to solve, finally lets go.",
+      "style": "visualization",
+      "durationSeconds": 460,
+      "voiceId": "stone",
+      "createdAt": "2026-09-19T19:09:54.605Z",
+      "audioPath": "quiet-shuffle.mp3"
+    },
+    {
+      "id": "under-a-slow-sky",
+      "title": "Under a slow sky",
+      "description": "Lying back beneath a vast, turning night sky, the ground letting go, the body growing weightless among the stars.",
+      "style": "visualization",
+      "durationSeconds": 487,
+      "voiceId": "stone",
+      "createdAt": "2026-09-19T19:10:53.859Z",
+      "audioPath": "under-a-slow-sky.mp3"
     }
   ]
 }
