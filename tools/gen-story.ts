@@ -517,6 +517,10 @@ async function main() {
     createdAt: string;
     durationSeconds: number;
     audioPath: string;
+    /** Bed scene played underneath. NOT optional in practice — a story
+     *  without one plays bare — and it is not something this tool sets, so
+     *  it has to be carried across a re-render or it is silently lost. */
+    sceneId?: string | null;
   }
 
   let index: { stories: StoryEntry[] } = { stories: [] };
@@ -538,10 +542,19 @@ async function main() {
     id,
     title:     existing?.title     ?? title,
     theme:     existing?.theme     ?? (theme || `(re-rendered from ${scriptPath})`),
-    voiceId:   existing?.voiceId   ?? voice,
+    // The voice we just rendered in, NOT the one that was there before.
+    // Preserving the old value made the index lie the moment a story was
+    // re-rendered in a different voice, which is exactly what re-rendering
+    // is usually for (2026-09-19: the library was standardised on `stone`
+    // and every entry would have kept claiming its old narrator).
+    voiceId:   voice,
     createdAt: existing?.createdAt ?? new Date().toISOString(),
     durationSeconds,
     audioPath,
+    // Carried across, never regenerated. This tool has no idea which scene
+    // a story belongs under, so dropping it on a re-render would silently
+    // unpair every story from its bed and they would all play bare.
+    ...(existing?.sceneId !== undefined ? { sceneId: existing.sceneId } : {}),
   };
 
   if (existingIdx >= 0) {
