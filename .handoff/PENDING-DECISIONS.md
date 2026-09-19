@@ -11,6 +11,7 @@ so this file is only live items.
 ## At a glance
 
 **Blocked on Andrew**
+- **1** — every meditation plays with no bed. Pick pairings, or wait for 0G.
 - **0H** — is the 1am sound in the sleeper cabin a rooster or a squeak? One
   listen settles it and nothing can proceed without it.
 - **0G** — a source for the singing-bowl replacement bed. Pick a route.
@@ -119,6 +120,13 @@ finding in it is still worth having — see "Watch out for" in the hand-off.
 
 ## 0E. OPEN 2026-09-14 — the audition is rendered and staged, waiting on ears
 
+**Narrowed 2026-09-19: the library no longer waits on this.** Andrew chose
+`stone` and the whole library is rendered in it (item 1). What is still open
+is the question the audition was actually built to answer — whether a local
+engine is good enough to replace ElevenLabs, which decides whether the
+library can be re-rendered on a whim for free. That is now an improvement
+rather than a blocker.
+
 1. **[ANDREW] Listen to the 23 staged files** in `/tmp/audition2/send` and say
    the word to Taildrop them (held back deliberately — one Android
    notification per file, finished after midnight). The `BED-*` files against
@@ -218,45 +226,36 @@ and that file now opens with a status block saying which is which.
   `package.json` still reads `0.1.0` and there are no tags yet. **This is the
   gate on v1.0.**
 
-## 1. Synthesize the expanded meditation catalogue (BLOCKED on 0E)
+## 1. DONE 2026-09-19 — the library is rendered, on `stone`
 
-Scripts for all 10 meditations are written and committed (`a0decb7`); 3 are
-rendered and 7 are not. **This is the biggest thing waiting on the voice
-decision in 0E** — rendering 7 meditations in a voice that then changes means
-rendering them twice, and the engine question (ElevenLabs vs a local model) is
-part of the same decision. The commands below assume ElevenLabs, which was
-the answer before the local engines were auditioned; if a local engine wins,
-they change.
+Andrew picked `stone` for the whole library rather than waiting for the
+engine audition to close. Ten meditations (3 re-rendered, 7 new) and all four
+stories now run in one voice. `gen-meditation.ts` gained `stone`/`tide` so it
+could reach a story voice at all — the library was in five different voices
+because the two tools kept separate maps, not because anyone chose that.
 
-Once unblocked, also worth knowing: all three *currently rendered* meditations
-declare `"sceneId": "singing-bowl"`, which is held back, so the whole
-meditation category plays with no bed until 0G lands. Whatever bed replaces it
-is the one these should point at. Set `ELEVEN_LABS_API_KEY`, then run these from the
-repo root (needs `npx tsx`). The tool writes each MP3, loudness-normalizes it,
-and updates `public/meditations/index.json`.
+**[ANDREW] The one thing left: every meditation plays with no bed.** The
+three old ones point at `singing-bowl`, which is held back (0G); the seven
+new ones have no `sceneId` because the tool could not set one until today.
+Meditations use `stop-with-content`, so the bed is purely an underbed for the
+voice — it does not have to survive the night, it has to sit under a voice
+without competing.
 
-Re-render the existing 3 (metadata preserved; `--voice` MUST match original):
-```
-npx tsx tools/gen-meditation.ts --id body-scan-01 --voice hush  --script public/meditations/body-scan-01.txt
-npx tsx tools/gen-meditation.ts --id breath-01    --voice ember --script public/meditations/breath-01.txt
-npx tsx tools/gen-meditation.ts --id forest-01    --voice glen  --script public/meditations/forest-01.txt
-```
+`tools/gen-meditation.ts --id <id> --scene <scene-id> --script <path>` sets
+one without re-rendering the audio. Suggested pairings, all taste, yours to
+overrule:
 
-Generate the 7 new ones:
-```
-npx tsx tools/gen-meditation.ts --id tense-and-release  --title "Tense and release"  --style body-scan     --voice hush  --script public/meditations/tense-and-release.txt  --description "Each muscle pulls gently tight for a breath, then lets go all at once, until the body forgets how to hold on."
-npx tsx tools/gen-meditation.ts --id lake-at-dusk       --title "The lake at dusk"    --style visualization --voice ember --script public/meditations/lake-at-dusk.txt       --description "A mirror-still lake as the last light leaves it, the mist settling, the water holding everything quiet."
-npx tsx tools/gen-meditation.ts --id warm-room          --title "The warm room"       --style visualization --voice glen  --script public/meditations/warm-room.txt          --description "A low fire, a heavy blanket, the dark soft against the windows — and you, the last one awake, with nothing left to tend."
-npx tsx tools/gen-meditation.ts --id long-exhale        --title "The long exhale"     --style breath-focus  --voice hush  --script public/meditations/long-exhale.txt        --description "The out-breath stretches longer than the in, again and again, until letting go is the only thing left to do."
-npx tsx tools/gen-meditation.ts --id down-the-staircase --title "Down the staircase"  --style visualization --voice ember --script public/meditations/down-the-staircase.txt --description "A wide, soft staircase into the warm dark, one slow step down with every breath, until there is nowhere lower to go."
-npx tsx tools/gen-meditation.ts --id quiet-shuffle      --title "The quiet shuffle"   --style visualization --voice glen  --script public/meditations/quiet-shuffle.txt      --description "A slow drift of small, unrelated images with no thread to follow — the mind, given nothing to solve, finally lets go."
-npx tsx tools/gen-meditation.ts --id under-a-slow-sky   --title "Under a slow sky"    --style visualization --voice hush  --script public/meditations/under-a-slow-sky.txt   --description "Lying back beneath a vast, turning night sky, the ground letting go, the body growing weightless among the stars."
-```
+| meditation | suggested bed | why |
+|---|---|---|
+| warm-room | `fireplace` | it is literally a low fire and a blanket |
+| forest-01 | `forest-evening` | a forest clearing at dusk |
+| lake-at-dusk | `waterfall-valley` | the only still-water bed there is; imperfect |
+| under-a-slow-sky | `forest-night` | outdoors, night, no weather |
+| the other six | `rain-on-window` | broadband, eventless, the classic bed under a voice |
 
-After they're generated, ping me and I'll: bump `CACHE_VERSION` in
-`public/sw.js` (the re-rendered 3 reuse filenames, so the cache-first SW would
-otherwise serve stale audio), commit `public/meditations/`, and check off
-roadmap 6.5.
+The alternative is to wait for the pad/drone in 0G and put all ten over it,
+which is what the 2026-07-01 decision intended. That is probably the right
+answer and it is blocked on sourcing.
 
 ## 3. Self-voice clone (when ready)
 You're cloning your own voice in ElevenLabs to narrate these. Once you have
