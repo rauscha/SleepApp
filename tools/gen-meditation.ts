@@ -33,7 +33,7 @@
  * Arguments (all optional — defaults shown):
  *   --title   Human-readable title displayed in the Library
  *   --style   body-scan | breath-focus | visualization  (default: body-scan)
- *   --voice   hush | ember | glen  (default: hush)
+ *   --voice   hush | ember | glen | stone | tide  (default: hush)
  *   --id      Filename stem, e.g. "morning-scan" → morning-scan.mp3
  *             (defaults to a kebab-case version of --title)
  *   --script  Path to a .txt file to use instead of generating with Claude.
@@ -63,6 +63,13 @@ const VOICE_IDS: Record<string, string> = {
   hush:  process.env['VITE_VOICE_HUSH']  || 'bgU7lBMo69PNEOWHFqxM',
   ember: process.env['VITE_VOICE_EMBER'] || 'gc5LArFpEOmYx9nYmK9l',
   glen:  process.env['VITE_VOICE_GLEN']  || 'UmQN7jS1Ee8B1czsUtQh',
+  // The two story narrators, added 2026-09-19 so the whole library can be
+  // rendered in one voice. `stone` won the 2026-09 audition and is what
+  // Andrew asked the library to standardise on; a meditation and a story in
+  // different voices was an artefact of the two tools having separate maps,
+  // not a decision anyone made.
+  stone: process.env['VITE_VOICE_STONE'] || 'oae6GCCzwoEbfc5FHdEu',
+  tide:  process.env['VITE_VOICE_TIDE']  || 'jv41DhCf464zw0TI7I1w',
 };
 
 // ---------------------------------------------------------------------------
@@ -291,7 +298,7 @@ async function main() {
   const audioPath = `${id}.mp3`;
   const voiceId = VOICE_IDS[voice];
   if (!voiceId) {
-    console.error(`ERROR: unknown voice "${voice}". Valid: hush, ember, glen`);
+    console.error(`ERROR: unknown voice "${voice}". Valid: ${Object.keys(VOICE_IDS).join(', ')}`);
     process.exit(1);
   }
 

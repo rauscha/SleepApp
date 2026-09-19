@@ -114,11 +114,15 @@ function parseArgs() {
     voice:      get('--voice', 'tide') as 'tide' | 'stone' | 'glen',
     id:         get('--id', ''),
     script:     get('--script', ''),
-    // --no-projects forces the chunked-TTS path. The Projects API
-    // ignores per-request voice_settings (it uses the voice's portal
-    // defaults), so when you want the speed:0.85 / stability tweaks in
-    // voice_settings to actually apply, pass this flag.
-    noProjects: has('--no-projects'),
+    // Chunked TTS is the default. --projects opts back into the Studio
+    // path, which this account is not whitelisted for; --no-projects is a
+    // no-op alias kept so older commands still run. See synthesize().
+    //
+    // A real advantage of the chunked path, separate from availability: the
+    // Projects API ignores per-request voice_settings and uses the voice's
+    // portal defaults, so the speed:0.85 / stability:0.70 tuning below only
+    // actually applies on this path.
+    useProjects: has('--projects'),
   };
 }
 
@@ -390,13 +394,37 @@ async function callElevenLabsChunked(
 // ---------------------------------------------------------------------------
 // Dispatcher
 
+/**
+ * Pick a synthesis path.
+ *
+ * **Chunked TTS is the default, and the Projects/Studio path is opt-in.**
+ * That is the reverse of how this shipped, and the reason is not a code
+ * preference — the Studio API is simply not available on this account.
+ * Probed directly on 2026-09-19 with the live key:
+ *
+ *     GET /v1/projects        -> 403 invalid_subscription
+ *     GET /v1/studio/projects -> 403 invalid_subscription
+ *     "Access to the Studio API requires your account to be explicitly
+ *      whitelisted to use it. Please contact our sales team."
+ *
+ * The subscription is Creator. So the preferred long-form path could never
+ * run, every story render began by failing a create call and falling back,
+ * and the hand-off carried "fix the 5 stale ElevenLabs Studio endpoints" as
+ * an open task for weeks. There is nothing to fix in the paths: both the old
+ * `/v1/projects` and the current `/v1/studio/projects` spelling are refused
+ * for the same reason. Renaming them would have changed nothing.
+ *
+ * Pass `--projects` to try it anyway (if the account is ever whitelisted);
+ * it still falls back on failure. `--no-projects` is kept as a no-op alias so
+ * existing commands and notes keep working.
+ */
 async function synthesize(
   apiKey: string,
   voiceId: string,
   text: string,
-  noProjects = false
+  useProjects = false
 ): Promise<Buffer> {
-  if (noProjects) {
+  if (!useProjects) {
     return callElevenLabsChunked(apiKey, voiceId, text);
   }
   try {
@@ -421,7 +449,7 @@ async function main() {
     process.exit(1);
   }
 
-  const { title, theme, voice, id: rawId, script: scriptPath, noProjects } = parseArgs();
+  const { title, theme, voice, id: rawId, script: scriptPath, useProjects } = parseArgs();
   if (!theme && !scriptPath) {
     console.error('ERROR: --theme is required when --script is not given.');
     process.exit(1);
@@ -458,11 +486,10 @@ async function main() {
   writeFileSync(scriptFilePath, script);
   console.log(`  ✓  Saved ${scriptFilePath}`);
 
-  // Synthesize. Default tries Projects first (single-file long-form) and
-  // falls back to chunked TTS on failure. Pass --no-projects to force the
-  // chunked path; necessary when you want per-request voice_settings (eg
-  // speed:0.85) to actually apply — Projects uses portal voice defaults.
-  const raw = await synthesize(elevenLabsKey, voiceId, script, noProjects);
+  // Synthesize. Chunked TTS by default — the Studio/Projects path is not
+  // available on this account (see synthesize()). --projects tries it first
+  // and still falls back.
+  const raw = await synthesize(elevenLabsKey, voiceId, script, useProjects);
 
   // Loudness-normalize. The chunked fallback path is especially
   // vulnerable: each TTS chunk has its own loudness profile, and the
