@@ -970,3 +970,52 @@ and the hook re-requested it on `visibilitychange`. What it did was stop the
 OS sleep timer from ever firing while the app sat in the foreground. That is
 the "glowing rectangle until morning" the review described, and it is what
 stops now.
+
+---
+
+## Retry a stuck layer when the page comes back (2026-09-19)
+
+The first real failure the debug markers caught, and they caught it exactly as
+designed: a tap in the dark, and the cause readable at the desk five days
+later.
+
+**What happened.** 2026-09-14, 21:41. forest-night starts. 1.3 seconds later
+the page goes hidden — phone put down, screen off. The start-retry ladder
+fires its first retry into that hidden document at -12.8s, and three of four
+layers come back with a Howler `playerror`: "Playback was unable to start."
+The page becomes visible again 0.9 seconds after the last error. Nothing
+retries. The marker taken at 0:36, and the two after it at 9:22 and 17:11,
+all show the same three layers `paused` with `seek: 0`. The scene played one
+layer out of four — a creek with no wind, no insects and no bed — for as long
+as he left it on. Andrew reported it as two separate complaints, "scene audio
+not starting" and "audio suddenly getting very quiet, as if one component
+just stopped playing". They are the same bug seen at different moments.
+
+**Why the existing recovery could not help.** The ladder is bounded on
+purpose: three attempts at 1.2/3/6 s inside a five-minute window, because the
+engine notes forbid reintroducing a running watchdog on this path. Two gaps
+made it useless here.
+
+1. **It spent its budget where success was impossible.** A browser will not
+   let a media element *begin* playback while the document is hidden. Every
+   attempt in that state is a guaranteed failure, and each one burned a retry.
+2. **Nothing was listening for the one transition that could fix it.** The
+   layer retried on Howler's `unlock` event (autoplay policy satisfied) and on
+   its own timer, but never on `visibilitychange`. Coming back to the
+   foreground is precisely when a stuck layer becomes startable again, and it
+   was the one moment the code ignored.
+
+**The fix, both halves.** While hidden, the ladder re-arms without spending an
+attempt. On `visibilitychange` to visible, a layer that wants to be playing
+and is not audible gets a fresh budget and a `play()`, logged as
+`howl-bed-start-on-visible` so the next export shows it working.
+
+**Still not a watchdog.** It fires on one real user-visible event, only for a
+layer that is supposed to be playing and demonstrably is not, and it hands off
+to the same bounded ladder as every other start. The banned construct was a
+timer polling a suspended Web Audio primitive; this is an event handler on the
+transition that makes the operation legal.
+
+**The ladder had no test at all**, which is how it shipped spending every
+attempt into a hidden document. It has five now, and both halves of the fix
+were confirmed to fail them when removed one at a time.

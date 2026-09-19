@@ -212,6 +212,17 @@ export const defaultHowlFactory: HowlFactory = (opts) => {
       retryTimer = null;
       if (released || !wantPlaying || isAudible()) return;
       if (Date.now() > deadline) return;
+      // Hidden page: Chrome will not let a media element BEGIN playback
+      // while the document is hidden, so play() is guaranteed to fail and
+      // spending a retry on it just burns the budget where it can never
+      // work. Keep watching instead. This is what cost a real night on
+      // 2026-09-14 — the page went hidden 1.3 s after the scene started,
+      // the ladder spent every attempt into a hidden document, and three of
+      // four layers were silent for the rest of the session.
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        armStartCheck(deadline);
+        return;
+      }
       // Still downloading (readyState 0/1 = no usable data yet). Nothing is
       // wrong and play() would not help — a 3-7 MB variant on a phone radio
       // legitimately takes tens of seconds. Keep watching without spending a
@@ -318,6 +329,38 @@ export const defaultHowlFactory: HowlFactory = (opts) => {
 
   howl = build();
 
+  /**
+   * Try again when the page comes back to the foreground.
+   *
+   * A layer that never started is not recoverable while the document is
+   * hidden — the browser refuses to begin playback there — so the moment
+   * the user looks at the phone again is the one moment a stuck layer can
+   * be rescued. Before this existed nothing retried on that transition:
+   * the 2026-09-14 export shows three layers taking a playerror at -10.6s,
+   * the page becoming visible 0.9s later, and all three still silent (seek
+   * 0, paused) seventeen minutes on.
+   *
+   * Deliberately NOT a watchdog. It fires on one real user-visible event,
+   * only for a layer that is supposed to be playing and demonstrably is not,
+   * and it hands off to the same bounded ladder as every other start. The
+   * engine notes forbid a polling watchdog on this path; this is not one.
+   */
+  const onVisible = () => {
+    if (released || !wantPlaying) return;
+    if (typeof document === 'undefined') return;
+    if (document.visibilityState !== 'visible') return;
+    if (isAudible()) return;
+    // Fresh budget: the previous attempts were spent against a hidden
+    // document and tell us nothing about whether this layer can start now.
+    startRetries = 0;
+    recordEvent('howl-bed-start-on-visible', label);
+    howl.play();
+    armStartCheck();
+  };
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', onVisible);
+  }
+
   // Howler emits 'unlock' on every Howl once the browser's autoplay policy
   // has been satisfied — the moment a layer blocked by it can finally start.
   try {
@@ -355,6 +398,9 @@ export const defaultHowlFactory: HowlFactory = (opts) => {
       released = true;
       wantPlaying = false;
       disarm();
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisible);
+      }
       // Hand the element back to the pool exactly as Howler expects to find
       // it. See applyNativeLoop for what a stray `loop` would do to the next
       // sound that borrows this element.
