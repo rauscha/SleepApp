@@ -1,5 +1,44 @@
 # Roadmap to v1.1 — executable playbook
 
+> ## STATUS as of 2026-09-19 — read this before the plan below
+>
+> Audited item by item against the tree. **28 of 33 steps are done or
+> obsolete. Five are open, and only one of them is code.**
+>
+> **Open:**
+> - **4.3 [ASK] photos** — `forest-day.jpg` and `monsoon.jpg` are still the
+>   originals; `singing-bowl.jpg` is moot while that scene is held back; and
+>   **`night-train` ships with no photo at all**, running on a gradient. So
+>   three photos, not the three this item named. The set-wide tonal grade also
+>   never happened — only `waterfall-valley.jpg` was graded.
+> - **5.2 [DEVICE] device pass + tag** — the gate on v1.0. `package.json` is
+>   still `0.1.0` and there are no git tags. 3.4's device half rolls into this.
+> - **6.5 [ASK] meditation catalogue** — the decision went "invest, don't
+>   cut": descriptions were rewritten and 7 new scripts written. All 7 are
+>   unrendered, blocked on a narration voice.
+> - **6.6 Library voice pass** — the per-item italic prose line was never
+>   built. Its other half (generator progress copy) is obsolete.
+> - **A second variant for `waterfall-valley/falls-main`**, which ships one —
+>   not a roadmap item, found while auditing.
+>
+> **Obsolete because the in-app generator was removed on 2026-09-15** — do not
+> attempt these, the files are gone: **1.4** (IndexedDB commit semantics; no
+> write path left), **3.2** (no key-bearing bundle; closed by deletion, and
+> `sourcemap: false` landed anyway), **3.5's blob half** (no blob URLs exist),
+> **4.5's Library empty-state copy**, **6.6's progress copy**.
+>
+> **Two things the plan below cannot see:**
+> 1. All three shipped meditations declare `"sceneId": "singing-bowl"`, and
+>    that scene is held out of the catalogue, so **the whole meditation
+>    category currently plays with no bed.** Intended and documented in
+>    `public/scenes/_held-back/README.md`, but it resolves when the
+>    replacement bed lands, not before.
+> 2. Filenames throughout the plan say `.mp3`. All 74 scene variants are Opus.
+>
+> Everything below is the original 2026-06-12 plan, left as written. Where it
+> disagrees with `.handoff/PENDING-DECISIONS.md`, the hand-off wins.
+
+
 **Source:** Full shipping review, 2026-06-12 (reports `00`–`08` in this directory).
 **Audience:** An autonomous coding agent executing steps in order, plus Andrew supervising.
 **State tracking:** Check boxes off in this file AND mirror progress in `NEXT_STEPS.md` (if present) as steps complete.
