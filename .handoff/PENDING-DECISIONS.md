@@ -1,30 +1,27 @@
 # Pending decisions / queued actions
 
-## 0E. OPEN 2026-09-14 — the audition is rendered and staged, waiting on ears
+**What is open, and who it is waiting on.** Anything closed has moved to
+`ARCHIVE-2026-09-19.md` in this directory. For the rules, see `CLAUDE.md`; for
+why things are the way they are, `DECISIONS.md`; for where the last session
+left off, `SESSION-HANDOFF.md`.
 
-1. **[ANDREW] Listen to the 23 staged files** in `/tmp/audition2/send` and say
-   the word to Taildrop them (held back deliberately — one Android
-   notification per file, finished after midnight). The `BED-*` files against
-   `BED-ELEVENLABS-stone` answer whether any local engine is good enough; the
-   `DRY-*` files pick a voice. Full record:
-   `notes/engine-audition-2026-09-14.md`.
-2. **[ANDREW] Your own voice as a reference** — wanted, not found. Not on
-   tikiserv, not in digi-me (`voice/` is a PLAN.md stub), not in
-   writing-style (transcripts only), and not in a deep search of crane-desk's
-   D:, user profile or GDrive. He chose to skip it this round; point at the
-   files and it becomes a fifth reference.
-3. **[ANDREW, eventually] Three of the four engines are personal-use-only.**
-   XTTS is Coqui CPML non-commercial, Higgs is Boson research/non-commercial,
-   StyleTTS2's weights repo ships no licence file at all, and Chatterbox is
-   MIT but watermarks every output. All fine while SleepApp is a one-user
-   app. Worth a conscious decision rather than a default.
+Restructured 2026-09-19: seven resolved or superseded sections were archived
+so this file is only live items.
 
-**Settled this session:** ElevenLabs beats Kokoro under a bed comfortably, so
-local is not yet good enough and the other engines were tried; the train
-scene's third element is distant thunder rumble (re-cut 251 -> 199); and the
-`stone` voice is a tuned native-English voice, England-leaning with an
-American pull — **not Herzog and not German**, proved by a Herzog control
-that the classifier failed to detect German in at all.
+## At a glance
+
+**Blocked on Andrew**
+- **0G** — a source for the singing-bowl replacement bed. Pick a route.
+- **0E** — the narration voice. 31 audition files are on your phone. This one
+  gates the most: 7 written meditations cannot be rendered until it is picked.
+- **0F** — a photograph for `night-train`, plus the two still-off-brief ones.
+- **2** — the device pass, which is the gate on tagging v1.0.
+
+**Buildable without you**
+- **0B** — 8 of 71 variants still wrap with more than a 3 dB step.
+- **B4 / C6 / variants** — three items carried out of the archived
+  `notes/TODO_PHASE2-2026-05.md`; see "Carried forward" at the bottom.
+- **4** — cleanup chores, on request only.
 
 ## 0G. OPEN 2026-09-16 — the bowls are OUT of the catalogue, and need sourcing
 
@@ -74,23 +71,40 @@ done well. Not reverted: the deploy had already published CACHE_VERSION v14,
 so a revert costs a second full re-download and returns nothing. The general
 finding in it is still worth having — see "Watch out for" in the hand-off.
 
-## 0F. OPEN 2026-09-15 — the train scene ships without a photograph
+## 0E. OPEN 2026-09-14 — the audition is rendered and staged, waiting on ears
 
-`night-train` is cut, voiced, conformance-green and in the catalogue. It is
-the only scene with no photo, so it draws its gradient instead — supported,
-but off-brief ("Photography, not illustration"). Roadmap 4.3 already asks you
-to replace three off-brief photos; this makes four. The look to match is a
-warm cabin interior against a cold window. Everything else about the scene is
-finished.
+1. **[ANDREW] Listen to the 23 staged files** in `/tmp/audition2/send` and say
+   the word to Taildrop them (held back deliberately — one Android
+   notification per file, finished after midnight). The `BED-*` files against
+   `BED-ELEVENLABS-stone` answer whether any local engine is good enough; the
+   `DRY-*` files pick a voice. Full record:
+   `notes/engine-audition-2026-09-14.md`.
+2. **[ANDREW] Your own voice as a reference** — wanted, not found. Not on
+   tikiserv, not in digi-me (`voice/` is a PLAN.md stub), not in
+   writing-style (transcripts only), and not in a deep search of crane-desk's
+   D:, user profile or GDrive. He chose to skip it this round; point at the
+   files and it becomes a fifth reference.
+3. **[ANDREW, eventually] Three of the four engines are personal-use-only.**
+   XTTS is Coqui CPML non-commercial, Higgs is Boson research/non-commercial,
+   StyleTTS2's weights repo ships no licence file at all, and Chatterbox is
+   MIT but watermarks every output. All fine while SleepApp is a one-user
+   app. Worth a conscious decision rather than a default.
 
-## 0D. OPEN 2026-09-13 — the two answers that unblock everything else
+**Settled this session:** ElevenLabs beats Kokoro under a bed comfortably, so
+local is not yet good enough and the other engines were tried; the train
+scene's third element is distant thunder rumble (re-cut 251 -> 199); and the
+`stone` voice is a tuned native-English voice, England-leaning with an
+American pull — **not Herzog and not German**, proved by a Herzog control
+that the classifier failed to detect German in at all.
 
-1. **[ANDREW] The voice audition is on your phone** (15 files). Pick a voice,
-   and crucially say whether `BEDMIX-am-michael` is distinguishable from
-   `BEDMIX-ELEVENLABS` — same passage, same scene bed, same levels. If they
-   are not, the whole library can be rendered locally for free and re-rendered
-   on a whim; if they are, ElevenLabs stays for narration and Kokoro becomes
-   the fast iteration tool.
+## 0D. CLOSED 2026-09-19 — the two answers from 2026-09-13
+
+Kept for the settled facts at the bottom; both questions are resolved.
+
+1. ~~**The 15-file voice audition.**~~ ANSWERED: ElevenLabs beat Kokoro under
+   a bed comfortably, which did not close the local-render question so much as
+   narrow it — Andrew asked for four more engines. **Superseded by 0E**, which
+   is the live version of this question.
 2. ~~**Third element for the train scene.**~~ SETTLED and BUILT 2026-09-15:
    distant thunder at 199 s. It was not re-cut from the shipped rain-on-window
    rumble in the end — re-cutting an already-seamed lossy loop would have been
@@ -103,38 +117,19 @@ refuting the craft sources); ceilings + a perceptual taper ship on every
 volume slider; the train scene's source is FTUS TRAINS_02's Thailand
 first-class cabin (602 s, "Railway Clicks").
 
-## 0C. DONE 2026-09-15 — the library is hand-made, not generated
+## 0F. OPEN 2026-09-15 — the train scene ships without a photograph
 
-Decided 2026-09-12, executed 2026-09-15 in five commits (6b945f7..2607a5c).
-Andrew: this "really needs to be a dead simple straightforward APP of an app,
-not something where we've bolted on gen AI cause its cool".
+`night-train` is cut, voiced, conformance-green and in the catalogue. It is
+the only scene with no photo, so it draws its gradient instead — supported,
+but off-brief ("Photography, not illustration"). The look to match is a warm
+cabin interior against a cold window. Everything else about the scene is
+finished.
 
-- **The in-app generation feature is stripped.** 3,612 lines deleted against
-  305 added. The generator screen, the `storyGenerator` service and its
-  tests, `src/storage/apiKeys.ts`, `src/lib/storyExcerpt.ts`,
-  `src/storage/assets.ts` and the Settings "AI features" section are all
-  gone, along with the dead blob-URL bookkeeping in `App` and `isBedtime`,
-  which only ever greyed out the Generate button. **The app now makes no
-  network call to any AI service at runtime.** Full write-up in DECISIONS.md,
-  "The library is hand-made, not generated".
-- **The generated stories are deleted, not migrated.** Andrew, asked whether
-  to preserve the ones already on his phone: "I don't love the generated ones
-  on my phone, they can disappear, i'm not worried about the wasted work."
-  `dropGeneratedStoryDatabase()` in `src/storage/persistence.ts` deletes the
-  `sleep-app` IndexedDB on every launch — leaving it would strand 25-40 MB of
-  WAV per story with no code left that could ever reclaim it. **Andrew will
-  see this happen on his next app open; the stories will simply not be there.**
-- **[ANDREW] Your `.env.local` still holds the two removed keys.** Nothing
-  reads them now. They are still live keys sitting on disk.
-- **STILL OPEN — more hand-authored stories and meditations, male and female
-  voices.** Note **7 of 10 meditation scripts are already written and
-  unrendered** (`public/meditations/*.txt` — down-the-staircase, lake-at-dusk,
-  long-exhale, quiet-shuffle, tense-and-release, under-a-slow-sky, warm-room,
-  ~900 words each). Those need only a voice + engine decision.
-- **TTS engine is an open question**, being researched 2026-09-12: current
-  engine landscape, specific voices for sleep narration, narration craft, and
-  whether local rendering is viable. Render hardware available: tikiserv
-  RTX 4060 Ti (8 GB) and crane-desk RTX 4080 (16 GB).
+**Three photos are wanted in total, not four** (audited 2026-09-19): this one,
+plus roadmap 4.3's `forest-day.jpg` (too daylight) and `monsoon.jpg` (nearly
+white). 4.3's third, the singing-bowl Buddha statue, is moot while that scene
+is held back. The set-wide tonal grade 4.3 also asked for never happened —
+only `waterfall-valley.jpg` was graded, and it is Andrew's own photograph.
 
 ## 0B. UPDATED 2026-09-11 — review done, markers built, seams still open
 
@@ -149,246 +144,48 @@ not something where we've bolted on gen AI cause its cool".
   word and any of them comes out.
 - **[ANDREW] Device pass is the one thing left for the markers.** Nothing
   else can confirm the trigger works in the dark on a locked phone.
-- **[ANDREW] Per flagged seam: replace from FTUS or re-cut Vlad?** Sources
-  are on tikiserv (`~/sounds`), so either runs here. 0A's list is unchanged
-  (12 of 67 over 3 dB on 2026-09-08).
+- **Seams: 8 of 71 variants still wrap over 3 dB** (audit, 2026-09-19; was 12
+  before the singing-bowl rebuild). Worst first: `forest-evening/wind-1` 9.8
+  dB, `ocean-night/wave-3` 8.4, `ocean-night/far-1` 7.8,
+  `forest-evening/forest-2` 4.6, then four between 3.5 and 3.9. Sources are on
+  tikiserv (`~/sounds`). **Check the search slack before blaming the source**
+  — `sourceDuration - loopOffset - 6` is seamfit's entire range, and that,
+  not the recording, was what put a 19 dB step in the singing bowls.
 - **Native-loop fix: DONE 2026-09-11** and it confirmed the worry —
   Howler's loop cost 27 ms of silence at every wrap, after the gapless
   crossfade, so the seam work so far has been fixing the level step and
   leaving the hole. Measured, reproducible via `tools/loop-probe/run.sh`.
   Unmeasured on a real device; that is what the markers are for.
 
-## 0A. RESOLVED 2026-09-03 — the 2026-08-18 FTUS follow-ups
+## 2. Remaining v1.0 roadmap items (your input / hardware)
 
-All four items from the 2026-08-18 block are closed (log in
-`.handoff/OVERNIGHT-LOG-2026-08-18.md` for the original context):
+These two are the whole remaining roadmap; everything else in
+`notes/shipping-review-2026-06-12/09-roadmap-to-v1.1.md` is done or obsolete,
+and that file now opens with a status block saying which is which.
 
-- **A. waterfall-valley photo** — Andrew supplied seven of his own shots on
-  2026-09-02; the mossy gorge falls was used, tone-curved down to the
-  catalogue's night luminance. Scene shipped.
-- **B. third element** — `creek-below` @199, two variants from WATER_06
-  (Small Creek 04, Front and Rear Flow), voiced at 0.25. Andrew said reuse
-  was fine, so "unused elsewhere" was never a constraint. Level is a
-  starting point for the ear — three water layers may want it lower.
-- **C. seams** — Andrew: a 5 dB step is notable; the crows are not a
-  problem. `loopify-scenes.py` now searches the loop start
-  (`tools/seamfit.py`, DECISIONS.md 2026-09-02) and night-4 / night-5 /
-  pavement-3 / wave-4 were re-cut to <1 dB. night-5's seam sits ~7 dB under
-  the file's mean (only 14 s of slack) — flat, but quiet; listen.
-- **D.** (1) `gen-story.ts` duration estimate — still open, needs ffprobe.
-  (2) **ElevenLabs Projects 405 — ROOT CAUSE FOUND 2026-09-12:** the API was
-  renamed Studio and moved to `/v1/studio/projects`; `tools/gen-story.ts`
-  still calls `/v1/projects` in ~5 places. The long-form path was never
-  broken, we were calling a retired path. See
-  `notes/tts-research-2026-09-12.md` §1. (3) the leveling recipe is now
-  `tools/level-ftus.py`; `tools/_build-level-candidates.sh` remains
-  untracked litter (its 2026-06-21 candidates are superseded) — Andrew's
-  call whether to delete it.
+- **4.3 [ASK] photos** — three wanted: `night-train` (has none at all),
+  `forest-day.jpg` (too daylight), `monsoon.jpg` (nearly white). You
+  source/pick; I optimise, tonal-grade and update NOTICES.md. See 0F.
+- **5.2 [DEVICE] device pass, then tag** — PWA install, iOS Safari, an
+  overnight on the Howler engine, and the debug-marker trigger on a locked
+  phone (0B). Then `version` to `1.0.0`, tag, append DECISIONS.md.
+  `package.json` still reads `0.1.0` and there are no tags yet. **This is the
+  gate on v1.0.**
 
-**Still open from the audit** (`notes/loop-seam-audit-2026-09-02.md`):
-12 shipped variants over 3 dB. Seven re-cut cleanly from the hour-long
-George Vlad masters in `raw-sounds/_sources/` (wind-1 9.8 dB, wave-3 8.4,
-far-1 7.8, forest-2 4.6, birds-2 3.8, far-2 3.8, wind-2 3.5) plus rumble-2
-from the Pixabay thunder file; a re-cut may land on different material
-from the same master, so it wants an ear afterwards. The four singing-bowl
-files (19 / 17 / 10 / 7 dB) are MusicGen stitches with no intermediate on
-disk — replace, don't re-cut (DECISIONS.md 2026-07-01 already demoted them).
+## 1. Synthesize the expanded meditation catalogue (BLOCKED on 0E)
 
-Refreshed 2026-06-21. Older pre-pivot items have been resolved or folded into
-the Howler pivot and the v1.1 roadmap — see the note at the bottom.
+Scripts for all 10 meditations are written and committed (`a0decb7`); 3 are
+rendered and 7 are not. **This is the biggest thing waiting on the voice
+decision in 0E** — rendering 7 meditations in a voice that then changes means
+rendering them twice, and the engine question (ElevenLabs vs a local model) is
+part of the same decision. The commands below assume ElevenLabs, which was
+the answer before the local engines were auditioned; if a local engine wins,
+they change.
 
-## 0a. GOVERNING DIRECTION — clean single-producer audio source (2026-06-30)
-Supersedes the licensing rationale below. Two pivots, both now recorded in
-DECISIONS.md (2026-06-30 entry) + memory:
-- **klankbeeld is REJECTED.** The plan to refresh every layer onto one clean
-  CC BY 4.0 source (klankbeeld, 22 files staged in GDrive `Personal-Apps-Sounds`)
-  failed on contact: the recordings were too dirty (people/cars/birds), needing
-  too many cuts per file. Premise collapsed.
-- **SleepApp is now personal-use / non-commercial, for now.** License stops
-  being the driver (personal/Pixabay/RemArc all OK again); **audio QUALITY is
-  the driver.** Revisit license only if a commercial ship returns.
-- **SOURCE DECIDED 2026-06-30 — George Vlad / Mindful Audio.** Practitioner
-  search (deep-research, 102 agents) ranked him #1; full writeup in
-  `notes/audio-source-research-2026-06-30.md`. Single recordist, pristine
-  remote field recordings, 18+ paid libraries — but his **free YouTube
-  channel** (long-form, often 1-2h+, several explicit 12h "no loop" all-night
-  files) is the same recording quality and was judged not-worth-paying-for
-  for this app (see the Opus-format decision below — the thing that mattered,
-  cleanliness, doesn't improve with the paid 24/96 WAV for a downsampled
-  overnight loop bed). GAPS confirmed: no ocean surface waves, no fireplace,
-  no singing bowls — need a separate source for those three scenes.
-- **GRAB COMPLETE 2026-06-30 18:28** (took ~2.5 min, not overnight — see the
-  corrected throttle finding below). `raw-sounds/_sources/george-vlad/` has
-  all 10 curated long-form videos as **Opus** (656 MB total, no re-encode —
-  see "ship as Opus" decision below): monsoon/rain (2), forest-day (4),
-  forest-night (1), forest-evening (1), pure-wind (2). List/mapping in
-  `_grab-list.tsv` in that dir.
-- **Opus pipeline READY 2026-07-01** — `tools/loopify-scenes.py` now emits
-  Opus (libopus, 48kHz — 44.1kHz isn't a valid libopus rate, this tripped the
-  first attempt), accepts any input format, and migrates a scene's JSON +
-  sidecar to `.opus` in place when it converts a file. The 3 synth beds
-  (`public/audio/_bed/{brown,pink,white}.opus`) are already regenerated and
-  verified (887.0065s, 48kHz). `HowlScene.ts` and `sceneCatalogue.test.ts`
-  accept both `.mp3` and `.opus` during the migration. All 254 tests pass,
-  typecheck clean.
-- **LOOP-CUT COMPLETE 2026-07-02** (commit `ae3c357`): 28 cuts from the Vlad /
-  FOBOS sources across 6 scenes (forest-day/night/evening, monsoon,
-  ocean-night, fireplace), all Opus on their prime offsets, loudnorm I=-20,
-  sidecars written, 26 replaced MP3s deleted, `CACHE_VERSION` → v8, 254/254
-  tests green. Forest-night gained a 3rd element (night insects @409). Kept
-  unchanged (no clean source yet): creeks, thunder, dockside, rain-on-window,
-  singing-bowl. **REMAINING GATE: Andrew's ear audition** — dashboard at
-  `raw-sounds/_scope-refresh-2026-07-01/index.html` (28 tracks); flags → re-cut
-  other regions from the same long sources.
-- **Fireplace gap: ACQUIRED 2026-07-01** — 12h FOBOS PLANET fireplace source
-  in `raw-sounds/_sources/fireplace/` (818 MB Opus).
-- **Ocean gap: ACQUIRED 2026-07-01** — two ~1h George Vlad calm-ocean
-  recordings (sandy-beach + rocky-beach Madagascar) in
-  `raw-sounds/_sources/george-vlad-ocean/` (~55 MB each, Opus). The
-  deep-research passes wrongly said Vlad had no ocean (they only checked his
-  paid catalogue); his free YouTube has it. Found via direct WebSearch after
-  the harness rate-limited on that exact angle. Beats the paid/aggregator
-  alternatives. See DECISIONS.md "Ocean waves + fireplace sourcing".
-- **Singing-bowl gap: RESOLVED 2026-07-01 — replaced by pad/drone.** The
-  design-question research pass came back favoring a warm ambient pad/drone
-  as the default meditation bed (bowl evidence is passive standalone
-  listening only; failed adversarial verification for "bed under a voice").
-  **Andrew accepted same day** — see DECISIONS.md "DECIDED — warm pad/drone
-  is the default meditation bed". Build route: audition 99Sounds "Red Fog"
-  first, numpy/DSP synthesis fallback; MusicGen stays rejected. Singing
-  bowls demoted to optional later texture (real bowl recordings kept in
-  `raw-sounds/`); the ElevenLabs-Music bowl-bed plan is superseded.
-- **RESOLVED 2026-06-30:** the clean-source refresh **SUPERSEDES** the
-  2026-06-21 re-cut batch entirely. We are redoing the audio from the new
-  source, so:
-  - The built LEVEL candidates (ocean wave-1/wave-2, fireplace close-3) are
-    **retired** — not needed, don't audition or promote them. They can be
-    deleted with the rest of the `_candidates/` litter on a cleanup pass.
-  - The batch's RECUT/REPLACE/REBUILD plan is **dropped** as a plan; its only
-    lasting value is the per-layer *quality* notes in
-    `notes/scene-audio-flags-2026-06-21.md`, which document what each new
-    layer needs to beat.
-- **Andrew granted permission (2026-06-30) to download candidate audio to
-  disk** from the running practitioner search's recommendations — fetch good
-  candidates into the `raw-sounds/` dump (gitignored), then audition before
-  committing any into `public/audio/`. Specifics:
-  - **yt-dlp grabs are pre-cleared up to ~10 GB total** (they're free); ask
-    Andrew before exceeding 10 GB. yt-dlp 2026.03.17 is installed; point it at
-    ffmpeg via `--ffmpeg-location "C:/Users/andre/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1-full_build/bin"`
-    (the WinGet `Links` shim is permission-denied under the bash tool).
-  - **Paid/purchase sources:** only flag them to Andrew if they're
-    *significantly* better than what's grabbable free / from YouTube.
-  - **Pixabay / freesound logins:** Andrew can provide on request — either via a
-    Claude-in-Chrome tab or a throwaway login to use-and-discard.
-  - **Disk watch:** C: is 98% full (~54 GB free); `raw-sounds/` is inside the
-    Google-Drive-synced tree, so large grabs there sync up to Drive. Option to
-    stage bulk downloads in a non-synced sibling folder instead.
-  - **yt-dlp DOES NOT need slow/overnight handling — DON'T use
-    `--download-sections` for quick tests, that's what caused the apparent
-    throttle.** Full story in DECISIONS.md (2026-06-30, corrected same day):
-    plain `-x`/`-f bestaudio` whole-file downloads hit full CDN speed
-    (5-46 MiB/s) with zero special setup; `--download-sections` (used to keep
-    *test* grabs short) forces an ffmpeg-piped sequential GET that googlevideo
-    paces to ~2x realtime — that's what looked like a hard throttle and burned
-    real debugging time. The `web`/`mweb`/`tv` clients ARE still genuinely
-    blocked (SABR streaming, no downloadable URL) — use the default
-    (`android_vr`) client for whole-file grabs. Leftover-but-harmless tooling
-    from the false trail: **Deno 2.9.0** at `C:\Users\andre\deno\deno.exe`,
-    **bgutil POT provider** at `C:\Users\andre\bgutil-prov\server`
-    (`node build/main.js`, port 4416), yt-dlp on **nightly**. Not needed for
-    normal grabs but harmless to leave installed.
-
-## 0b. DECIDED + IMPLEMENTED — ship scene audio as Opus, not MP3 (2026-06-30, done 2026-07-01)
-Evidence-based call (DECISIONS.md 2026-06-30 entry; A/B in
-`raw-sounds/_yt-test/ab/`): MP3@128k brick-walls noise at ~16 kHz; Opus@128k
-(smaller) holds to ~20 kHz and degrades noise gracefully. Container/extension
-settled: plain `.opus` (Ogg-Opus), sample rate **48kHz** (libopus rejects
-44.1kHz — the pipeline's old assumption — outright).
-**Implementation done 2026-07-01:** `tools/loopify-scenes.py` emits Opus and
-self-migrates a scene's JSON + sidecar when it converts a file;
-`HowlScene.ts`'s Howler format list + the hardcoded bed URLs are `.opus`; the
-3 synth beds are regenerated and verified; `sceneCatalogue.test.ts` accepts
-both extensions during the scene-by-scene migration; CLAUDE.md rule #3 +
-file-layout updated. 254/254 tests pass, typecheck clean.
-**Loop-cut of the new source material: DONE 2026-07-02** (`ae3c357`, see 0a) —
-28 Opus cuts live in `public/audio/`, pending Andrew's ear audition.
-**Meditations/stories (voice) — DECIDED to stay MP3/WAV, not just deferred**
-(DECISIONS.md 2026-07-01): Opus's advantage is specifically for broadband
-noise; voice has no content above ~8kHz where MP3 already loses nothing
-audible. No regeneration needed or planned. One indirect touchpoint: once
-singing-bowl (the meditation bed) is rebuilt, its bed layer will be Opus
-automatically via the same scene pipeline — the narration track is unaffected.
-iOS still deferred; verify Opus-in-`<audio>` on target Safari before it ships.
-
-## 0c. Story background "suddenly loud" bug — fixed, not fully confirmed (2026-07-01)
-Andrew reported a generated story's background scene jumping suddenly loud
-partway through playback (~2min mark / "48%" on-screen, most likely the
-Background-slider readout). Investigated by code reading (no device this
-session); traced Night Drift (40min, not 2min — ruled out), the
-`bedAttenuation` mount-time race (traced through, no bug found), SW
-keep-alive + wake-lock (don't touch volume — ruled out). Found and fixed one
-concrete, verifiable defect: `HowlLayer.onplay` (`src/audio/howl/HowlScene.ts`)
-re-ran the from-silence fade on **every** `'play'` event, not just the first —
-a spurious replay (OS audio-focus interruption resume, Howler's pooled
-html5-element reuse) would silently drop the layer to 0 and swell it back up
-over 5s, audible as "background suddenly got loud" once the swell completes.
-Fixed with a `hasFadedIn` guard; regression test added; DECISIONS.md entry
-records the reasoning and flags this as **not fully closed** — no device
-confirmation this was THE cause. An OS-level audio-focus ducking/release is
-a plausible secondary/alternate cause outside this codebase's control. Watch
-for recurrence.
-
-## 0d. Freesound login needed for one fireplace candidate
-`Christopher Courter "Crackling Fireplace"` (CC0, 6:43, clean single-burn
-take — good loop-pipeline fit) needs a Freesound account login to download
-at full quality. Andrew offered to provide a login (Claude-in-Chrome tab or
-throwaway use-and-discard) on request — ask if this file is wanted.
-
-## 0. Scene-audio re-cut batch — SUPERSEDED 2026-06-30 (kept only for the per-layer quality notes; see 0a)
-Andrew listened through all 44 shipped scene layers in the audio-scope
-dashboard and flagged 15. **Full per-file plan: `notes/scene-audio-flags-2026-06-21.md`.**
-Sources are in the gitignored `raw-sounds/` dump (610 files).
-- **DECIDED:** rebuild the whole **singing-bowl** scene from the 11 real bowl
-  recordings in the dump (the audiocraft MusicGen bed was rejected outright).
-- The rest: RECUT clean regions avoiding the flagged artifacts (forest creek-2,
-  wind-1, forest-evening wind-1, birds-2, forest-rain forest-1); REPLACE two
-  scrapped winds (forest wind-2, forest-evening wind-2) from the dump; LEVEL
-  three dynamics fixes (ocean wave-1/wave-2, fireplace close-3).
-
-### PROGRESS — LEVEL slice already BUILT, pending audition (reconciled 2026-06-30)
-The 6/16 hand-off was written *before* this batch was touched and never
-updated, so it under-reports. After the 18:02 hand-off commit on 2026-06-21, a
-session went on (18:26–18:31) and **built the entire LEVEL slice** — but never
-recorded it. State on disk (all in gitignored `raw-sounds/_candidates/scene-audio-2026-06-21/`):
-- **3 finished LEVEL candidates, verified at exactly 251.000s** (the ocean/
-  fireplace prime offset): `wave-1.cand.mp3` (level-drift fix), `wave-2.cand.mp3`
-  (volume match), `close-3.cand.mp3` (volume-disconnect fix). `*.level.mp3` are
-  the pre-loop intermediates.
-- **`AB/`** holds OLD-vs-NEW pairs and **`scope/`** is a pre-generated
-  audio-scope dashboard — ready to open and audition.
-- Built by **`tools/_build-level-candidates.sh`** (untracked, top of repo,
-  marked "TEMP / not for commit"; dynaudnorm long-window leveling → loudnorm →
-  seamless 251s wrap). Nothing is committed; nothing is lost — it's all intact
-  in the gitignored dump.
-- **NEXT for this slice:** audition the 3 candidates → if they pass, promote into
-  `public/audio/`, run `sceneCatalogue.test.ts`, bump `CACHE_VERSION`, commit.
-- **NOT started:** the RECUT (5), REPLACE (2), and singing-bowl REBUILD work —
-  only the LEVEL slice exists so far.
-
-- **Workflow is a loop:** produce candidates → Andrew auditions in the dashboard
-  → confirm/re-flag (he caught these by ear; spectrograms alone won't verify).
-- Pipeline: `tools/transcode-scene-audio.sh` + `tools/loopify-scenes.py`; keep
-  each file on its element's prime offset. After re-renders: re-run
-  `sceneCatalogue.test.ts` and bump `CACHE_VERSION` in `public/sw.js`.
-- Audition dashboard to re-serve: `python -m http.server` rooted at the sibling
-  `SleepApp-audio-review/` + `tailscale serve` (was at
-  https://crane-desk.saiga-wage.ts.net/scope/dashboard.html). The local server
-  dies with the session — restart it next time.
-
-## 1. Synthesize the expanded meditation catalogue (ACTION — needs your key)
-
-Scripts for all 10 meditations are written and committed (`a0decb7`). The
-audio is not generated yet. Set `ELEVEN_LABS_API_KEY`, then run these from the
+Once unblocked, also worth knowing: all three *currently rendered* meditations
+declare `"sceneId": "singing-bowl"`, which is held back, so the whole
+meditation category plays with no bed until 0G lands. Whatever bed replaces it
+is the one these should point at. Set `ELEVEN_LABS_API_KEY`, then run these from the
 repo root (needs `npx tsx`). The tool writes each MP3, loudness-normalizes it,
 and updates `public/meditations/index.json`.
 
@@ -415,25 +212,10 @@ After they're generated, ping me and I'll: bump `CACHE_VERSION` in
 otherwise serve stale audio), commit `public/meditations/`, and check off
 roadmap 6.5.
 
-## 2. Remaining v1.0 roadmap items (your input / hardware)
-- **4.3 [ASK]** — replace 3 off-brief photos (singing-bowl Buddha statue,
-  daylight forest-day, near-white monsoon). You source/pick; I optimize +
-  tonal-grade + update NOTICES.md.
-- **5.2 [DEVICE]** — device pass (PWA install, iOS Safari, overnight on the
-  Howler engine), then bump `version` to `1.0.0`, tag, append DECISIONS.md.
-
 ## 3. Self-voice clone (when ready)
 You're cloning your own voice in ElevenLabs to narrate these. Once you have
 the voice ID, I'll add it to `VOICE_IDS` in `tools/gen-meditation.ts` and the
 `VITE_VOICE_*` env so you can synthesize any meditation with `--voice <yours>`.
-
-## 4. Cleanup chores (low priority, only on "deferred clean-up work")
-- Worktree litter under `.git/worktrees/` + `.claude/worktrees/` (Drive holds
-  handles — `prune`/`rm` fail with Permission denied; cosmetic).
-- `git remote prune origin` (remote-tracking refs bloated); delete any stray
-  `claude/*` branches that are 0 ahead of main.
-- `rm public/meditations/*.pre-loudnorm.mp3 public/stories/*.pre-loudnorm.mp3`
-  (gitignored loudnorm backups, if present).
 
 ## 5. Overnight audio-seam bugs B1–B4 — PROBABLY MOOTED 2026-07-02, confirm at audition
 The clean-source refresh (`ae3c357`) replaced forest-night wind and all
@@ -465,3 +247,34 @@ to the Web Audio overnight path that the Howler pivot replaced. Overnight
 survival is now confirmed (6h, PR #13); session-owned protections were
 rewritten in `HowlScenePlayer`. Any remaining device validation is folded into
 roadmap 5.2. See DECISIONS.md for the pivot record.
+## 4. Cleanup chores (low priority, only on "deferred clean-up work")
+- Worktree litter under `.git/worktrees/` + `.claude/worktrees/` (Drive holds
+  handles — `prune`/`rm` fail with Permission denied; cosmetic).
+- `git remote prune origin` (remote-tracking refs bloated); delete any stray
+  `claude/*` branches that are 0 ahead of main.
+- `rm public/meditations/*.pre-loudnorm.mp3 public/stories/*.pre-loudnorm.mp3`
+  (gitignored loudnorm backups, if present).
+
+
+## Carried forward from the archived Phase-2 TODO (2026-09-19)
+
+Three items from `notes/TODO_PHASE2-2026-05.md` were still live when it was
+archived, so they live here now rather than in a file nobody should read.
+
+- **B4 — the wake-lock default contradicts its own decision.** That document
+  says "we must NOT request wake lock by default". The code does:
+  `PlayerScreen.tsx` calls `useWakeLock(scene !== null)`, so the screen is
+  held on for the whole night whenever a scene is playing, and
+  `ContentPlayerScreen.tsx` does the same for narration. The
+  2026-06-12 review (`05-utility.md`) flagged this as a deliberate pivot with
+  **no DECISIONS.md entry and no user setting**. Either write the decision
+  down or add the setting — an always-on screen is a battery and
+  light-in-the-room cost the brief never agreed to.
+- **C6 — the multi-hour audio soak test never ran.** `tools/loop-probe/` and
+  `notes/loop-seam-audit-2026-09-02.md` cover the wrap seam; what was
+  specified and never done is a long run watching for spectrum
+  discontinuities across a whole night.
+- **Variant pools.** The original rule was at least 2 variants per element so
+  `variantRotation` has something to rotate.
+  **`waterfall-valley/falls-main` ships exactly one.** Everything else has
+  2–5.
