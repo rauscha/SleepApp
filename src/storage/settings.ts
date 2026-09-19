@@ -38,6 +38,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   layerVolumes: {},
   debugMarkers: false,
   narrationSundown: true,
+  // Off: let the phone's own screen timeout do its job. See types.ts.
+  keepScreenAwake: false,
 };
 
 // Cached in-memory copy so per-key reads don't hit localStorage every time.

@@ -56,7 +56,7 @@ export function SettingsScreen(_props: SettingsScreenProps) {
   const engine = useMemo(() => getAudioEngine(), []);
   const [settings, setSettings] = useState(() => getAllSettings());
 
-  function update<K extends 'masterVolume' | 'defaultTimerMinutes' | 'narrationSundown' | 'debugMarkers'>(
+  function update<K extends 'masterVolume' | 'defaultTimerMinutes' | 'narrationSundown' | 'debugMarkers' | 'keepScreenAwake'>(
     key: K,
     value: (typeof settings)[K]
   ) {
@@ -147,6 +147,30 @@ export function SettingsScreen(_props: SettingsScreenProps) {
             style={{ minHeight: 44, minWidth: 44 }}
           >
             {settings.narrationSundown ? 'On' : 'Off'}
+          </button>
+        </div>
+
+        <div className="mt-6">
+          <p className="body-text text-stone-300 mb-2">Keep the screen on</p>
+          <p className="body-text text-stone-300 mb-3">
+            Off, the phone’s own screen timeout takes over and the display
+            sleeps while the sound keeps playing. Turn this on only if a
+            night ever ends early — it holds the screen awake until morning,
+            which costs battery and is no longer needed for playback to
+            survive.
+          </p>
+          <button
+            onClick={() => update('keepScreenAwake', !settings.keepScreenAwake)}
+            aria-pressed={settings.keepScreenAwake}
+            className={[
+              'px-4 py-2 rounded-soft ui-label transition-colors duration-slow',
+              settings.keepScreenAwake
+                ? 'bg-moon-600 text-stone-50'
+                : 'bg-ink-700 text-stone-300 hover:bg-ink-600',
+            ].join(' ')}
+            style={{ minHeight: 44, minWidth: 44 }}
+          >
+            {settings.keepScreenAwake ? 'On' : 'Off'}
           </button>
         </div>
       </section>

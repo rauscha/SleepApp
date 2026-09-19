@@ -243,7 +243,10 @@ export function ContentPlayerScreen({
     !bedStopped &&
     state !== 'error' &&
     !(state === 'ended' && bedBehavior === 'stop-with-content');
-  useWakeLock(state === 'playing' || bedKeepsScreenLive);
+  // Same gate as the Player: off unless the user turned it on. Narration
+  // plays through a sleeping screen for the same reason the bed does.
+  const [keepScreenAwake] = useState(() => getSetting('keepScreenAwake'));
+  useWakeLock(keepScreenAwake && (state === 'playing' || bedKeepsScreenLive));
 
   // Pull the bed gain down while narration is on top of it. The slider
   // below lets the user tune; default is 50% of the user's chosen master

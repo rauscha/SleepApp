@@ -63,6 +63,26 @@ export interface UserSettings {
    */
   debugMarkers: boolean;
 
+  /**
+   * Hold a screen wake lock while audio plays, stopping the display from
+   * sleeping. **Default off**, and the default is the point.
+   *
+   * This arrived as one third of a background keep-alive stack (wake lock +
+   * silent loop + service-worker ping) built for the Web Audio engine, where
+   * a backgrounded tab really could be frozen out of existence. The
+   * 2026-06-15 pivot to a native looping `<audio>` element per layer removed
+   * the premise: the OS owns playback now, exactly as it does for Spotify.
+   * The silent loop and the element sink were removed with the pivot; this
+   * was missed, so the app went on holding the screen awake all night for
+   * three months with no decision entry and no way to turn it off.
+   *
+   * Kept as a setting rather than deleted because the 6h overnight that
+   * confirmed the pivot ran with this lock still held, so its contribution
+   * was never isolated. If an overnight ever dies with the screen asleep,
+   * turning this on is the first thing to try.
+   */
+  keepScreenAwake: boolean;
+
   /** Narration Sundown: ramp a story's narration down over its final third
    *  so the voice submerges under the paired scene bed instead of ending on
    *  a hard stop (a state change is a wake event). Default on. */

@@ -155,15 +155,18 @@ export function PlayerScreen({ onExit, startInNightstand = false }: PlayerScreen
     coordinator.getCurrentScene()
   );
 
-  // Screen-scoped wake lock only. The overnight-survival protections
-  // (silent keep-alive + element sink, SW keep-alive, media session) are
-  // owned by the playback session in SceneCoordinator, not this screen —
+  // Screen-scoped wake lock, OFF unless the user asks for it. The
+  // overnight-survival protections (SW keep-alive, media session, sleep
+  // timer, Night Drift) are owned by the playback session, not this screen —
   // see review bug C1. Leaving the Player ("← Scenes", hardware-back) must
-  // strip nothing while the scene keeps playing, so the keep-alive and
-  // media session deliberately do NOT live in this component's lifecycle.
-  // The wake lock is visibility-bound by nature and correctly belongs to
-  // the on-screen experience, so it stays here.
-  useWakeLock(scene !== null);
+  // strip nothing while the scene keeps playing. The wake lock is
+  // visibility-bound by nature and so does belong here, but it is not a
+  // survival protection: the OS owns each looping <audio> element, so the
+  // bed plays through a sleeping screen. Holding the display on all night
+  // is a battery and OLED cost for nothing. Read once on mount, like
+  // debugMarkers — the toggle lives on another screen.
+  const [keepScreenAwake] = useState(() => getSetting('keepScreenAwake'));
+  useWakeLock(scene !== null && keepScreenAwake);
   const [mixerOpen, setMixerOpen] = useState(false);
   // Debug markers (off by default). Read once on mount: the toggle lives in
   // Settings, which is a different screen, so it can't change under us.

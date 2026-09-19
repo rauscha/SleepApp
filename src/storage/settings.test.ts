@@ -72,6 +72,54 @@ describe('settings storage', () => {
   });
 });
 
+describe('keepScreenAwake', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    __invalidateCacheForTests();
+  });
+
+  // The default is the whole point of this setting. It shipped as an
+  // ungated always-on wake lock for three months, holding the screen awake
+  // all night, and the engine pivot that removed its reason to exist landed
+  // in June. If this ever flips back to true by accident, the app goes back
+  // to burning a lit screen until morning for no playback benefit.
+  it('defaults to OFF', () => {
+    expect(DEFAULT_SETTINGS.keepScreenAwake).toBe(false);
+    expect(getSetting('keepScreenAwake')).toBe(false);
+  });
+
+  it('round-trips when the user turns it on', () => {
+    // Note: writes are debounced, so don't invalidate the cache here
+    // expecting to read it back out of localStorage — that flush has not
+    // happened yet. The persistence path is covered by the merge test below.
+    setSetting('keepScreenAwake', true);
+    expect(getSetting('keepScreenAwake')).toBe(true);
+    setSetting('keepScreenAwake', false);
+    expect(getSetting('keepScreenAwake')).toBe(false);
+  });
+
+  it('survives a stored blob written before the key existed', () => {
+    // An install from before this setting shipped has no such key; the
+    // merge must supply the safe default rather than undefined.
+    localStorage.setItem(
+      'sleep-app:settings:v1',
+      JSON.stringify({ masterVolume: 0.3 })
+    );
+    __invalidateCacheForTests();
+    expect(getSetting('keepScreenAwake')).toBe(false);
+    expect(getSetting('masterVolume')).toBe(0.3);
+  });
+
+  it('reads back an explicitly stored true', () => {
+    localStorage.setItem(
+      'sleep-app:settings:v1',
+      JSON.stringify({ keepScreenAwake: true })
+    );
+    __invalidateCacheForTests();
+    expect(getSetting('keepScreenAwake')).toBe(true);
+  });
+});
+
 describe('settings merge covers every key', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -94,6 +142,7 @@ describe('settings merge covers every key', () => {
       hasCalibrated: true,
     },
     voices: { storyVoiceId: 'stone', meditationVoiceId: 'glen' },
+    keepScreenAwake: true,
     displayMode: 'nightstand',
     defaultTimerMinutes: 90,
     narrationSundown: false,

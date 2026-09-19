@@ -280,6 +280,12 @@ Spotify/Calm/YouTube.
   element there is no MediaStream sink, silent keep-alive, zombie watchdog or
   `recreateContext` on the bed. Don't reintroduce them — they were treating
   symptoms of the unsupported construct above.
+- **The screen is allowed to sleep.** `useWakeLock` is gated on the
+  `keepScreenAwake` setting, **default off** (2026-09-19, DECISIONS.md). It
+  was one third of the Web Audio keep-alive stack and the pivot removed its
+  premise; the OS owns each looping element, so playback survives a sleeping
+  display. Don't re-enable it by default without an overnight that actually
+  fails with it off.
 - **Overnight protections are owned by the session, not a screen.**
   `HowlScenePlayer` owns the sleep timer, Night Drift, the OS media session
   and the SW keep-alive ping; they live and die with the scene, never in a

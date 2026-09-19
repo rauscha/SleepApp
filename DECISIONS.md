@@ -921,3 +921,52 @@ whatever the phone was configured with.
 **Still open at the time of writing:** 7 of 10 meditation scripts in
 `public/meditations/*.txt` are written and unrendered, waiting on the voice
 and engine decision from the audition.
+
+---
+
+## Let the screen sleep: the wake lock becomes a setting, default off (2026-09-19)
+
+Andrew: "We shouldn't keep the screen fully on." He is right, and the reason
+it was on had expired three months earlier.
+
+`useWakeLock` arrived on 2026-05-17 as one third of a deliberate bundle —
+commit `fabc9d2`, "P5-9: background keep-alive stack (Wake Lock + silent loop
++ SW ping)". Under the Web Audio engine the premise was sound: a backgrounded
+Chrome tab with a dimmed screen really could be frozen out of existence, and a
+screen wake lock is the documented signal that says "the user is engaged with
+this tab, do not discard it".
+
+**The 2026-06-15 pivot removed that premise.** Each layer is now a native
+looping `<audio>` element that the OS owns, exactly like Spotify — playback
+survives a sleeping screen because the operating system, not the page, is
+keeping it alive. The pivot removed the silent loop and the element sink for
+precisely this reason. It did not remove the wake lock, and nobody noticed:
+`PlayerScreen` went on calling `useWakeLock(scene !== null)`, so the display
+was held awake for the entire night, every night, on a device the user had
+put face-down to sleep. The 2026-06-12 review (`05-utility.md`) caught the
+contradiction against TODO_PHASE2 B4 — "the screen MUST sleep, that's what
+the user wants" — and correctly noted it had no decision entry and no
+setting. It still had neither on 2026-09-19.
+
+**What changed.** A `keepScreenAwake` setting, **default false**. Both
+`PlayerScreen` and `ContentPlayerScreen` gate their wake lock on it, read once
+on mount like `debugMarkers`. Off, the phone's own screen timeout takes over
+and the display sleeps while the sound keeps playing.
+
+**Why a setting and not a deletion.** The 6h overnight that confirmed the
+pivot ran with this lock still held, so the lock's contribution to that result
+was never isolated. It is very probably zero — the whole point of the pivot is
+that the OS owns playback — but "very probably" is not what The One Thing
+deserves. Keeping the old behaviour one toggle away means a failed night is a
+tap to diagnose instead of a rebuild. If a few overnights pass with the screen
+sleeping, the setting can go.
+
+**No `CACHE_VERSION` bump.** No audio bytes moved; the JS bundle is
+hash-named and the service worker picks it up on its own.
+
+Note the wake lock never physically defeated the user's own screen-off
+gesture — the Screen Wake Lock API releases when the document becomes hidden,
+and the hook re-requested it on `visibilitychange`. What it did was stop the
+OS sleep timer from ever firing while the app sat in the foreground. That is
+the "glowing rectangle until morning" the review described, and it is what
+stops now.
