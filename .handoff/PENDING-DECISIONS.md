@@ -11,6 +11,8 @@ so this file is only live items.
 ## At a glance
 
 **Blocked on Andrew**
+- **0H** — is the 1am sound in the sleeper cabin a rooster or a squeak? One
+  listen settles it and nothing can proceed without it.
 - **0G** — a source for the singing-bowl replacement bed. Pick a route.
 - **0E** — the narration voice. 31 audition files are on your phone. This one
   gates the most: 7 written meditations cannot be rendered until it is picked.
@@ -23,6 +25,49 @@ so this file is only live items.
   `notes/TODO_PHASE2-2026-05.md`; see "Carried forward" at the bottom. B4,
   the wake lock, was the third and is fixed.
 - **4** — cleanup chores, on request only.
+
+## 0H. OPEN 2026-09-19 — the 1am rooster is in the CABIN, not the rain
+
+Andrew, on the 2026-09-19 marker export: "rooster crowing at 1am is about the
+biggest failure the app has had." Both 1am marks (01:19:12 and 01:19:26, 14 s
+apart) are two hours into `night-train`.
+
+**Localised, not yet identified.** Isolating each layer at its exact marked
+position, the loudest event in the window is in
+`night-train/cabin/cabin-2.opus` at **160.0 s** — +11.4 dB over its local
+median with 42 dB of tonality, against 7 dB for the rain layer, which is just
+broadband rain. **It is not the rain-on-glass file**, which was the obvious
+suspect given its bird history.
+
+The same class of event runs through **both** cabin variants: 17 in each,
+0.2–1.4 s long, peaking at **258–312 Hz**, and in the marked window they
+**repeat** — 160.0, 164.6, 165.6–167.0, 177.3 s. Repetition at a consistent
+pitch a few seconds apart is what makes a bird plausible; a railway squeak
+would not do that. But the partials are not a clean integer harmonic stack,
+which is what a crow should give, so **measurement cannot settle it and
+Andrew's ear has to.**
+
+**[ANDREW] Listen and say which it is.** Scrubber with spectrograms at
+`notes/marker-renders/rooster-scope/index.html` (gitignored) — the marked
+moment, two controls from each cabin variant, and the full re-rendered mix.
+
+**Why it was missed at ship.** Both checks run on this file were blind to it.
+`scan-tonal-events.py` looks at 2.5–9 kHz for narrow spikes; these sit at
+~300 Hz. faster-whisper with VAD found zero speech, and an animal call is not
+speech. The scan *did* flag 11 events in cabin-2 and I judged them railway
+squeaks on the grounds that a train cabin is metallic by nature. That
+judgement is what shipped it.
+
+**Also worth noting: the cabin layer was at volume 1.0** with master at 0.841
+— a saved Mixer level at the top of its ceiling. Whatever is in that file was
+being heard at full tilt, which is part of why it was so objectionable.
+
+**If it is a rooster,** the options are a spectral repair like the
+rain-on-window bird fix (preserves sample count and the loop wrap, but 17
+events per variant is a lot), a re-cut from a different window of the FTUS
+masters (all four private-cabin recordings are still on disk at
+`~/sounds/ftus/TRAINS_02/`), or a different source recording. Decide after
+the listen, not before.
 
 ## 0G. OPEN 2026-09-16 — the bowls are OUT of the catalogue, and need sourcing
 
