@@ -5,10 +5,11 @@
 ## STATE
 - `main` clean, pushed, single worktree. No PRs in this repo.
 - Green: `npx tsc --noEmit` clean, `npx eslint src` clean, `npx vitest run`
-  **283/283**, `npm run build` clean.
-- **9 scenes ship**, `singing-bowl` is held back. 4 stories, 3 meditations
-  rendered, 7 written and unrendered.
-- CACHE_VERSION **v14**. No audio bytes moved this session.
+  **292/292**, `npm run build` clean.
+- **9 scenes ship**, `singing-bowl` is held back. **4 stories and 10
+  meditations, all rendered in `stone`.**
+- CACHE_VERSION **v16** — the whole library was re-rendered, so every install
+  re-downloads once (~470 MB).
 - On tikiserv, prefix tool-shell commands with `source ~/.nvm/nvm.sh`.
 
 ## This session: documentation, top to bottom
@@ -181,6 +182,42 @@ warnings.
   metronome all night.
 - **[ANDREW] The scene has no photograph** and runs on its gradient. That is
   the only thing it is missing; picking the image is your call.
+
+## Later the same day: the library is rendered, and two real bugs are fixed
+
+**The markers caught their first real failure, and it was two of Andrew's
+three complaints.** DECISIONS.md "Retry a stuck layer when the page comes
+back". A scene started, the page went hidden 1.3 s later, three of four
+layers took a playerror while hidden, and nothing retried on the way back —
+so the scene played one layer out of four for as long as he left it on. Both
+halves fixed, five tests, each half confirmed to fail without it.
+
+**The 1am rooster is in the CABIN, not the rain.** PENDING-DECISIONS 0H.
+Localised to `cabin-2.opus` at 160.0 s; the rain layer is just rain. Waiting
+on Andrew's ear to say rooster or railway squeak — scrubber at
+`notes/marker-renders/rooster-scope/index.html`.
+
+**The whole library is rendered on `stone`.** Ten meditations (7 that had
+been written and unrendered since 2026-09-12) and all four stories, one
+voice, one pipeline. Every one transcript-verified with faster-whisper:
+meditations 0.985-0.997, stories 0.989-0.993, no truncation. 38 k of 534 k
+characters used. CACHE_VERSION v14 -> v16 across the two content commits.
+
+**Two bugs found by reading the index before overwriting it.** Both render
+tools kept `existing?.voiceId` on a re-render, so the index would have
+claimed the old narrator for every file. Both dropped `sceneId` entirely,
+which would have unpaired every story from its bed — including night-train
+from the scene added four days earlier. Caught mid-batch, in time.
+
+**The Studio endpoints were never stale.** Probed both spellings against the
+live key: both 403, "requires your account to be explicitly whitelisted".
+Renaming them would have changed nothing. Chunked TTS is the default now.
+
+**`notes/voice-clone-read-2026-09-19.md`** is a bedtime read for cloning his
+voice — the answer to the intonation-range finding, which no reference-side
+pitch shift can fix.
+
+**Stories are first in the Library and the default tab.** He uses them more.
 
 ## CORRECTION — the singing-bowl rebuild was the wrong job
 Andrew caught this on 2026-09-16: "I thought we still need to resource the
