@@ -1,7 +1,8 @@
-// Library — lists the bundled meditations and the bundled sleep stories.
+// Library — lists the bundled sleep stories and the bundled meditations.
+// Stories are first and are the default tab; they get used more.
 //
-// Meditations: fetched from /meditations/index.json (static, bundled).
 // Stories: fetched from /stories/index.json (static, bundled).
+// Meditations: fetched from /meditations/index.json (static, bundled).
 //
 // Everything here is a file that shipped with the build, so tapping any card
 // navigates to ContentPlayerScreen with a direct URL. There is no per-user
@@ -61,10 +62,13 @@ export interface LibraryScreenProps {
   onPlay: (item: ContentItem) => void;
 }
 
-type Tab = 'meditations' | 'stories';
+type Tab = 'stories' | 'meditations';
 
 export function LibraryScreen({ onPlay }: LibraryScreenProps) {
-  const [tab, setTab] = useState<Tab>('meditations');
+  // Stories first and selected by default: Andrew, 2026-09-19, "stories
+  // should be top of list - I use those more". The Library opens on the
+  // thing most likely to be wanted rather than on alphabetical accident.
+  const [tab, setTab] = useState<Tab>('stories');
   const [meditations, setMeditations] = useState<MeditationMetadata[]>([]);
   const [meditationError, setMeditationError] = useState<string | null>(null);
   const [stories, setStories] = useState<BundledStoryMetadata[]>([]);
@@ -120,7 +124,7 @@ export function LibraryScreen({ onPlay }: LibraryScreenProps) {
         </h1>
         {/* Tabs */}
         <div className="flex gap-1 bg-ink-800 rounded-soft p-1">
-          {(['meditations', 'stories'] as const).map((t) => (
+          {(['stories', 'meditations'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -138,6 +142,28 @@ export function LibraryScreen({ onPlay }: LibraryScreenProps) {
         </div>
       </header>
 
+      {/* ── Stories ──────────────────────────────────────────────────── */}
+      {tab === 'stories' && (
+        <div className="flex-1">
+          {stories.length === 0 && (
+            <EmptyState
+              heading="No stories yet"
+              body="This build didn't ship any. Check back after the next update."
+            />
+          )}
+          <div className="space-y-3">
+            {stories.map((s) => (
+              <ContentCard
+                key={s.id}
+                title={s.title}
+                description={s.theme}
+                meta={fmtDuration(s.durationSeconds)}
+                onPlay={() => handlePlayStory(s)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
       {/* ── Meditations ─────────────────────────────────────────────── */}
       {tab === 'meditations' && (
         <div className="flex-1">
@@ -160,29 +186,6 @@ export function LibraryScreen({ onPlay }: LibraryScreenProps) {
                 description={m.description}
                 meta={`${m.style.replace('-', ' ')} · ${fmtDuration(m.durationSeconds)}`}
                 onPlay={() => handlePlayMeditation(m)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Stories ──────────────────────────────────────────────────── */}
-      {tab === 'stories' && (
-        <div className="flex-1">
-          {stories.length === 0 && (
-            <EmptyState
-              heading="No stories yet"
-              body="This build didn't ship any. Check back after the next update."
-            />
-          )}
-          <div className="space-y-3">
-            {stories.map((s) => (
-              <ContentCard
-                key={s.id}
-                title={s.title}
-                description={s.theme}
-                meta={fmtDuration(s.durationSeconds)}
-                onPlay={() => handlePlayStory(s)}
               />
             ))}
           </div>
