@@ -1,124 +1,131 @@
-# Audio sourcing — libraries to browse today
+# Audio sources
 
-Browse these on your own and pick what feels right. I've ranked them by signal-to-noise for our specific use case (sleep-audio, 4+ minute continuous recordings, field-recording style — NOT atmospheric music or sound design).
+Where the scene audio actually comes from, what it goes through before it
+ships, and what is worth looking for next.
 
-What we're looking for at each scene:
-- 44.1 or 48 kHz, stereo
-- 4+ minutes continuous (longer is better — fewer crossfades over an 8-hour night)
-- "Field recording" / "ambience" tags, NOT "FX" or "designed"
-- License: CC0 ideal, CC-BY OK with attribution, BBC personal-use OK
-- 2–4 variants per element so the rotation pool isn't repetitive
-
----
-
-## Free first — start here
-
-### 1. Freesound (https://freesound.org)
-Community-uploaded library, mostly CC0 or CC-BY. **Best free starting point.**
-
-Search tactics that work well for our scenes:
-- `rain on window long` — surprisingly good multi-minute recordings
-- `forest ambience field recording`
-- `creek babbling 10 minutes`
-- `crickets night`
-- `waves gentle beach 5 minutes`
-- `fireplace crackle` (filter for >4 min)
-
-Tip: sort by Duration (descending) and filter by license = "Creative Commons 0".
-Avoid: `sound design`, `cinematic`, `FX` — these are designed sounds, not ambience.
-
-### 2. BBC Sound Effects archive (https://sound-effects.bbcrewind.co.uk)
-Massive professional archive, **free for personal use** (their "RemArc license"). High-quality field recordings going back decades.
-- Excellent for waves, rain, wind, forest. Their nature catalogue is solid.
-- Caveat: license forbids redistribution, so we can't bundle these into a "share with friends" build later — only use for the personal build.
-
-### 3. Pixabay sounds (https://pixabay.com/sound-effects/)
-Pixabay license (free, no attribution required, commercial use OK). Smaller library but **everything is free and unrestricted**, which makes it the best fit if/when we later ship a static build to friends.
-- Hit-or-miss quality; stick to highly-rated uploads.
-
-### 4. George Vlad — field recordings (https://georgevlad.com)
-Independent professional field recorder. Posts long-form nature recordings to YouTube and Bandcamp. **Some free, some pay-what-you-want.**
-- Specifically excellent for forest, water, mountain ambiences.
-- Often 30+ minute single-take recordings, perfect for our use case (long enough that the crossfade rarely fires).
-
-### 5. Internet Archive (https://archive.org)
-Hit-or-miss but contains some incredible historical nature recordings. Search "ambient" or "field recording" with `mediatype:audio`.
-- Good for the more unusual scenes — e.g. spaceship hum (search NASA recordings), train interior, airplane cabin (search "ASMR airplane").
-
-### 6. MyNoise (https://mynoise.net)
-**Reference-only.** Stéphane Pigeon has built excellent calibrated soundscapes here over years. Can't directly download recordings, but it's the gold-standard reference for "what should this scene sound like" — especially the tinnitus-mask noise generators and the singing bowls / sound bath.
+**Rewritten 2026-09-19.** The previous version was a pre-sourcing browsing
+wishlist written before any audio existed. Almost none of its recommendations
+survived contact with the work — it ranked Freesound first and FTUS last, and
+the opposite is true — so it was replaced rather than patched. The rules that
+govern scene audio live in `CLAUDE.md`; the reasoning behind the sourcing
+decisions is in `DECISIONS.md` ("Clean single-producer audio source",
+"Ship scene audio as Opus, not MP3").
 
 ---
 
-## Paid, at your $20–50 budget
+## Where the catalogue came from
 
-### 7. ASoundEffect (https://www.asoundeffect.com)
-Marketplace. Many packs in $20–50 range. Tag "ambience" or "nature" filters work well.
-- Often runs sales — check the "deals" section.
+74 scene variants across 10 scenes, 9 shipping and 1 held back.
 
-### 8. Boom Library (https://www.boomlibrary.com)
-Premium quality, used in films/games. Their nature packs (e.g. "Atmospheres", "Cinematic Voices Forests") are stunning but priced $50–200. Worth it for **one** scene you fall asleep to most.
+| Source | Files | What it is |
+|---|---|---|
+| **Free To Use Sounds** | ~37 | A purchased bundle ("All In One Immersive Bundle"). The largest single source. Personal build only — derivative works are permitted, the originals may not be redistributed. |
+| **George Vlad / Mindful Audio** | ~21 | Free long-form releases on his YouTube channel, pulled with yt-dlp. A single recordist, pristine remote field recordings, often 1–2h+. |
+| **FOBOS PLANET** | 5 | The free "Fireplace 12h" YouTube release; the whole fireplace scene. |
+| **Pixabay** | 6 | Early material, mostly in rain-on-window. Pixabay's licence fails a redistribution test, which is moot now the app is explicitly personal-use. |
+| **user-provided** | 2 | Andrew's own recordings. |
+| **audiocraft MusicGen** | 5 | Locally generated, **rejected**, and held back with the singing-bowl scene. |
+| **synthesized** | 3 | The pre-rendered brown/pink/white noise beds in `public/audio/_bed/`. |
 
-### 9. Pro Sound Effects (https://www.prosoundeffects.com)
-Higher-end. Stretch budget; consider after you've used Freesound to learn what you actually want.
+Per scene:
 
-### 10. SoundDogs (https://www.sounddogs.com)
-Pay-per-effect (~$5–20 per file). Useful if you need ONE specific recording and don't want to buy a whole pack.
+| Scene | Sources |
+|---|---|
+| fireplace | FOBOS PLANET ×5 |
+| forest-day | George Vlad ×5, FTUS ×2, Pixabay ×1, user ×1 |
+| forest-evening | George Vlad ×6, FTUS ×5 |
+| forest-night | FTUS ×3 |
+| monsoon | George Vlad ×5, FTUS ×4 |
+| night-train | FTUS ×4 |
+| ocean-night | FTUS ×6, George Vlad ×5 |
+| rain-on-window | Pixabay ×5, FTUS ×2, user ×1 |
+| waterfall-valley | FTUS ×6 |
+| singing-bowl *(held back)* | MusicGen ×5, rejected |
 
-### 11. FreeToUseSounds (https://www.freetousesounds.com)
-Mix of free and paid packs. Marc Steffen's recordings, often heavy on travel/transport ambiences (good for airplane cabin, train interior, car highway).
+**Every shipped file has a `.json` sidecar beside it** recording its source,
+licence, and exactly what was done to it — which prime offset it was cut to,
+where in the source the loop starts and why, what level it was normalised to,
+and any quality warning. The sidecar is the provenance record; treat writing
+one as part of shipping a file, not an afterthought. `sceneCatalogue.test.ts`
+hard-fails on a variant whose sidecar has no `trimmedTo`.
 
 ---
 
-## Recording-specific tips for our scenes
+## What was tried and rejected
+
+Worth knowing so nobody re-walks these.
+
+- **Freesound** was the original plan and is not used at all. klankbeeld was
+  staged as the single clean CC-BY recordist and rejected as too dirty
+  (2026-06-30).
+- **AI generation.** audiocraft MusicGen-medium was generated locally for the
+  singing-bowl bed and rejected layer by layer on 2026-06-21 — "screeching
+  teapot", "industrial ghost music", "old-school mp3 warble". MusicGen stays
+  rejected. This is the one place the old document was right.
+- **Paid effects marketplaces** (ASoundEffect, Boom, Pro Sound Effects,
+  SoundDogs) and the BBC archive were surveyed and never used. One bundle
+  purchase covered more ground than a per-file budget would have.
+- **"Skip YouTube"** was the old advice and it was wrong. Two named
+  recordists' free YouTube releases are now the backbone of the catalogue.
+  The thing to actually avoid is the *anonymous* "10 hours of rain" upload,
+  which usually is a short loop.
+
+---
+
+## The pipeline
+
+A recording does not go into `public/audio/` by hand. Full rules in
+`CLAUDE.md` under "Scene authoring"; the short version:
+
+1. **Level it.** `tools/level-ftus.py` for a multichannel master — mind
+   `--layout`, because FTUS puts the channel layout in the filename prefix
+   (`L,R` / `M,S,Cs` / `W,Y,Z,X` for ambisonic B-format). `--balance` fixes a
+   standing L/R difference, which matters over eight hours.
+2. **Check it for intrusions.** `tools/scan-tonal-events.py` finds narrow
+   tonal events in a broadband bed, and faster-whisper with VAD finds speech.
+   Do both. A bird or a voice that returns every 251 seconds all night is the
+   failure this catches — one shipped for weeks before anyone noticed.
+3. **Cut the loop.** `tools/loopify-scenes.py` trims each variant to its
+   element's prime offset with a gapless wrap and emits Opus at 48 kHz. Give
+   the loop-start search slack: `sourceDuration - loopOffset - 6` is its
+   entire search range, and under ~30 s it cannot beat a slow swell.
+4. **Audit it.** `python tools/loopify-scenes.py --audit` measures the wrap
+   step of every shipped variant. Over 3 dB wants a re-cut.
+5. **Write the sidecar and listen.** Measurement does not tell you whether a
+   recording is pleasant. Andrew's ear is the gate, and it has overruled
+   clean numbers before.
+
+Directory layout, unchanged since the beginning and still correct:
+
+```
+public/audio/<scene-id>/<element-id>/<variant-id>.opus
+public/audio/<scene-id>/<element-id>/<variant-id>.json   # sidecar
+public/audio/_bed/<color>.opus                            # synth beds
+```
+
+---
+
+## Still wanted
+
+**A bed to replace singing-bowl.** The open sourcing task. The decision
+(2026-07-01) is a warm ambient pad/drone rather than bowls, voiced to sit
+under narration: HPF ~80–100 Hz, a 200–500 Hz dip, 2–4 kHz left clear for
+consonants. Two routes are on record in `.handoff/PENDING-DECISIONS.md` —
+the 99Sounds "Drones" library by Red Fog, or DSP synthesis.
+
+**A second variant for `waterfall-valley/falls-main`,** which ships one.
+
+**Scenes that were sketched and never built.** Search terms kept from the old
+document because they are still the right ones:
 
 | Scene | Search terms that work | Watch out for |
 |---|---|---|
-| Forest day | `forest ambience birds creek`, `woods morning` | Designed nature scenes with too-prominent birds — we want bed, not soloists |
-| Forest night | `crickets owl ambience`, `night forest` | Coyote howls / dramatic owl calls — wakes the user |
-| Waterfall | `waterfall close, mid, distant` | Avoid waterfalls so loud the high-frequency hiss dominates |
-| Beach gentle | `waves lapping shore`, `gentle surf` | Crashing waves, gulls — those go in "heavy surf" |
-| Rain on window | `rain window glass`, `cozy rain inside` | Thunder — separate scene |
-| Rain on tent | `rain canvas tent`, `camping rain` | Wind that's too active |
-| Rain on roof | `rain roof shingles`, `attic rain` | Dripping water close-up — too rhythmic, becomes a metronome |
-| Fireplace | `fireplace crackle 10 min`, `wood burning` | Crackles too sharp or too sparse — needs steady pulse |
-| Spaceship | `sci fi engine hum`, `Star Trek bridge` | Anything labeled "horror" or "Alien" — wrong vibe per brief |
-| Airplane cabin | `airplane interior cruise 10 hour` | Departure/landing audio (announcements) |
-| Sound bath | `Tibetan singing bowl`, `meditation drone` | New age music with chord changes — we want drone, not melody |
+| Rain on tent | `rain canvas tent`, `camping rain` | Wind that is too active |
+| Rain on roof | `rain roof shingles`, `attic rain` | Close-up dripping — too rhythmic, becomes a metronome |
+| Airplane cabin | `airplane interior cruise 10 hour` | Announcements, departure and landing |
+| Spaceship | `sci fi engine hum` | Anything labelled horror — wrong vibe per the brief |
 
----
-
-## What to skip
-
-- **YouTube-to-MP3 rippers.** License situation is murky and audio quality is degraded.
-- **Spotify/Apple Music sleep playlists.** Can't extract; not useful as source files.
-- **AI-generated soundscapes** (Suno, ElevenLabs sound effects). Quality is improving but not there yet for hours-long ambience — and the brief specifies real field recordings.
-- **Anything labeled "1 hour rain" YouTube videos.** These are usually loops of much shorter source recordings — same problem we're trying to solve.
-
----
-
-## File handling once you've downloaded a recording
-
-Save files as: `public/audio/<scene-id>/<element>/<variant>.<ext>`. For example:
-```
-public/audio/forest-day/wind/wind-leaves-1.mp3
-public/audio/forest-day/wind/wind-leaves-2.mp3
-public/audio/forest-day/creek/creek-trickle-1.mp3
-```
-
-Save license / attribution next to each file:
-```
-public/audio/forest-day/wind/wind-leaves-1.json
-```
-```json
-{
-  "source": "Freesound user 'soundbridge'",
-  "url": "https://freesound.org/people/soundbridge/sounds/123456/",
-  "license": "CC0",
-  "downloadedAt": "2026-05-10",
-  "trimmedTo": "240s",
-  "notes": "Light gust pattern, no human voices"
-}
-```
-
-When we get to Phase 2, the SceneDefinition JSON loader will reference these files and we can validate licenses before bundling.
+General cautions that have held up: designed nature scenes where the birds
+are soloists rather than bed; coyote howls and dramatic owl calls in night
+forest; waterfalls so loud the high-frequency hiss dominates; new-age bowl
+music with chord changes, when what is wanted is drone.

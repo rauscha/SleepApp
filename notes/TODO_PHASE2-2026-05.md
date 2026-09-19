@@ -1,3 +1,22 @@
+> **ARCHIVED 2026-09-19 — superseded, retained for cross-references.**
+>
+> This was the Phase-1 review and Phase-2 task list, written at the start of
+> the project and never updated. Essentially every item in it has shipped or
+> been overtaken: the audio engine was pivoted off Web Audio onto Howler
+> `html5`, the in-app story generator was removed outright, and the sourcing
+> plan below (Freesound first, a small paid pack later) is not what happened.
+>
+> **Do not work from this file.** The rules are in `CLAUDE.md`, the reasons
+> are in `DECISIONS.md`, and what is actually open is in `.handoff/`.
+>
+> It is kept because three reports in `notes/shipping-review-2026-06-12/`
+> cite it by item ID (B4, C3, C8, D9, D13), and deleting it would orphan
+> those references. Two of its items were still live at archive time and were
+> carried into `.handoff/PENDING-DECISIONS.md` rather than left here: **B4**,
+> the wake-lock default, and **C6**, the multi-hour audio soak test.
+
+---
+
 # Review of tonight's work + queue for next sessions
 
 A second pass over Phase 1 with fresh eyes, plus what to tackle next. Read in priority order; cherry-pick what you want me to do first.
