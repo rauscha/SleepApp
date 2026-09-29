@@ -11,6 +11,8 @@ so this file is only live items.
 ## At a glance
 
 **Blocked on Andrew**
+- **0I** — the 1am rooster is found, in the rain layer. Confirm by ear, then
+  pick a fix.
 - **1** — every meditation plays with no bed. Pick pairings, or wait for 0G.
 - **0G** — a source for the singing-bowl replacement bed. Pick a route.
 - **0E** — the narration voice. 31 audition files are on your phone. This one
@@ -24,6 +26,45 @@ so this file is only live items.
   `notes/TODO_PHASE2-2026-05.md`; see "Carried forward" at the bottom. B4,
   the wake lock, was the third and is fixed.
 - **4** — cleanup chores, on request only.
+
+## 0I. OPEN 2026-09-29 — the 1am rooster is in `glass-1`, not the cabin
+
+0H cleared the cabin squeak by ear. Re-cut on Andrew's rule, "whenever I hit
+mark, go 10-20 seconds back", on every layer of both 1am marks. Only one layer
+has a sustained call in those windows: **`rain-on-window/rain-on-glass/
+glass-1.opus`**, which night-train borrows for its rain and rain-on-window
+ships directly.
+
+**Four calls, all in one stretch of the file.** Each is a 0.6-1.8 s two-partial
+harmonic tone, about 730 Hz with a strong second partial near 1450 Hz, falling
+at the end:
+
+| call | glass-1 position | against the marks |
+|---|---|---|
+| 1 | 233.9-235.1 s | **13.7 s before mark 9** (01:19:12) |
+| 2 | 253.1-253.7 s | **8.7 s before mark 10** (01:19:26) |
+| 3 | 263.4-265.1 s | just after mark 10 |
+| 4 | 275.2-276.9 s | 13 s after that |
+
+The file loops every 409 s, so this cluster comes back about 9 times an hour
+whenever glass-1 is the rotated variant, in both scenes.
+
+**Why the 2026-09-14 bird repair missed it:** `scan-tonal-events.py` and the
+repair only look at 2.5-9 kHz. These calls sit at 0.7-1.5 kHz, like the cabin
+squeak at 0.3 kHz. And 0H's first pass looked at each layer *at* the marked
+second, where the rain really was just rain.
+
+A 400-2500 Hz sweep of every rain-on-window and night-train file found no other
+sustained harmonic call. glass-2 has three short, weaker ones at 450-520 Hz
+that are worth a listen; the long ~420 Hz tones in the rumble files are thunder.
+
+**[ANDREW] Listen, then pick a fix.** Clips are in `~/taildrop-pending/rooster/`
+(`A` suspect 228-280 s, boosted 8 dB; `B` a control stretch). The scrubber is at
+`notes/marker-renders/rooster-back/scope/index.html` (gitignored). The fixes:
+spectral repair of the four calls in place (same tool and loop guarantees as
+the 2026-09-14 bird fix, with the band lowered), or replacing glass-1 with
+glass-3 in night-train. Either change to audio bytes needs a CACHE_VERSION
+bump.
 
 ## 0G. OPEN 2026-09-16 — the bowls are OUT of the catalogue, and need sourcing
 
