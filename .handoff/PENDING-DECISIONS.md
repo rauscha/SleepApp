@@ -58,7 +58,7 @@ A 400-2500 Hz sweep of every rain-on-window and night-train file found no other
 sustained harmonic call. glass-2 has three short, weaker ones at 450-520 Hz
 that are worth a listen; the long ~420 Hz tones in the rumble files are thunder.
 
-**[ANDREW] Listen, then pick a fix.** Clips are in `~/taildrop-pending/rooster/`
+**[ANDREW] Listen, then pick a fix.** The Taildrop copies were deleted 2026-09-29; the WAVs are in `notes/marker-renders/rooster-back/`
 (`A` suspect 228-280 s, boosted 8 dB; `B` a control stretch). The scrubber is at
 `notes/marker-renders/rooster-back/scope/index.html` (gitignored). The fixes:
 spectral repair of the four calls in place (same tool and loop guarantees as
