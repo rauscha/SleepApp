@@ -195,7 +195,8 @@ halves fixed, five tests, each half confirmed to fail without it.
 **The 1am rooster is in the CABIN, not the rain.** PENDING-DECISIONS 0H.
 Localised to `cabin-2.opus` at 160.0 s; the rain layer is just rain. Waiting
 on Andrew's ear to say rooster or railway squeak — scrubber at
-`notes/marker-renders/rooster-scope/index.html`.
+`notes/marker-renders/rooster-scope/index.html`. **Closed 2026-09-29: a
+mechanical squeak, fine to leave in** (archived with the verdict).
 
 **The whole library is rendered on `stone`.** Ten meditations (7 that had
 been written and unrendered since 2026-09-12) and all four stories, one
