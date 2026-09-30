@@ -280,11 +280,10 @@ CONTOUR_TOLERANCE_DB = 1.5
 # Files whose exact recipe input is gone, with the tolerance they are held
 # to instead and why. Keep this short, and empty it when a source returns.
 CONTOUR_EXCEPTIONS = {
-    # The shipped cut was levelled (dynaudnorm) from the raw 8-channel ORTF
-    # master, which went with the ORTF3D RAIN_02 zip. Re-levelling the cut
-    # from the stored, already-levelled master lands within +-1.8 dB in 10 s
-    # windows. Exact once Andrew re-downloads RAIN_02 (#669).
-    "monsoon/rain/rain-4.opus": 4.0,
+    # Empty. rain-4 sat here until 2026-09-30: its stored master did not
+    # reproduce the shipped cut, and the raw was gone. RAIN_01 of the 2026
+    # Immersive bundle brought the raw back; levelled whole-then-trimmed it
+    # matches within 0.29 dB.
 }
 CONTOUR_WINDOW = 10.0
 

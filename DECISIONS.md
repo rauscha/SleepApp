@@ -1221,3 +1221,13 @@ Web Audio is exactly what the OS freezes about 90 s after the screen goes off.
 A pre-rendered file loops natively like every other layer, so it survives the
 night. The regenerated beds come from the fixed tool and the fixed seed; they
 are not patched.
+
+**Addendum, 2026-09-30, later: rain-4 is exact too.** Andrew downloaded
+the 2026 Immersive bundle straight to tikiserv. Its reorganised
+`ORTF3D_RAIN_01` (now 48 kHz/24-bit) carries #669. Levelled whole and then
+trimmed, it reproduces the shipped rain-4 within 0.29 dB over time and
+0.02 dB in every band, so `CONTOUR_EXCEPTIONS` is empty. The master in
+`~/sounds/normalized` had been built another way; it is kept in
+`_superseded/`. This commit has no CACHE_VERSION bump: the new bytes differ
+from v18's by a sub-2 dB contour, not worth a 470 MB re-download, and they
+ride the next bump.

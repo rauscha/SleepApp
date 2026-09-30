@@ -13,8 +13,6 @@ so this file is only live items.
 **Blocked on Andrew**
 - **0I** — the rooster is confirmed in `glass-1`. Retire it; pick its
   replacement source (nothing in the local FTUS Concrete pack fits).
-- **0K** (optional) — re-download ORTF3D RAIN_02 so `monsoon/rain-4` can be
-  re-cut exactly; it ships on a close approximation meanwhile.
 - **1** — every meditation plays with no bed. Pick pairings, or wait for 0G.
 - **0G** — a source for the singing-bowl replacement bed. Pick a route.
 - **0E** — the narration voice. 31 audition files are on your phone. This one
@@ -32,20 +30,13 @@ so this file is only live items.
   the wake lock, was the third and is fixed.
 - **4** — cleanup chores, on request only.
 
-## 0K. OPEN 2026-09-30 — rain-4 needs its raw master for an exact re-cut
+## 0K. DONE 2026-09-30 — rain-4 re-cut exactly
 
-Every loop was re-cut from source on 2026-09-30 (DECISIONS.md, "Re-cut from
-source, never patched in place"). 54 of 55 reproduce their shipped files
-exactly. `monsoon/rain/rain-4` could not: its shipped cut was levelled from
-the raw 8-channel ORTF master (#669, `RAINMetl-..._Albury, 07.wav`), and that
-master left with the **ORTF3D RAIN_02** zip. It ships on a re-levelled
-approximation, within +-1.8 dB of the old level contour and 0.36 dB in every
-band.
-
-**[ANDREW, optional]** Re-download ORTF3D RAIN_02 to crane-desk `D:\Sounds`.
-Then extract #669, level it with `tools/level-ftus.py`, remove rain-4 from
-`CONTOUR_EXCEPTIONS` in `tools/recut-from-source.py`, and re-cut. The same
-zip holds #671, the unused sister of glass-3, which is one of 0I's options.
+Andrew downloaded the 2026 Immersive bundle's `ORTF3D_RAIN_01` to tikiserv
+through a remote browser (`~/remote-browser.sh`). #669 is in it. rain-4 is
+now exact (DECISIONS.md addendum). The zips live in
+`~/Downloads/remote-browser/`; the extracted picks are in
+`~/sounds/ftus/picked-2026-09-30/`.
 
 ## 0I. OPEN 2026-09-29 — the 1am rooster is in `glass-1`, not the cabin
 

@@ -32,7 +32,9 @@
 
 ## Next
 - 0I: a glass-1 replacement source (Andrew's Gumroad), or drop glass-1 now.
-- 0K (optional): re-download ORTF3D RAIN_02 so rain-4 can be re-cut exactly.
+- rain-4 is exact now (0K done); its bytes ride the next CACHE_VERSION bump.
+- glass-1 candidates are auditioned in `~/taildrop-pending/glass/`: Guangzhou
+  window #13925 (loops at 0.01 dB) vs Sri Lanka #14164. Waiting on Andrew's ear.
 - Everything else on PENDING-DECISIONS is unchanged: voice 0E, bowls 0G,
   photo 0F, device pass 2.
 - **Watch the next overnight** on v18. If anything cuts out, mark it and
