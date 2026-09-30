@@ -31,10 +31,9 @@
   hole" and "Re-cut from source, never patched in place".
 
 ## Next
-- 0I: a glass-1 replacement source (Andrew's Gumroad), or drop glass-1 now.
 - rain-4 is exact now (0K done); its bytes ride the next CACHE_VERSION bump.
-- glass-1 candidates are auditioned in `~/taildrop-pending/glass/`: Guangzhou
-  window #13925 (loops at 0.01 dB) vs Sri Lanka #14164. Waiting on Andrew's ear.
+- glass-1 is retired; glass-4 (Sri Lanka rain on glass, #14164) replaces it in both
+  scenes. A Guangzhou splatter variant is offered, not built.
 - Everything else on PENDING-DECISIONS is unchanged: voice 0E, bowls 0G,
   photo 0F, device pass 2.
 - **Watch the next overnight** on v18. If anything cuts out, mark it and

@@ -1231,3 +1231,28 @@ trimmed, it reproduces the shipped rain-4 within 0.29 dB over time and
 `_superseded/`. This commit has no CACHE_VERSION bump: the new bytes differ
 from v18's by a sub-2 dB contour, not worth a 470 MB re-download, and they
 ride the next bump.
+
+## glass-1 retired; glass-4 is a real rain-on-glass recording (2026-09-30)
+
+glass-1 (Pixabay, mono, already flagged for replacement) carried the 1am
+rooster. Andrew heard it and asked for it to go: "nuke that and grab a new
+one". The FTUS "Before 2026" All In One bundle files rain on glass under
+RAIN_08 (GLASS) and RAIN_11 (INTERIOR), and the bundle's metadata map
+(`~/sounds/ftus/aiob-meta/`) found only two long enough for a 409 s loop:
+
+- **#13925, Guangzhou hotel window** (457 s). Andrew loved the splatter,
+  but its middle has loud honks ("no thank you"), and any 409 s window must
+  include them.
+- **#14164, Jaffna hotel room, closed glass windows, heavy rain** (420 s).
+  Screened clean for tonal events in both bands and for speech. Chosen by
+  ear.
+
+glass-4 was levelled with `level-ftus.py` (front pair, balance +-0.85 dB,
+dynaudnorm, two-pass linear to -23.9 LUFS, the glass element's median) and
+cut with the fixed loop tool: a 0.63 dB wrap step, no hole. It replaces
+glass-1 in both night-train and rain-on-window. As a new filename it needs
+no CACHE_VERSION bump. glass-1's files are deleted; git keeps them.
+
+Possible next variant: Guangzhou's long take from 250 s on (after the last
+honk) joined to its clean 240 s take (01) makes about 427 s of the splatter
+Andrew liked, with no honks. Not built; offered.

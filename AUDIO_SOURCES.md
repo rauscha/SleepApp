@@ -19,10 +19,10 @@ decisions is in `DECISIONS.md` ("Clean single-producer audio source",
 
 | Source | Files | What it is |
 |---|---|---|
-| **Free To Use Sounds** | ~37 | A purchased bundle ("All In One Immersive Bundle"). The largest single source. Personal build only — derivative works are permitted, the originals may not be redistributed. |
+| **Free To Use Sounds** | ~38 | Purchased bundles (the Immersive bundle's ORTF 3D masters, and since 2026-09-30 one stereo recording from the All In One bundle). The largest single source. Personal build only — derivative works are permitted, the originals may not be redistributed. |
 | **George Vlad / Mindful Audio** | ~21 | Free long-form releases on his YouTube channel, pulled with yt-dlp. A single recordist, pristine remote field recordings, often 1–2h+. |
 | **FOBOS PLANET** | 5 | The free "Fireplace 12h" YouTube release; the whole fireplace scene. |
-| **Pixabay** | 6 | Early material, mostly in rain-on-window. Pixabay's licence fails a redistribution test, which is moot now the app is explicitly personal-use. |
+| **Pixabay** | 5 | Early material, mostly in rain-on-window. glass-1 was retired on 2026-09-30 (a rooster, 0I). Pixabay's licence fails a redistribution test, which is moot now the app is explicitly personal-use. |
 | **user-provided** | 2 | Andrew's own recordings. |
 | **audiocraft MusicGen** | 5 | Locally generated, **rejected**, and held back with the singing-bowl scene. |
 | **synthesized** | 3 | The pre-rendered brown/pink/white noise beds in `public/audio/_bed/`. |
@@ -38,7 +38,7 @@ Per scene:
 | monsoon | George Vlad ×5, FTUS ×4 |
 | night-train | FTUS ×4 |
 | ocean-night | FTUS ×6, George Vlad ×5 |
-| rain-on-window | Pixabay ×5, FTUS ×2, user ×1 |
+| rain-on-window | Pixabay ×4, FTUS ×3, user ×1 |
 | waterfall-valley | FTUS ×6 |
 | singing-bowl *(held back)* | MusicGen ×5, rejected |
 

@@ -11,8 +11,6 @@ so this file is only live items.
 ## At a glance
 
 **Blocked on Andrew**
-- **0I** — the rooster is confirmed in `glass-1`. Retire it; pick its
-  replacement source (nothing in the local FTUS Concrete pack fits).
 - **1** — every meditation plays with no bed. Pick pairings, or wait for 0G.
 - **0G** — a source for the singing-bowl replacement bed. Pick a route.
 - **0E** — the narration voice. 31 audition files are on your phone. This one
@@ -38,69 +36,12 @@ now exact (DECISIONS.md addendum). The zips live in
 `~/Downloads/remote-browser/`; the extracted picks are in
 `~/sounds/ftus/picked-2026-09-30/`.
 
-## 0I. OPEN 2026-09-29 — the 1am rooster is in `glass-1`, not the cabin
+## 0I. DONE 2026-09-30 — glass-1 retired, glass-4 (Sri Lanka, rain on glass) in
 
-**Confirmed by ear 2026-09-29:** "THAT'S THE EVIL BIRD WAKING ME." And
-glass-1 was already flagged for replacement (mono Pixabay source), so the plan
-is to **retire it**, not repair it. It ships in both night-train and
-rain-on-window.
-
-**Replacement source: nothing on hand fits.** The only FTUS rain on
-crane-desk is `D:\Sounds\RAIN_01` (the stereo WOSB pack), and it is entirely
-the CONCRETE category. Its window-perspective takes are all too short for a
-409 s loop, which needs at least 445 s: Korea hotel-window nights run 300 s,
-Tbilisi hotel window 300 s, and Korea morning 424 s with "Crows" in the name.
-The long files are city traffic or Denver balcony B-format with thunder. The
-ORTF3D umbrella series is glass-3's source (#670) plus an unused sister, #671
-(12:25, same session, also "Birds and Crows"), but ORTF3D_RAIN_02 is no longer
-on disk. Glass or window categories would be in a later RAIN ZIP. Getting it
-needs Andrew's Gumroad login. Options:
-1. Download the FTUS RAIN ZIP that holds glass/window (Andrew), then cut from it.
-2. Re-download ORTF3D_RAIN_02 for #671. Its 12 minutes leave room to choose a
-   409 s window with no crows.
-3. Interim: drop glass-1 from both scenes now. night-train's rain then runs on
-   glass-3 alone, one variant short of the two-per-element target.
-
-The original analysis follows.
-
-### (analysis, 2026-09-29)
-
-0H cleared the cabin squeak by ear. Re-cut on Andrew's rule, "whenever I hit
-mark, go 10-20 seconds back", on every layer of both 1am marks. Only one layer
-has a sustained call in those windows: **`rain-on-window/rain-on-glass/
-glass-1.opus`**, which night-train borrows for its rain and rain-on-window
-ships directly.
-
-**Four calls, all in one stretch of the file.** Each is a 0.6-1.8 s two-partial
-harmonic tone, about 730 Hz with a strong second partial near 1450 Hz, falling
-at the end:
-
-| call | glass-1 position | against the marks |
-|---|---|---|
-| 1 | 233.9-235.1 s | **13.7 s before mark 9** (01:19:12) |
-| 2 | 253.1-253.7 s | **8.7 s before mark 10** (01:19:26) |
-| 3 | 263.4-265.1 s | just after mark 10 |
-| 4 | 275.2-276.9 s | 13 s after that |
-
-The file loops every 409 s, so this cluster comes back about 9 times an hour
-whenever glass-1 is the rotated variant, in both scenes.
-
-**Why the 2026-09-14 bird repair missed it:** `scan-tonal-events.py` and the
-repair only look at 2.5-9 kHz. These calls sit at 0.7-1.5 kHz, like the cabin
-squeak at 0.3 kHz. And 0H's first pass looked at each layer *at* the marked
-second, where the rain really was just rain.
-
-A 400-2500 Hz sweep of every rain-on-window and night-train file found no other
-sustained harmonic call. glass-2 has three short, weaker ones at 450-520 Hz
-that are worth a listen; the long ~420 Hz tones in the rumble files are thunder.
-
-**[ANDREW] Listen, then pick a fix.** The Taildrop copies were deleted 2026-09-29; the WAVs are in `notes/marker-renders/rooster-back/`
-(`A` suspect 228-280 s, boosted 8 dB; `B` a control stretch). The scrubber is at
-`notes/marker-renders/rooster-back/scope/index.html` (gitignored). The fixes:
-spectral repair of the four calls in place (same tool and loop guarantees as
-the 2026-09-14 bird fix, with the band lowered), or replacing glass-1 with
-glass-3 in night-train. Either change to audio bytes needs a CACHE_VERSION
-bump.
+The rooster file is gone from both scenes. glass-4 is FTUS #14164, a real
+rain-on-glass recording chosen by Andrew's ear (DECISIONS.md, "glass-1
+retired"). **Offered, not built:** a Guangzhou variant from its honk-free
+stretches, if Andrew wants that splatter as an extra variant.
 
 ## 0G. OPEN 2026-09-16 — the bowls are OUT of the catalogue, and need sourcing
 
