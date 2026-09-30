@@ -192,7 +192,16 @@ audio**, then `sceneCatalogue.test.ts` verifies every file landed on its prime.
   this is what put a 19 dB step in a shipped file for months. Check the slack
   *first* when a seam is bad; only then blame the source.
 - `python tools/loopify-scenes.py --audit` measures the wrap step of every
-  shipped variant read-only. Anything over 3 dB wants a re-cut.
+  shipped variant read-only. Anything over 3 dB wants a re-cut. It also
+  reports the **hole**: the dip *inside* the wrap region. The step measure
+  never looks there, which is how every loop cut before 2026-09-30 shipped
+  a 1.5-7 s dropout at each wrap (DECISIONS.md, "The wrap was a hole").
+  `tools/patch-wrap-holes.py` repairs a holed file in place.
+- **Then listen in the mix: `python tools/seam-review.py [scene] --render`.**
+  It plays each variant through its wrap with the rest of the scene running
+  steadily at voiced levels and compares spectra against the file's own
+  variation. A seam can pass the level audit and still change timbre. Run
+  both after any change to scene audio.
 
 ### Format
 
@@ -292,6 +301,9 @@ Spotify/Calm/YouTube.
   React unmount cleanup. A screen exit while audio plays must strip nothing.
 - **Overlapping starts serialize to one winner** via `startGeneration` — a
   superseded build is `dispose()`d, not started.
+- **A marker is a loop recorder** (2026-09-30): the tap is when Andrew
+  noticed, 10-20 s or more after the sound. Always scrub BACK from a mark;
+  the seam window counts only wraps in the 30 s before it.
 - **Debug markers are session-owned too** (2026-09-11).
   `HowlScenePlayer.markMoment()` records what every layer is playing and where
   it is inside its loop; store in `src/diagnostics/markers.ts`, desk-side

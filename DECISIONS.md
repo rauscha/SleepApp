@@ -1059,17 +1059,64 @@ default linear curve dips 2.9 dB mid-wrap; qsin holds within 0.1 dB. Verified
 on steady pink noise at S=0, 3 and 40: level flat through the wrap.
 `--audit` reports `hole dB` and flags anything over 6 dB.
 
-**Shipped files are not re-cut in this change.** A shipped variant is exactly
-P long, so it has no audio past the loop point to crossfade with. About half
-the sources are on tikiserv; the rest (fireplace, ocean waves 1-3, monsoon
-rain 1-3, most wind and bird layers) are not. Re-cutting from source would
-also undo the tonal repairs made on the shipped files. The repair that fits
-every file is an in-place patch: replace the damaged arc [P-C, h+C] with a
-level-matched stretch of the same file, joined by two equal-power crossfades.
-Length is unchanged to the sample. Prototyped on `forest-day/creek-2`: the wrap
-goes from a -79 dB hole to -26..-30 dB, the creek's own variation. Waiting on
-Andrew to approve the catalogue-wide pass, because it re-downloads the library
-on every install.
+**The shipped files: repaired in place, not re-cut.** A shipped variant is
+exactly P long, so it has no audio past the loop point to crossfade with.
+About half the sources are on tikiserv; the rest (fireplace, ocean waves 1-3,
+monsoon rain 1-3, most wind and bird layers) are not. Re-cutting from source
+would also undo the tonal repairs made on the shipped files.
+`tools/patch-wrap-holes.py` repairs all of them in place. It replaces the
+damaged arc around the wrap with a donor stretch from the same file, joined
+by equal-power crossfades, and the sample count does not change. Andrew
+approved the pass on 2026-09-30. 53 holed variants were patched, and every
+repaired wrap now dips no more than the file does on its own. Two more,
+`pavement-3` and `waterfall-valley/creek-below/creek-1`, had no hole: their
+cuts started past 6 s, so each wrap was a hard splice with no crossfade at
+all, and pavement-3's wind rumble stopped dead at it. They were given real
+crossfades with `--force` after the seam review showed the step. The three synth beds
+(`_bed/*.opus`) had the same hole at 887 s and were regenerated with the fixed
+tool (`--force-beds`, fixed seed). CACHE_VERSION v16 -> v17.
+
+- **A hole is judged against the material, not an absolute number.** Waves
+  trough and wind lulls 6-14 dB on their own, so a wrap counts as a hole
+  only past 6 dB AND 3 dB beyond the file's own 95th-percentile dip, measured
+  the same way at every second. The audit and the patch tool share the rule.
+- **Donors are matched by spectrum, not level.** The first pass chose donors
+  by broadband level. The seam review below caught what that does: on
+  forest-evening's creeks, each built from two different recordings, the
+  level-matched donor came from the thin recording, and every wrap lost
+  everything under 600 Hz for about 15 s. Donors are now chosen so that each
+  end matches, in octave bands, the audio it crossfades against. The pass
+  was redone from the original files, so nothing was patched twice.
+- **When no donor can match both ends, the change is made slowly.** If a
+  loop's tail and head are different material (the two composites, night-4's
+  crickets, rain-on-window's rumble-2), the incoming crossfade is 20 s, as
+  slow as the join inside the composite, not a 6 s lurch.
+- **Donors avoid calls.** Any stretch within a second of a narrow tonal event
+  (a bird, a squeak) is ruled out, since a donor is heard twice per loop.
+  glass-1's first pick had started a tenth of a second after the rooster.
+
+**Seams are reviewed in the mix, not only on paper.** `tools/seam-review.py`
+(Andrew's ask, 2026-09-30) renders every variant through its wrap with the
+rest of the scene playing steadily at its voiced levels, and the synth bed
+under it. It compares third-octave spectra across the wrap against the file's
+own variation over the same geometry at 40 random points, and it checks for
+a click against the file's own transients. With `--render` it writes the mix
+clips and a spectrogram scrubber per scene to `notes/seam-review/`. Run it
+after any change to scene audio, alongside `--audit`.
+
+Final state: the audit finds 0 of 66 variants with a hole. The review flags
+nothing audible in the mix except `glass-1`, which is being retired (0I).
+What it still flags on a layer heard alone is below 100 Hz, in recordings
+whose low rumble comes and goes, and forest-evening's composite creeks, whose
+change of recording at the wrap is by design and now takes 20 s.
+
+**The synth bed was not retuned.** Andrew suggested gently adjusting the
+noise bed to even out any mismatch. Measured in the mix, with the bed
+playing, no seam other than glass-1 sits outside its file's natural
+variation. The bed's low end is already covering the rumble differences the
+solo measurements show, so changing how every scene sounds had no measured
+need behind it. If a seam ever does stand out in the mix, the bed level
+(`synth.defaultVolume`) is the first thing to try.
 
 ## Marks are a loop recorder (2026-09-30)
 

@@ -15,7 +15,19 @@
     "loopOffsetSeconds": 521,
     "loudnorm": "two-pass linear, I=-21.48 LUFS, TP=-1.0 dBTP",
     "sampleRate": 48000,
-    "bitDepth": 24
+    "bitDepth": 24,
+    "wrapPatch": {
+      "date": "2026-09-29",
+      "tool": "tools/patch-wrap-holes.py",
+      "holeBeforeDb": 33.4,
+      "holeAfterDb": 1.9,
+      "naturalDipP95Db": 6.0,
+      "patchedArcSeconds": 18.0,
+      "crossfadeInSeconds": 6.0,
+      "donorStartSeconds": 451.0,
+      "donorOctaveMismatchDb": 2.06,
+      "why": "loopify-scenes.py never mixed the wrap crossfade tail in (afade ran before asetpts), so the loop wrapped into a fade-up from near silence every P seconds. Repaired in place: the arc around the wrap is replaced by a spectrum-matched stretch of this file with equal-power crossfades; sample count unchanged. DECISIONS.md, 'The wrap was a hole'."
+    }
   },
   "notes": "Front ORTF pair from 8ch ORTF 3D master; see notes/personal-sounds-selection-2026-08-17.md Seamless-looped to 521s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless. Encoded as Opus (128k) \u2014 see DECISIONS.md 'Ship scene audio as Opus, not MP3'.",
   "trimmedTo": "521s",

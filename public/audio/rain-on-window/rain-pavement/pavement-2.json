@@ -5,5 +5,19 @@
   "downloadedAt": "2026-05-16",
   "trimmedTo": "521s",
   "outputFormat": "48 kHz / 128k / stereo Opus",
-  "notes": "Re-encoded from user-provided source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3. 2026-06-12: acrossfade-extended 525s->540s (acrossfade d=20 with a second copy, re-loudnorm -23 LUFS) so the rain-pavement element clears loopOffset 521 + 5s crossfade with >=10s margin (roadmap step 2.1). Seamless-looped to 521s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
+  "notes": "Re-encoded from user-provided source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3. 2026-06-12: acrossfade-extended 525s->540s (acrossfade d=20 with a second copy, re-loudnorm -23 LUFS) so the rain-pavement element clears loopOffset 521 + 5s crossfade with >=10s margin (roadmap step 2.1). Seamless-looped to 521s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless.",
+  "processing": {
+    "wrapPatch": {
+      "date": "2026-09-29",
+      "tool": "tools/patch-wrap-holes.py",
+      "holeBeforeDb": 52.1,
+      "holeAfterDb": 0.2,
+      "naturalDipP95Db": 2.0,
+      "patchedArcSeconds": 18.0,
+      "crossfadeInSeconds": 6.0,
+      "donorStartSeconds": 34.0,
+      "donorOctaveMismatchDb": 1.41,
+      "why": "loopify-scenes.py never mixed the wrap crossfade tail in (afade ran before asetpts), so the loop wrapped into a fade-up from near silence every P seconds. Repaired in place: the arc around the wrap is replaced by a spectrum-matched stretch of this file with equal-power crossfades; sample count unchanged. DECISIONS.md, 'The wrap was a hole'."
+    }
+  }
 }

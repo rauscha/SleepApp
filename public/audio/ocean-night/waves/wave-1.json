@@ -5,5 +5,19 @@
   "downloadedAt": "2026-07-01",
   "notes": "Clean-source refresh 2026-07-01: cut @1000s of the source recording, stereo, 48 kHz, loudnorm I=-20 LUFS TP=-1.0. FLAC intermediate; loopify-scenes.py trims to the element's prime loopOffset and encodes Opus. Seamless-looped to 251s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless. Encoded as Opus (128k) \u2014 see DECISIONS.md 'Ship scene audio as Opus, not MP3'.",
   "trimmedTo": "251s",
-  "outputFormat": "Opus"
+  "outputFormat": "Opus",
+  "processing": {
+    "wrapPatch": {
+      "date": "2026-09-29",
+      "tool": "tools/patch-wrap-holes.py",
+      "holeBeforeDb": 32.6,
+      "holeAfterDb": 5.4,
+      "naturalDipP95Db": 13.4,
+      "patchedArcSeconds": 18.0,
+      "crossfadeInSeconds": 6.0,
+      "donorStartSeconds": 76.0,
+      "donorOctaveMismatchDb": 1.13,
+      "why": "loopify-scenes.py never mixed the wrap crossfade tail in (afade ran before asetpts), so the loop wrapped into a fade-up from near silence every P seconds. Repaired in place: the arc around the wrap is replaced by a spectrum-matched stretch of this file with equal-power crossfades; sample count unchanged. DECISIONS.md, 'The wrap was a hole'."
+    }
+  }
 }

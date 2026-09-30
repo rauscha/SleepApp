@@ -7,5 +7,19 @@
   "outputFormat": "48 kHz / 128k / stereo Opus",
   "replaceWhen": "once the rest of the app is built",
   "qualityWarning": "24 kHz / 160 kbps source: most-used variant in the most-used scene; upgrade priority",
-  "notes": "Re-encoded from Pixabay source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3. Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
+  "notes": "Re-encoded from Pixabay source: 5s head trim, 3s fades each end, mono->stereo if needed, loudnorm -23 LUFS, 48 kHz 192 kbps MP3. Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless.",
+  "processing": {
+    "wrapPatch": {
+      "date": "2026-09-29",
+      "tool": "tools/patch-wrap-holes.py",
+      "holeBeforeDb": 59.8,
+      "holeAfterDb": 7.6,
+      "naturalDipP95Db": 7.7,
+      "patchedArcSeconds": 18.0,
+      "crossfadeInSeconds": 6.0,
+      "donorStartSeconds": 44.0,
+      "donorOctaveMismatchDb": 3.47,
+      "why": "loopify-scenes.py never mixed the wrap crossfade tail in (afade ran before asetpts), so the loop wrapped into a fade-up from near silence every P seconds. Repaired in place: the arc around the wrap is replaced by a spectrum-matched stretch of this file with equal-power crossfades; sample count unchanged. DECISIONS.md, 'The wrap was a hole'."
+    }
+  }
 }

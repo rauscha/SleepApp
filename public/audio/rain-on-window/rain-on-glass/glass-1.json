@@ -15,6 +15,18 @@
       "tool": "tools/repair-tonal-events.py",
       "why": "Narrow tonal intrusions (bird calls) audible on every loop. The FTUS source name for the rain-on-glass takes reads 'Birds and Crows', so they were documented at selection and missed. Spectral repair rather than a re-cut: sample count and the gapless 6s fade-wrap are preserved exactly, so the prime loop offset and seam are untouched.",
       "cost": "One extra generation of Opus 128k across the whole file, unavoidable when the source is already lossy. Integrated loudness unchanged at measurement precision."
+    },
+    "wrapPatch": {
+      "date": "2026-09-29",
+      "tool": "tools/patch-wrap-holes.py",
+      "holeBeforeDb": 56.6,
+      "holeAfterDb": 2.2,
+      "naturalDipP95Db": 3.7,
+      "patchedArcSeconds": 18.0,
+      "crossfadeInSeconds": 6.0,
+      "donorStartSeconds": 214.0,
+      "donorOctaveMismatchDb": 1.68,
+      "why": "loopify-scenes.py never mixed the wrap crossfade tail in (afade ran before asetpts), so the loop wrapped into a fade-up from near silence every P seconds. Repaired in place: the arc around the wrap is replaced by a spectrum-matched stretch of this file with equal-power crossfades; sample count unchanged. DECISIONS.md, 'The wrap was a hole'."
     }
   }
 }

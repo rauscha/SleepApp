@@ -5,5 +5,19 @@
   "downloadedAt": "2026-05-29",
   "trimmedTo": "691s",
   "outputFormat": "48 kHz / 128k / stereo Opus",
-  "notes": "Two forest-day creek MP3s (460s + 540s, Pixabay + user-provided) acrossfaded into one ~750s creek-trickle variant so loopOffset 691 holds. 20s triangular crossfade. Loudnorm I=-20 LUFS, 44.1 kHz 128 kbps stereo MP3. Seamless-looped to 691s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless."
+  "notes": "Two forest-day creek MP3s (460s + 540s, Pixabay + user-provided) acrossfaded into one ~750s creek-trickle variant so loopOffset 691 holds. 20s triangular crossfade. Loudnorm I=-20 LUFS, 44.1 kHz 128 kbps stereo MP3. Seamless-looped to 691s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless.",
+  "processing": {
+    "wrapPatch": {
+      "date": "2026-09-29",
+      "tool": "tools/patch-wrap-holes.py",
+      "holeBeforeDb": 52.0,
+      "holeAfterDb": 2.2,
+      "naturalDipP95Db": 4.2,
+      "patchedArcSeconds": 32.0,
+      "crossfadeInSeconds": 20.0,
+      "donorStartSeconds": 318.0,
+      "donorOctaveMismatchDb": 10.79,
+      "why": "loopify-scenes.py never mixed the wrap crossfade tail in (afade ran before asetpts), so the loop wrapped into a fade-up from near silence every P seconds. Repaired in place: the arc around the wrap is replaced by a spectrum-matched stretch of this file with equal-power crossfades; sample count unchanged. DECISIONS.md, 'The wrap was a hole'."
+    }
+  }
 }
