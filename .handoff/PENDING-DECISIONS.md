@@ -11,8 +11,6 @@ so this file is only live items.
 ## At a glance
 
 **Blocked on Andrew**
-- **0J** — every loop drops out at its wrap (55 of 66 files). Tool fixed;
-  approve the in-place repair of the shipped files.
 - **0I** — the rooster is confirmed in `glass-1`. Retire it; pick its
   replacement source (nothing in the local FTUS Concrete pack fits).
 - **1** — every meditation plays with no bed. Pick pairings, or wait for 0G.
@@ -23,46 +21,13 @@ so this file is only live items.
 - **2** — the device pass, which is the gate on tagging v1.0.
 
 **Buildable without you**
-- **0B** — 8 of 71 variants still wrap with more than a 3 dB step.
+- **0B** — 6 of 66 variants still wrap with a level step over 3 dB (all
+  wave/wind/rumble; the in-mix seam review puts each within natural
+  variation, so this is now low priority).
 - **C6 / variants** — two items carried out of the archived
   `notes/TODO_PHASE2-2026-05.md`; see "Carried forward" at the bottom. B4,
   the wake lock, was the third and is fixed.
 - **4** — cleanup chores, on request only.
-
-## 0J. OPEN 2026-09-30 — every loop drops out at its wrap
-
-DECISIONS.md "The wrap was a hole". `seamless_loop()` never mixed the
-crossfade tail in, so **55 of 66 shipped variants** wrap into a 1.5-7 s
-fade-up from silence, 30-70 dB deep, every P seconds. The tool is fixed and
-`--audit` now reports `hole dB` (commit `1082025`). **No shipped audio has
-been touched yet.**
-
-**Explains four of the eleven 2026-09-19 marks,** once they are read as a
-loop recorder (the event is 10-20 s before the tap):
-
-| mark | scene | layer that wrapped | before the tap |
-|---|---|---|---|
-| #2 09-14 21:57 | forest-night | `creek-1`, the only layer playing (the others were stuck) | 17.5 s |
-| #3 09-14 22:18 | rain-on-window | `pavement-1` | 10.8 s |
-| #5 09-18 23:12 | monsoon | `rain-2`, the heavy rain that carries the scene | 12.5 s |
-| #8 09-18 23:18 | forest-day | `creek-2` at 0.80, the loudest layer | 11.5 s |
-
-The rest: #0 and #1 are the stuck-layer bug (fixed 2026-09-19). #4, #6 and #7
-come within 8-33 s of a scene start, where every layer opens on this same
-fade-up. #9 and #10 are the rooster (0I). #3 also has a glass-2 swell of
-+11 dB at 23.8 s back and a 2 s thunder tone at 17 s back; the hole is
-the likelier of the three.
-
-**[ANDREW] Approve the repair.** The proposal is to patch every holed file in
-place: replace the damaged arc [P-C, h+C] with a level-matched stretch of the
-same file, joined by two equal-power crossfades. Length is unchanged to the
-sample, so the loop stays on its prime, and it needs no source recordings.
-Half of those aren't on tikiserv, and re-cutting from source would undo the
-2026-09-14 bird repairs. About 20 s of each file is duplicated once per loop,
-which is inaudible on rain, fire, water and wind. Bird layers get a donor
-stretch picked from a quiet passage. Prototype:
-`notes/marker-renders/wrap-hole/creek-2-wrap-{before,after}-wrap-at-15s.mp3`
-(gitignored). One CACHE_VERSION bump, so every install re-downloads ~470 MB.
 
 ## 0I. OPEN 2026-09-29 — the 1am rooster is in `glass-1`, not the cabin
 

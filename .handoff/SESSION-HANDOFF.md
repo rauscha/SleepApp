@@ -1,3 +1,39 @@
+# Session hand-off — 2026-09-30 (machine: tikiserv)
+# Newest block. Everything below is prior history.
+
+## STATE
+- `main` clean, pushed, single worktree. CACHE_VERSION **v17**.
+- Green: tsc, eslint, vitest **294/294**, build. Two legacy
+  `SceneCoordinator` tests time out when the box is under load (load avg ~8);
+  they pass on a quiet box. This was logged the same way on 2026-09-14.
+
+## This session: the rooster, and the hole at every wrap
+- **Marks are a loop recorder.** The tap is when Andrew noticed, 8.7-17.5 s
+  after the sound. Always scrub BACK. The seam window is now 30 s, before the
+  tap only (app, review tool, tests). It is saved to memory and CLAUDE.md.
+- **The 1am rooster is in `rain-on-window/rain-on-glass/glass-1`** (four
+  calls at 233.9-276.9 s), confirmed by ear. The cabin squeak was cleared by
+  ear and stays. **glass-1 is to be retired, and it is still waiting on a
+  replacement source** (0I). Nothing in the local FTUS rain pack is long
+  enough.
+- **Every loop dropped out at its wrap.** `seamless_loop()` never mixed the
+  crossfade tail in. This caused four of the eleven marks, including the
+  monsoon "wash out". The tool is fixed, 55 files were repaired in place, and
+  the beds were regenerated. DECISIONS.md, "The wrap was a hole".
+- New tools: `patch-wrap-holes.py` (in-place wrap repair) and
+  `seam-review.py` (each wrap heard in the scene mix, with spectra against
+  the file's own variation). `--audit` now reports holes. Run both after any
+  audio change.
+
+## Next
+- 0I: a glass-1 replacement source (Andrew's Gumroad), or drop glass-1 now.
+- Everything else on PENDING-DECISIONS is unchanged: voice 0E, bowls 0G,
+  photo 0F, device pass 2.
+- **Watch the next overnight** on v17. If anything cuts out, mark it and
+  scrub back.
+
+---
+
 # Session hand-off — 2026-09-19 (machine: tikiserv)
 # Newest block. Everything below is prior history; this supersedes it for
 # REPO STATE.
