@@ -392,18 +392,33 @@ AUDIT_FLAG_DB = 3.0
 # blind to it by design -- it compares [P-C, P] with [C, 2C] and never looks
 # at [0, C] -- which is how every loop cut before 2026-09-30 shipped one.
 AUDIT_HOLE_DB = 6.0
+HOLE_NATURAL_MARGIN_DB = 3.0
 HOLE_FRAME_SECONDS = 0.25
 
 
 def wrap_hole_db(path):
-    """How far the quietest quarter-second in the wrap region [0, C] sits
-    below the level of the last C seconds, which is what plays into it."""
+    """(hole, natural): how far the quietest quarter-second in the wrap
+    region [0, C] sits below the last C seconds, which is what plays into
+    it; and the 95th percentile of that same dip measured at every second
+    away from the wrap. Waves trough and wind lulls on their own, so a wrap
+    is a hole only when it dips well past what the material does anyway.
+    Mirrors tools/patch-wrap-holes.py, which repairs what this flags."""
     env = seamfit.level_envelope(path, frame_seconds=HOLE_FRAME_SECONDS)
     n = int(round(C / HOLE_FRAME_SECONDS))
-    if len(env) < 3 * n:
-        return None
+    if len(env) < 5 * n:
+        return None, None
     tail = sum(env[-n:]) / n
-    return tail - min(env[:n])
+    hole = tail - min(env[:n])
+    step = int(round(1 / HOLE_FRAME_SECONDS))
+    dips = sorted(sum(env[i - n:i]) / n - min(env[i:i + n])
+                  for i in range(2 * n, len(env) - 2 * n, step))
+    natural = dips[int(0.95 * (len(dips) - 1))] if dips else 0.0
+    return hole, natural
+
+
+def is_hole(hole, natural):
+    return (hole is not None and hole > AUDIT_HOLE_DB
+            and hole > natural + HOLE_NATURAL_MARGIN_DB)
 
 
 def audit_seams():
@@ -429,34 +444,37 @@ def audit_seams():
             print(f"    SKIP {os.path.relpath(path, ROOT)} (too short to measure)")
             continue
         step, tail, post, mean = m
-        hole = wrap_hole_db(path)
+        hole, natural = wrap_hole_db(path)
         rows.append({
             "scene": scene, "element": el.get("id", "?"),
             "variant": os.path.basename(path), "period": period,
             "durationSeconds": round(dur, 1), "stepDb": step,
             "tailDb": tail, "postWrapDb": post, "meanDb": mean,
             "tailDevDb": tail - mean, "postWrapDevDb": post - mean,
-            "holeDb": hole, "path": path,
+            "holeDb": hole, "naturalDipDb": natural, "path": path,
         })
-    rows.sort(key=lambda r: (-(r["holeDb"] or 0), -r["stepDb"]))
+    rows.sort(key=lambda r: (-((r["holeDb"] or 0) - (r["naturalDipDb"] or 0)),
+                             -r["stepDb"]))
     print(f"{'scene':<16} {'element':<22} {'variant':<22} {'P':>4} "
-          f"{'step dB':>8} {'hole dB':>8} {'mean dB':>8} {'tail dev':>9} "
-          f"{'post dev':>9}  flag")
+          f"{'step dB':>8} {'hole dB':>8} {'natural':>8} {'mean dB':>8} "
+          f"{'tail dev':>9} {'post dev':>9}  flag")
     for r in rows:
         flags = []
-        if r["holeDb"] is not None and r["holeDb"] > AUDIT_HOLE_DB:
-            flags.append(f"HOLE >{AUDIT_HOLE_DB:.0f}dB")
+        if is_hole(r["holeDb"], r["naturalDipDb"]):
+            flags.append("HOLE")
         if r["stepDb"] > AUDIT_FLAG_DB:
             flags.append(f"STEP >{AUDIT_FLAG_DB:.0f}dB")
         hole = "n/a" if r["holeDb"] is None else f"{r['holeDb']:.2f}"
+        nat = "n/a" if r["naturalDipDb"] is None else f"{r['naturalDipDb']:.2f}"
         print(f"{r['scene']:<16} {r['element']:<22} {r['variant']:<22} "
-              f"{r['period']:>4} {r['stepDb']:>8.2f} {hole:>8} {r['meanDb']:>8.1f} "
+              f"{r['period']:>4} {r['stepDb']:>8.2f} {hole:>8} {nat:>8} {r['meanDb']:>8.1f} "
               f"{r['tailDevDb']:>+9.1f} {r['postWrapDevDb']:>+9.1f}  {' '.join(flags)}")
     over = [r for r in rows if r["stepDb"] > AUDIT_FLAG_DB]
-    holes = [r for r in rows if (r["holeDb"] or 0) > AUDIT_HOLE_DB]
+    holes = [r for r in rows if is_hole(r["holeDb"], r["naturalDipDb"])]
     print("")
-    print(f"{len(holes)} of {len(rows)} variants with a hole in the wrap over "
-          f"{AUDIT_HOLE_DB} dB; {len(over)} with a step over {AUDIT_FLAG_DB} dB.")
+    print(f"{len(holes)} of {len(rows)} variants with a hole in the wrap (over "
+          f"{AUDIT_HOLE_DB} dB and {HOLE_NATURAL_MARGIN_DB} dB past the file's "
+          f"own p95 dip); {len(over)} with a step over {AUDIT_FLAG_DB} dB.")
     return rows
 
 
