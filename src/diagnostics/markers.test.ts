@@ -157,18 +157,37 @@ describe('seam suspects', () => {
     resetLifecycleLog();
   });
 
-  it('flags only the layers near their wrap', () => {
+  it('flags only the layers that wrapped shortly BEFORE the tap', () => {
     const m = addMarker(
       marker({
         layers: [
+          // 2s past its wrap: wrapped just before the tap.
           layer({ id: 'a', seekSeconds: 2, periodSeconds: 251 }),
+          // 1.5s before its wrap: the wrap is still ahead, so it can't be
+          // what was heard.
           layer({ id: 'b', seekSeconds: 519.5, periodSeconds: 521 }),
           layer({ id: 'c', seekSeconds: 200, periodSeconds: 409 }),
           layer({ id: 'd', seekSeconds: null }),
         ],
       })
     );
-    expect(seamSuspects(m).map((l) => l.id)).toEqual(['a', 'b']);
+    expect(seamSuspects(m).map((l) => l.id)).toEqual(['a']);
+  });
+
+  it('looks back like a loop recorder: a wrap 10-20s before the tap is a suspect', () => {
+    // The 2026-09-19 export: the culprit wraps were 10.8, 11.5 and 12.5s
+    // back, and the old symmetric +/-10s window missed all three.
+    const m = addMarker(
+      marker({
+        layers: [
+          layer({ id: 'pavement', seekSeconds: 10.81, periodSeconds: 521 }),
+          layer({ id: 'creek', seekSeconds: 11.52, periodSeconds: 251 }),
+          layer({ id: 'rain', seekSeconds: 12.5, periodSeconds: 251 }),
+          layer({ id: 'long-ago', seekSeconds: 90, periodSeconds: 251 }),
+        ],
+      })
+    );
+    expect(seamSuspects(m).map((l) => l.id)).toEqual(['pavement', 'creek', 'rain']);
   });
 
   it('does not flag the first play-through, when every layer sits near zero', () => {
@@ -204,7 +223,7 @@ describe('seam suspects', () => {
     expect(seamSuspects(m).map((l) => l.id)).toEqual(['wrapped']);
   });
 
-  it('always flags a layer about to wrap, however early in the scene', () => {
+  it('never flags a wrap that is still ahead of the tap', () => {
     const m = addMarker(
       marker({
         ts: 1_800_000_000_000,
@@ -212,7 +231,18 @@ describe('seam suspects', () => {
         layers: [layer({ id: 'ending', seekSeconds: 249, periodSeconds: 251 })],
       })
     );
-    expect(seamSuspects(m).map((l) => l.id)).toEqual(['ending']);
+    expect(seamSuspects(m)).toEqual([]);
+  });
+
+  it('does not flag a layer that is not playing, however near zero it sits', () => {
+    // A layer that never started (2026-09-14: playerror while hidden) reports
+    // position 0. That is not a wrap.
+    const m = addMarker(
+      marker({
+        layers: [layer({ id: 'stuck', seekSeconds: 0, periodSeconds: 521, playing: false })],
+      })
+    );
+    expect(seamSuspects(m)).toEqual([]);
   });
 
   it('uses an inclusive window', () => {
@@ -242,7 +272,7 @@ describe('marker export', () => {
     addMarker(
       marker({
         layers: [
-          layer({ id: 'w', label: 'Wind', seekSeconds: 519, periodSeconds: 521 }),
+          layer({ id: 'w', label: 'Wind', seekSeconds: 12, periodSeconds: 521 }),
           layer({ id: 'c', label: 'Creek', seekSeconds: 130, periodSeconds: 251 }),
         ],
       })
@@ -250,8 +280,8 @@ describe('marker export', () => {
     const text = formatMarkersAsText();
     expect(text).toContain('Forest, night');
     expect(text).toContain('wind-1.opus');
-    expect(text).toContain('FROM WRAP');
-    expect(text.match(/FROM WRAP/g)).toHaveLength(1);
+    expect(text).toContain('WRAPPED 12.0s BEFORE THE MARK');
+    expect(text.match(/BEFORE THE MARK/g)).toHaveLength(1);
   });
 
   it('includes a note when one was added', () => {

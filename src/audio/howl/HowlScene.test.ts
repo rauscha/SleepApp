@@ -883,8 +883,9 @@ describe('HowlScenePlayer — debug markers', () => {
     expect(rain.seekSeconds).toBe(248);
     expect(rain.periodSeconds).toBe(251);
     expect(rain.url).toContain('rain-1.mp3');
-    // 248s into a 251s loop: 3s from the wrap, which is the whole point.
-    expect(seamSuspects(marker).map((l) => l.id)).toEqual(['test-scene:rain']);
+    // 248s into a 251s loop: the wrap is 3s AHEAD of the tap, so it can't be
+    // what was heard — markers look back, like a loop recorder.
+    expect(seamSuspects(marker)).toEqual([]);
     expect(getMarkers()).toHaveLength(1);
   });
 

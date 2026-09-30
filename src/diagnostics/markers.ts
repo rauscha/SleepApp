@@ -22,10 +22,13 @@ const STORAGE_KEY = 'sleep-app:markers:v1';
 const MAX_MARKERS = 200;
 /** Lifecycle-log lines kept with each marker for context. */
 const RECENT_EVENT_COUNT = 8;
-/** A layer this close to either side of its loop wrap is worth suspecting
- *  when the user reports a seam. Deliberately wide: the audit's wrap window
- *  is 6s and a half-awake tap lands seconds after the sound. */
-export const SEAM_WINDOW_SECONDS = 10;
+/** How far back from a tap to look for a loop wrap. A marker works like a
+ *  cardiac loop recorder: the tap is when the sleeper NOTICED — woke, found
+ *  the phone, woke the screen, pressed — not when it happened. On the
+ *  2026-09-19 export the culprit wraps sat 10.8-12.5s before their taps, and
+ *  the old symmetric ±10s window missed every one of them. A wrap that is
+ *  still AHEAD of the tap can't be what was heard, so only the past counts. */
+export const SEAM_WINDOW_SECONDS = 30;
 
 export type MarkerTrigger = 'nightstand' | 'lush' | 'media-key' | 'test';
 
@@ -165,18 +168,25 @@ export function wrapDistanceSeconds(
 }
 
 /**
- * Layers that were within SEAM_WINDOW_SECONDS of their loop wrap when the
- * marker was taken — the ones to listen to first.
+ * Layers that wrapped within SEAM_WINDOW_SECONDS BEFORE the marker was taken
+ * — the ones to listen to first.
  *
  * A position near 0 only counts once the layer has actually been round at
  * least once. Every layer sits at position ~0 for the first seconds of a
  * scene, and that is the file's start, not a wrap: without this, a marker
- * taken early would flag the entire stack and mean nothing. A position near
- * the end of the file is always reported — the wrap is imminent there, and a
- * tap lags the sound that prompted it by a second or more.
+ * taken early would flag the entire stack and mean nothing.
  */
 export function seamSuspects(marker: DebugMarker): HowlLayerSnapshot[] {
   return marker.layers.filter((l) => isSeamSuspect(marker, l));
+}
+
+/** Seconds since this layer last passed its loop wrap, or null. */
+export function secondsSinceWrap(
+  seekSeconds: number | null,
+  periodSeconds: number
+): number | null {
+  if (seekSeconds === null || !(periodSeconds > 0)) return null;
+  return ((seekSeconds % periodSeconds) + periodSeconds) % periodSeconds;
 }
 
 /** The per-layer test behind seamSuspects. Takes the layer itself rather
@@ -185,11 +195,12 @@ export function isSeamSuspect(
   marker: DebugMarker,
   layer: HowlLayerSnapshot
 ): boolean {
-  const d = wrapDistanceSeconds(layer.seekSeconds, layer.periodSeconds);
-  if (d === null || d > SEAM_WINDOW_SECONDS) return false;
-  const position = layer.seekSeconds! % layer.periodSeconds;
-  const justPastWrap = position <= SEAM_WINDOW_SECONDS;
-  if (justPastWrap && marker.elapsedMs / 1000 < layer.periodSeconds) return false;
+  // A layer that never started reports position 0; that is not a wrap.
+  if (!layer.playing) return false;
+  const since = secondsSinceWrap(layer.seekSeconds, layer.periodSeconds);
+  if (since === null || since > SEAM_WINDOW_SECONDS) return false;
+  // Still on its first play-through: position ~0 is the file's start.
+  if (marker.elapsedMs / 1000 < layer.periodSeconds) return false;
   return true;
 }
 
@@ -250,11 +261,12 @@ export function formatMarkersAsText(): string {
         l.seekSeconds === null
           ? '   ?  '
           : `${l.seekSeconds.toFixed(1)}s`.padStart(7);
+      const since = secondsSinceWrap(l.seekSeconds, l.periodSeconds);
       const wrap =
         d === null
           ? ''
           : isSeamSuspect(m, l)
-            ? `  ** ${d.toFixed(1)}s FROM WRAP **`
+            ? `  ** WRAPPED ${since!.toFixed(1)}s BEFORE THE MARK **`
             : `  (${d.toFixed(0)}s from wrap)`;
       lines.push(
         `   ${l.label.padEnd(16)} ${pos} / ${String(l.periodSeconds).padStart(3)}s  ` +

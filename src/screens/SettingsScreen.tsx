@@ -25,6 +25,7 @@ import {
   formatMarkersAsText,
   getMarkers,
   isSeamSuspect,
+  secondsSinceWrap,
   setMarkerNote,
   wrapDistanceSeconds,
   type DebugMarker,
@@ -648,18 +649,21 @@ function MarkerRow({
       <ul className="ui-label font-mono text-stone-300 space-y-0.5 mb-2">
         {marker.layers.map((l, i) => {
           const d = wrapDistanceSeconds(l.seekSeconds, l.periodSeconds);
+          const since = secondsSinceWrap(l.seekSeconds, l.periodSeconds);
           const suspect = isSeamSuspect(marker, l);
           return (
             <li key={`${l.id}-${i}`} className="leading-snug break-words">
-              <span className={suspect ? 'text-moon-300' : 'text-stone-300'}>
+              {/* Weight carries the emphasis, not hue: moon-300 vs stone-300
+                  is a tint only, and must not be the only difference. */}
+              <span className={suspect ? 'text-moon-300 font-semibold' : 'text-stone-300'}>
                 {l.label}
               </span>{' '}
               {l.seekSeconds === null ? '?' : l.seekSeconds.toFixed(1)}s /{' '}
               {l.periodSeconds}s
               {d !== null && (
-                <span className={suspect ? 'text-moon-300' : 'text-stone-300'}>
+                <span className={suspect ? 'text-moon-300 font-semibold' : 'text-stone-300'}>
                   {suspect
-                    ? ` — ${d.toFixed(1)}s from wrap`
+                    ? ` — wrapped ${since!.toFixed(1)}s before the mark`
                     : ` (${d.toFixed(0)}s from wrap)`}
                 </span>
               )}

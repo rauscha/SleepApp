@@ -1019,3 +1019,69 @@ transition that makes the operation legal.
 **The ladder had no test at all**, which is how it shipped spending every
 attempt into a hidden document. It has five now, and both halves of the fix
 were confirmed to fail them when removed one at a time.
+
+## The wrap was a hole (2026-09-30)
+
+**What was wrong.** `seamless_loop()` in `tools/loopify-scenes.py` builds the
+first C=6 s of every loop as a crossfade: the head fading in, summed over the
+6 s just past the loop point fading out. `afade` times itself off frame
+timestamps, and both fades ran BEFORE `asetpts=PTS-STARTPTS` rebased the
+segment to zero. So `afade=t=out:st=0` was already over by the tail's first
+frame, and the tail was mixed in at zero gain. **The crossfade has never
+existed.** Every loop ended at full level and wrapped straight into the head
+on its own. When the cut started near 0 s (or the source had its own fade-in)
+the head was a bare fade-in from silence. The layer dropped out and swelled
+back over 1.5-7 s, every P seconds, all night.
+
+**How big.** A new hole measure in `--audit` found **55 of 66 shipped variants
+with a dip of more than 6 dB inside the wrap**, most of them 30-70 dB deep. The
+eleven that pass are five beds whose cut started past 6 s (a hard splice,
+level-matched, no dip) and six sparse layers that are silent at the wrap by
+design.
+
+**Why nothing caught it.** The step audit compares the last 6 s before the
+wrap with the 6 s from 6 to 12 s after it, and never looks at [0, 6] itself.
+The 2026-09-11 loop probe measured the engine's gap on a test tone, not the
+content of the files. And the 2026-09-19 marker review read "the audio
+suddenly got very quiet" as the stuck-layer bug above. That was real too, but
+it was only one of the two causes.
+
+**What the marks showed, looking back.** Three marks from 2026-09-14 and
+2026-09-18 land 10.8 s, 11.5 s and 12.5 s after a wrap: `pavement-1`, the
+`creek-2` running at 0.80, and `monsoon/rain-2`, the heavy rain that carries
+that scene. The fourth, 17.5 s back, is `creek-1` on a night when it was the
+only layer playing, so the whole scene went silent. All four sat just outside
+the old symmetric ±10 s seam window.
+
+**The fix.** `asetpts` now runs before `afade` in both branches, and the fades
+are equal-power (`curve=qsin`). Head and tail are uncorrelated noise, so the
+default linear curve dips 2.9 dB mid-wrap; qsin holds within 0.1 dB. Verified
+on steady pink noise at S=0, 3 and 40: level flat through the wrap.
+`--audit` reports `hole dB` and flags anything over 6 dB.
+
+**Shipped files are not re-cut in this change.** A shipped variant is exactly
+P long, so it has no audio past the loop point to crossfade with. About half
+the sources are on tikiserv; the rest (fireplace, ocean waves 1-3, monsoon
+rain 1-3, most wind and bird layers) are not. Re-cutting from source would
+also undo the tonal repairs made on the shipped files. The repair that fits
+every file is an in-place patch: replace the damaged arc [P-C, h+C] with a
+level-matched stretch of the same file, joined by two equal-power crossfades.
+Length is unchanged to the sample. Prototyped on `forest-day/creek-2`: the wrap
+goes from a -79 dB hole to -26..-30 dB, the creek's own variation. Waiting on
+Andrew to approve the catalogue-wide pass, because it re-downloads the library
+on every install.
+
+## Marks are a loop recorder (2026-09-30)
+
+Andrew: the mark button works like a cardiac loop recorder. The tap is when
+he noticed: woke, found the phone, woke the screen, pressed. The event is
+before it. Measured on the 2026-09-19 export, the gap runs 8.7 s to 17.5 s.
+
+The old seam window was ±10 s around the tap and counted a wrap still AHEAD
+of it ("a tap lags the sound", which argues the opposite way). It missed all
+four real wraps and the rooster, which was hunted at the marked second and so
+blamed on the wrong layer for ten days. `SEAM_WINDOW_SECONDS` is now 30 and
+means *before* the tap only. A layer that is not playing never counts: a stuck
+layer reports position 0, which is not a wrap. `review-markers.py` mirrors
+this, renders 40 s before to 5 s after, and ignores the `seamWindowSeconds: 10`
+carried in older exports.

@@ -37,12 +37,16 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PUBLIC = os.path.join(ROOT, "public")
 RENDER_DIR = os.path.join(ROOT, "notes", "marker-renders")
 
-# Seconds either side of the tap to re-render. A tap lags the sound that
-# prompted it, so the window leans backwards.
-RENDER_BEFORE = 25.0
-RENDER_AFTER = 10.0
-# Matches SEAM_WINDOW_SECONDS in src/diagnostics/markers.ts.
-DEFAULT_SEAM_WINDOW = 10.0
+# Seconds either side of the tap to re-render. A mark is a loop-recorder
+# trigger: the tap is when the sleeper NOTICED, 10-20s or more after the
+# sound (2026-09-19: 8.7-13.7s). So the window is nearly all lookback.
+RENDER_BEFORE = 40.0
+RENDER_AFTER = 5.0
+# Matches SEAM_WINDOW_SECONDS in src/diagnostics/markers.ts: how far BEFORE
+# the tap a wrap still counts. Exports made before 2026-09-30 carry 10 in
+# seamWindowSeconds, the old symmetric window, so the payload value is
+# ignored unless --seam-window says otherwise.
+DEFAULT_SEAM_WINDOW = 30.0
 # Matches AUDIT_FLAG_DB in tools/loopify-scenes.py.
 FLAG_DB = 3.0
 
@@ -65,14 +69,17 @@ def wrap_distance(seek, period):
 
 
 def is_seam_suspect(marker, layer, window):
-    """Mirror of isSeamSuspect() in src/diagnostics/markers.ts — a position
-    near zero is the file's start, not a wrap, until the layer has been
-    round at least once."""
-    d = wrap_distance(layer.get("seekSeconds"), layer.get("periodSeconds"))
-    if d is None or d > window:
+    """Mirror of isSeamSuspect() in src/diagnostics/markers.ts — the layer
+    wrapped within `window` seconds BEFORE the tap. A position near zero is
+    the file's start, not a wrap, until the layer has been round once."""
+    if not layer.get("playing", True):
+        return False  # never started: position 0 is not a wrap
+    seek, period = layer.get("seekSeconds"), layer.get("periodSeconds")
+    if seek is None or not period:
         return False
-    pos = layer["seekSeconds"] % layer["periodSeconds"]
-    if pos <= window and marker.get("elapsedMs", 0) / 1000.0 < layer["periodSeconds"]:
+    if seek % period > window:
+        return False
+    if marker.get("elapsedMs", 0) / 1000.0 < period:
         return False
     return True
 
@@ -121,7 +128,8 @@ def report(payload, window, measure=False):
             seek = layer.get("seekSeconds")
             pos = "     ?" if seek is None else f"{seek:6.1f}"
             wrap = "" if d is None else (
-                f"  ** {d:.1f}s FROM WRAP **" if suspect else f"  ({d:.0f}s from wrap)"
+                f"  ** WRAPPED {layer['seekSeconds'] % layer['periodSeconds']:.1f}s BEFORE THE MARK **"
+                if suspect else f"  ({d:.0f}s from wrap)"
             )
             flag = ""
             path = local_path(layer.get("url", ""))
@@ -272,7 +280,7 @@ def main():
     args = ap.parse_args()
 
     payload = load(args.export)
-    window = args.seam_window or payload.get("seamWindowSeconds") or DEFAULT_SEAM_WINDOW
+    window = args.seam_window or DEFAULT_SEAM_WINDOW
 
     if args.wraps:
         wraps(payload)
