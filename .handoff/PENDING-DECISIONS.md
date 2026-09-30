@@ -11,8 +11,10 @@ so this file is only live items.
 ## At a glance
 
 **Blocked on Andrew**
-- **0I** — the 1am rooster is found, in the rain layer. Confirm by ear, then
-  pick a fix.
+- **0J** — every loop drops out at its wrap (55 of 66 files). Tool fixed;
+  approve the in-place repair of the shipped files.
+- **0I** — the rooster is confirmed in `glass-1`. Retire it; pick its
+  replacement source (nothing in the local FTUS Concrete pack fits).
 - **1** — every meditation plays with no bed. Pick pairings, or wait for 0G.
 - **0G** — a source for the singing-bowl replacement bed. Pick a route.
 - **0E** — the narration voice. 31 audition files are on your phone. This one
@@ -27,7 +29,67 @@ so this file is only live items.
   the wake lock, was the third and is fixed.
 - **4** — cleanup chores, on request only.
 
+## 0J. OPEN 2026-09-30 — every loop drops out at its wrap
+
+DECISIONS.md "The wrap was a hole". `seamless_loop()` never mixed the
+crossfade tail in, so **55 of 66 shipped variants** wrap into a 1.5-7 s
+fade-up from silence, 30-70 dB deep, every P seconds. The tool is fixed and
+`--audit` now reports `hole dB` (commit `1082025`). **No shipped audio has
+been touched yet.**
+
+**Explains four of the eleven 2026-09-19 marks,** once they are read as a
+loop recorder (the event is 10-20 s before the tap):
+
+| mark | scene | layer that wrapped | before the tap |
+|---|---|---|---|
+| #2 09-14 21:57 | forest-night | `creek-1`, the only layer playing (the others were stuck) | 17.5 s |
+| #3 09-14 22:18 | rain-on-window | `pavement-1` | 10.8 s |
+| #5 09-18 23:12 | monsoon | `rain-2`, the heavy rain that carries the scene | 12.5 s |
+| #8 09-18 23:18 | forest-day | `creek-2` at 0.80, the loudest layer | 11.5 s |
+
+The rest: #0 and #1 are the stuck-layer bug (fixed 2026-09-19). #4, #6 and #7
+come within 8-33 s of a scene start, where every layer opens on this same
+fade-up. #9 and #10 are the rooster (0I). #3 also has a glass-2 swell of
++11 dB at 23.8 s back and a 2 s thunder tone at 17 s back; the hole is
+the likelier of the three.
+
+**[ANDREW] Approve the repair.** The proposal is to patch every holed file in
+place: replace the damaged arc [P-C, h+C] with a level-matched stretch of the
+same file, joined by two equal-power crossfades. Length is unchanged to the
+sample, so the loop stays on its prime, and it needs no source recordings.
+Half of those aren't on tikiserv, and re-cutting from source would undo the
+2026-09-14 bird repairs. About 20 s of each file is duplicated once per loop,
+which is inaudible on rain, fire, water and wind. Bird layers get a donor
+stretch picked from a quiet passage. Prototype:
+`notes/marker-renders/wrap-hole/creek-2-wrap-{before,after}-wrap-at-15s.mp3`
+(gitignored). One CACHE_VERSION bump, so every install re-downloads ~470 MB.
+
 ## 0I. OPEN 2026-09-29 — the 1am rooster is in `glass-1`, not the cabin
+
+**Confirmed by ear 2026-09-29:** "THAT'S THE EVIL BIRD WAKING ME." And
+glass-1 was already flagged for replacement (mono Pixabay source), so the plan
+is to **retire it**, not repair it. It ships in both night-train and
+rain-on-window.
+
+**Replacement source: nothing on hand fits.** The only FTUS rain on
+crane-desk is `D:\Sounds\RAIN_01` (the stereo WOSB pack), and it is entirely
+the CONCRETE category. Its window-perspective takes are all too short for a
+409 s loop, which needs at least 445 s: Korea hotel-window nights run 300 s,
+Tbilisi hotel window 300 s, and Korea morning 424 s with "Crows" in the name.
+The long files are city traffic or Denver balcony B-format with thunder. The
+ORTF3D umbrella series is glass-3's source (#670) plus an unused sister, #671
+(12:25, same session, also "Birds and Crows"), but ORTF3D_RAIN_02 is no longer
+on disk. Glass or window categories would be in a later RAIN ZIP. Getting it
+needs Andrew's Gumroad login. Options:
+1. Download the FTUS RAIN ZIP that holds glass/window (Andrew), then cut from it.
+2. Re-download ORTF3D_RAIN_02 for #671. Its 12 minutes leave room to choose a
+   409 s window with no crows.
+3. Interim: drop glass-1 from both scenes now. night-train's rain then runs on
+   glass-3 alone, one variant short of the two-per-element target.
+
+The original analysis follows.
+
+### (analysis, 2026-09-29)
 
 0H cleared the cabin squeak by ear. Re-cut on Andrew's rule, "whenever I hit
 mark, go 10-20 seconds back", on every layer of both 1am marks. Only one layer
