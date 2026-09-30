@@ -7,17 +7,30 @@
   "outputFormat": "48 kHz / 128k / stereo Opus",
   "notes": "Reverse-order acrossfade of the same two forest-day creek MP3s, giving a different entry point within the 691 s loop window so variant rotation gives real variety. Same pipeline as creek-1. Seamless-looped to 691s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless.",
   "processing": {
-    "wrapPatch": {
-      "date": "2026-09-29",
-      "tool": "tools/patch-wrap-holes.py",
-      "holeBeforeDb": 50.2,
-      "holeAfterDb": 1.6,
-      "naturalDipP95Db": 4.0,
-      "patchedArcSeconds": 32.0,
-      "crossfadeInSeconds": 20.0,
-      "donorStartSeconds": 491.0,
-      "donorOctaveMismatchDb": 10.38,
-      "why": "loopify-scenes.py never mixed the wrap crossfade tail in (afade ran before asetpts), so the loop wrapped into a fade-up from near silence every P seconds. Repaired in place: the arc around the wrap is replaced by a spectrum-matched stretch of this file with equal-power crossfades; sample count unchanged. DECISIONS.md, 'The wrap was a hole'."
+    "recut": {
+      "date": "2026-09-30",
+      "tool": "tools/recut-from-source.py",
+      "composite": [
+        {
+          "source": "raw-sounds/creek-2.mp3",
+          "startSeconds": 5.0,
+          "lengthSeconds": 540.0
+        },
+        {
+          "source": "raw-sounds/freesound_community-small-brook-water-16811.mp3",
+          "startSeconds": 5.0,
+          "lengthSeconds": 460.0
+        }
+      ],
+      "joinCrossfadeSeconds": 20.0,
+      "partGainsDb": [
+        -2.32,
+        6.68
+      ],
+      "matchToShipped": 0.981,
+      "worstThirdOctaveVsShippedDb": 0.12,
+      "levelContourSpreadDb": 1.15,
+      "why": "Rebuilt from its two source recordings with the recipe's 20 s join, and re-cut with the fixed tool so the wrap crossfades into the audio that follows the loop. DECISIONS.md, 'The wrap was a hole'."
     }
   }
 }

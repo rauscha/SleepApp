@@ -196,7 +196,10 @@ audio**, then `sceneCatalogue.test.ts` verifies every file landed on its prime.
   reports the **hole**: the dip *inside* the wrap region. The step measure
   never looks there, which is how every loop cut before 2026-09-30 shipped
   a 1.5-7 s dropout at each wrap (DECISIONS.md, "The wrap was a hole").
-  `tools/patch-wrap-holes.py` repairs a holed file in place.
+  The fix for a holed file is `tools/recut-from-source.py`: the same
+  window re-cut from its source recording with the fixed tool. **Never
+  patch shipped audio in place** (Andrew, 2026-09-30: no "microsurgery on
+  every single file").
 - **Then listen in the mix: `python tools/seam-review.py [scene] --render`.**
   It plays each variant through its wrap with the rest of the scene running
   steadily at voiced levels and compares spectra against the file's own

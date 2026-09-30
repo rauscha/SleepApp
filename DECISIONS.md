@@ -1132,3 +1132,92 @@ means *before* the tap only. A layer that is not playing never counts: a stuck
 layer reports position 0, which is not a wrap. `review-markers.py` mirrors
 this, renders 40 s before to 5 s after, and ignores the `seamWindowSeconds: 10`
 carried in older exports.
+
+## Re-cut from source, never patched in place (2026-09-30, supersedes the repair above)
+
+Andrew, on seeing the in-place wrap repair: "take back the original files, I
+don't want you to perform microsurgery on every single file." The fix belongs
+in the pipeline, not in 55 hand-grafted files. The patched audio was replaced
+the same day and `tools/patch-wrap-holes.py` was deleted. The earlier entry's
+account of the bug, the audit and the seam review still holds. Its repair
+section does not.
+
+**What replaced it.** `tools/recut-from-source.py` re-runs each cut from its
+source recording through the fixed `seamless_loop()`, so each wrap is a real
+equal-power crossfade into the audio that actually follows the loop in the
+recording. Nothing is borrowed from elsewhere in the file.
+
+- **Same window, found rather than remembered.** The shipped audio had been
+  lived with and vetted, so the re-cut reproduces it. Two 20 s probes from
+  each shipped file are cross-correlated against its source and must agree
+  to within 20 ms. Every one landed on its recorded cut point (fireplace
+  7200 s, creek-3 76 s, the Pixabay 5 s head trims), which confirms the
+  method and the notes both.
+- **The recipe is re-run, not approximated.** The FTUS leveling lives in the
+  leveled masters (`~/sounds/normalized`, fixed-gain two-pass normalisation).
+  The 2.8 kHz "distance" low-pass on monsoon's rain-distant and ocean's
+  far-1/far-2 is replayed from the notes. So is the single-pass `loudnorm`
+  the YouTube and Pixabay cuts used, from the same cut point. That matters:
+  single-pass loudnorm rides the level, and on forest-2 it had pulled an
+  insect burst down 8 dB and drifted 6 dB across the file. A static gain
+  would have handed Andrew a file that moves differently from the one he
+  vetted. The notes name loudnorm but not every parameter, so the tool
+  tries the open ones and keeps whichever reproduces the shipped level
+  contour. The 2026-07-01 cuts turned out to be `I=-20:TP=-1:LRA=11`, the
+  Pixabay cuts `I=-23:TP=-2:LRA=11`.
+- **Proven, not assumed.** Each re-cut must match its shipped file within
+  1.5 dB in every 10 s window (level contour) and in every third-octave band
+  with energy, or it is refused. With the recipe re-run, typical matches are
+  a few hundredths of a dB. The check caught two of its own bugs along the
+  way. An ffmpeg `-ac 1` downmix measured against a numpy mean reads as a
+  flat 3 dB error in every band. And a static gain passed the spectrum check
+  while quietly changing forest-2's dynamics, which is why the contour is
+  checked too.
+- **The composites are rebuilt from their parts.** forest-evening creek-1 and
+  creek-2 are two recordings joined by a 20 s crossfade (small brook 5-465 s
+  and creek-2.mp3 5-545 s, one order or the other). They were rebuilt from
+  both sources, level-matched per part, and matched their shipped files
+  within 0.23 dB in every band.
+- **Bird repairs re-applied.** Files that once had tonal repairs (glass-1,
+  glass-3, pavement-3) get `repair-tonal-events.py` again, since the re-cut
+  starts from unrepaired source. That tool needs librosa, which Ubuntu 26.04
+  does not package, so it runs in a throwaway uv environment.
+- **What the checks dug up that the notes never said:**
+  - The rain-on-window thunder rumbles carry a 600 Hz two-pole low-pass (the
+    "rain-on-window convention" in `grow-out-scenes.sh`). Neither sidecar
+    records it. It measured -3 dB at 630 Hz and 12 dB per octave above, and
+    it is now written into both.
+  - The Pixabay-era recipe's "3s fades each end" matters: the fade-in sets
+    where single-pass loudnorm starts. Replaying it took rumble-2 from a
+    2.4 dB error in its first 10 s to 0.07 dB overall. That faded head sits
+    inside the wrap crossfade and costs at most about 0.5 dB for a second or
+    two.
+  - pavement-2 was extended by crossfading the recording into a second copy
+    of itself, each copy faded and normalised first. It is rebuilt that way.
+- **One exception, recorded in the tool: `monsoon/rain-4`.** Its shipped cut
+  was levelled from the raw 8-channel ORTF master, which left with the
+  ORTF3D RAIN_02 zip. The master kept in `~/sounds/normalized` runs 7.5 dB
+  hot in its first minute. Re-levelling the cut from it lands within
+  +-1.8 dB of the shipped contour (3.5 dB spread), and every band is within
+  0.36 dB. It is shipped under a 4 dB tolerance, with the reason in its
+  sidecar. It becomes exact once Andrew re-downloads RAIN_02 (#669).
+- **The spectral check stops at 12.5 kHz.** pavement-2's two 192k MP3
+  generations leave the 16 kHz band a couple of dB off a single Opus
+  encode. Nothing up there reaches a sleeper.
+- **Every source was already on tikiserv**: the YouTube masters in
+  `raw-sounds/_sources`, the FTUS masters in `normalized/`, and the Pixabay
+  and Freesound downloads in `raw-sounds/`. Nothing needed crane-desk or a
+  re-download.
+
+**The result: all 55 re-cut from source.** 54 match their shipped files
+within 1.5 dB over time and in every band to 12.5 kHz, most within a few
+tenths of a dB; rain-4 is the recorded exception. CACHE_VERSION v17 -> v18,
+since v17 carried the patched bytes.
+
+**The synth beds stay pre-rendered.** Andrew asked whether they were meant to
+be live generations and to go live if that was safer. It is the opposite.
+They were live, as a Web Audio `NoiseGenerator`, until 2026-06-15, and live
+Web Audio is exactly what the OS freezes about 90 s after the screen goes off.
+A pre-rendered file loops natively like every other layer, so it survives the
+night. The regenerated beds come from the fixed tool and the fixed seed; they
+are not patched.

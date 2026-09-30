@@ -13,6 +13,8 @@ so this file is only live items.
 **Blocked on Andrew**
 - **0I** — the rooster is confirmed in `glass-1`. Retire it; pick its
   replacement source (nothing in the local FTUS Concrete pack fits).
+- **0K** (optional) — re-download ORTF3D RAIN_02 so `monsoon/rain-4` can be
+  re-cut exactly; it ships on a close approximation meanwhile.
 - **1** — every meditation plays with no bed. Pick pairings, or wait for 0G.
 - **0G** — a source for the singing-bowl replacement bed. Pick a route.
 - **0E** — the narration voice. 31 audition files are on your phone. This one
@@ -21,13 +23,29 @@ so this file is only live items.
 - **2** — the device pass, which is the gate on tagging v1.0.
 
 **Buildable without you**
-- **0B** — 6 of 66 variants still wrap with a level step over 3 dB (all
-  wave/wind/rumble; the in-mix seam review puts each within natural
-  variation, so this is now low priority).
+- **0B** — 8 variants still step >3 dB at the wrap, the same 8 the 2026-09-02
+  audit found. They come from content in their vetted windows (forest-evening
+  wind-1 starts in a lull). The fix is loopify's start search on a re-cut,
+  which shifts each window by seconds.
 - **C6 / variants** — two items carried out of the archived
   `notes/TODO_PHASE2-2026-05.md`; see "Carried forward" at the bottom. B4,
   the wake lock, was the third and is fixed.
 - **4** — cleanup chores, on request only.
+
+## 0K. OPEN 2026-09-30 — rain-4 needs its raw master for an exact re-cut
+
+Every loop was re-cut from source on 2026-09-30 (DECISIONS.md, "Re-cut from
+source, never patched in place"). 54 of 55 reproduce their shipped files
+exactly. `monsoon/rain/rain-4` could not: its shipped cut was levelled from
+the raw 8-channel ORTF master (#669, `RAINMetl-..._Albury, 07.wav`), and that
+master left with the **ORTF3D RAIN_02** zip. It ships on a re-levelled
+approximation, within +-1.8 dB of the old level contour and 0.36 dB in every
+band.
+
+**[ANDREW, optional]** Re-download ORTF3D RAIN_02 to crane-desk `D:\Sounds`.
+Then extract #669, level it with `tools/level-ftus.py`, remove rain-4 from
+`CONTOUR_EXCEPTIONS` in `tools/recut-from-source.py`, and re-cut. The same
+zip holds #671, the unused sister of glass-3, which is one of 0I's options.
 
 ## 0I. OPEN 2026-09-29 — the 1am rooster is in `glass-1`, not the cabin
 

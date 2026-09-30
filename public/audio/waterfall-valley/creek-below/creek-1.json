@@ -16,17 +16,19 @@
     "loopStartSeconds": 26,
     "loopOffsetSeconds": 199,
     "loopStartRationale": "start chosen so the 6s before the wrap and the 6s after it sit at the same level at P=199s; trimming from 0 put a fade-in against a settled tail",
-    "wrapPatch": {
+    "recut": {
       "date": "2026-09-30",
-      "tool": "tools/patch-wrap-holes.py",
-      "holeBeforeDb": 2.4,
-      "holeAfterDb": 0.5,
-      "naturalDipP95Db": 2.0,
-      "patchedArcSeconds": 18.0,
-      "crossfadeInSeconds": 6.0,
-      "donorStartSeconds": 33.0,
-      "donorOctaveMismatchDb": 0.6,
-      "why": "loopify-scenes.py never mixed the wrap crossfade tail in (afade ran before asetpts), so the loop wrapped into a fade-up from near silence every P seconds. Repaired in place: the arc around the wrap is replaced by a spectrum-matched stretch of this file with equal-power crossfades; sample count unchanged. DECISIONS.md, 'The wrap was a hole'."
+      "tool": "tools/recut-from-source.py",
+      "source": "normalized/waterfall-valley__creek-below__creek-1.wav",
+      "sourceStartSeconds": 26.0,
+      "gainDb": 0.01,
+      "filter": null,
+      "normaliser": "static gain",
+      "levelContourSpreadDb": 0.02,
+      "worstThirdOctaveVsShippedDb": 0.01,
+      "matchToShipped": 0.999,
+      "tonalRepairReapplied": false,
+      "why": "loopify-scenes.py never mixed the wrap crossfade tail in, so the loop wrapped into a fade-up from near silence. Re-cut from the source at the same window (found by cross-correlation against the shipped file) with the fixed tool: a real equal-power crossfade into the audio that follows the loop in the recording. DECISIONS.md, 'The wrap was a hole'."
     }
   },
   "notes": "Front ORTF pair from 8ch ORTF 3D master, levelled by tools/level-ftus.py. Seamless-looped to 199s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless. Encoded as Opus (128k) \u2014 see DECISIONS.md 'Ship scene audio as Opus, not MP3'.",

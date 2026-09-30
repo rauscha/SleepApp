@@ -7,17 +7,19 @@
   "trimmedTo": "251s",
   "outputFormat": "Opus",
   "processing": {
-    "wrapPatch": {
-      "date": "2026-09-29",
-      "tool": "tools/patch-wrap-holes.py",
-      "holeBeforeDb": 40.8,
-      "holeAfterDb": 5.7,
-      "naturalDipP95Db": 12.5,
-      "patchedArcSeconds": 18.0,
-      "crossfadeInSeconds": 6.0,
-      "donorStartSeconds": 151.0,
-      "donorOctaveMismatchDb": 1.88,
-      "why": "loopify-scenes.py never mixed the wrap crossfade tail in (afade ran before asetpts), so the loop wrapped into a fade-up from near silence every P seconds. Repaired in place: the arc around the wrap is replaced by a spectrum-matched stretch of this file with equal-power crossfades; sample count unchanged. DECISIONS.md, 'The wrap was a hole'."
+    "recut": {
+      "date": "2026-09-30",
+      "tool": "tools/recut-from-source.py",
+      "source": "raw-sounds/_sources/george-vlad-ocean/ocean-night__sandy-beach-madagascar__i7ds-DhM89I.opus",
+      "sourceStartSeconds": 2600.0,
+      "gainDb": 0.04,
+      "filter": null,
+      "normaliser": "loudnorm=I=-20:TP=-1:LRA=11",
+      "levelContourSpreadDb": 0.34,
+      "worstThirdOctaveVsShippedDb": 0.09,
+      "matchToShipped": 0.999,
+      "tonalRepairReapplied": false,
+      "why": "loopify-scenes.py never mixed the wrap crossfade tail in, so the loop wrapped into a fade-up from near silence. Re-cut from the source at the same window (found by cross-correlation against the shipped file) with the fixed tool: a real equal-power crossfade into the audio that follows the loop in the recording. DECISIONS.md, 'The wrap was a hole'."
     }
   }
 }
