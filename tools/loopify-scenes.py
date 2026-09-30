@@ -111,8 +111,16 @@ def seamless_loop(src, out, period, sr, loudnorm=None, start=0, tilt_db=0.0):
         tilt = ""
     a, b, c = start, start + C, start + period
     fc = (
-        f"[0:a]{tilt}atrim={a}:{b},{fmt},afade=t=in:st=0:d={C},asetpts=PTS-STARTPTS[head];"
-        f"[1:a]{tilt}atrim={c}:{c + C},{fmt},afade=t=out:st=0:d={C},asetpts=PTS-STARTPTS[tailf];"
+        # asetpts MUST come before afade: afade times itself off frame pts, so
+        # on an un-rebased segment `st=0` is already in the past. Before
+        # 2026-09-30 the order was reversed: the tail sat wholly faded out and
+        # never mixed in, and a cut with S < C opened on a bare fade-in from
+        # silence -- a hole at every wrap, all night (DECISIONS.md, "The wrap
+        # was a hole"). curve=qsin makes it equal-power: head and tail are
+        # uncorrelated noise, so the default linear curve dips 2.9 dB mid-wrap
+        # where qsin holds within 0.1 dB.
+        f"[0:a]{tilt}atrim={a}:{b},asetpts=PTS-STARTPTS,{fmt},afade=t=in:st=0:d={C}:curve=qsin[head];"
+        f"[1:a]{tilt}atrim={c}:{c + C},asetpts=PTS-STARTPTS,{fmt},afade=t=out:st=0:d={C}:curve=qsin[tailf];"
         f"[head][tailf]amix=inputs=2:normalize=0{pre},{fmt}[wrap];"
         f"[2:a]{tilt}atrim={b}:{c},{fmt},asetpts=PTS-STARTPTS[mid];"
         f"[wrap][mid]concat=n=2:v=0:a=1[out]"
@@ -379,6 +387,23 @@ def loopify_scenes():
 
 
 AUDIT_FLAG_DB = 3.0
+# A dip INSIDE the wrap region [0, C] this far below the tail is a hole: the
+# layer drops out and swells back every P seconds. The step measure above is
+# blind to it by design -- it compares [P-C, P] with [C, 2C] and never looks
+# at [0, C] -- which is how every loop cut before 2026-09-30 shipped one.
+AUDIT_HOLE_DB = 6.0
+HOLE_FRAME_SECONDS = 0.25
+
+
+def wrap_hole_db(path):
+    """How far the quietest quarter-second in the wrap region [0, C] sits
+    below the level of the last C seconds, which is what plays into it."""
+    env = seamfit.level_envelope(path, frame_seconds=HOLE_FRAME_SECONDS)
+    n = int(round(C / HOLE_FRAME_SECONDS))
+    if len(env) < 3 * n:
+        return None
+    tail = sum(env[-n:]) / n
+    return tail - min(env[:n])
 
 
 def audit_seams():
@@ -404,25 +429,34 @@ def audit_seams():
             print(f"    SKIP {os.path.relpath(path, ROOT)} (too short to measure)")
             continue
         step, tail, post, mean = m
+        hole = wrap_hole_db(path)
         rows.append({
             "scene": scene, "element": el.get("id", "?"),
             "variant": os.path.basename(path), "period": period,
             "durationSeconds": round(dur, 1), "stepDb": step,
             "tailDb": tail, "postWrapDb": post, "meanDb": mean,
             "tailDevDb": tail - mean, "postWrapDevDb": post - mean,
-            "path": path,
+            "holeDb": hole, "path": path,
         })
-    rows.sort(key=lambda r: -r["stepDb"])
+    rows.sort(key=lambda r: (-(r["holeDb"] or 0), -r["stepDb"]))
     print(f"{'scene':<16} {'element':<22} {'variant':<22} {'P':>4} "
-          f"{'step dB':>8} {'mean dB':>8} {'tail dev':>9} {'post dev':>9}  flag")
+          f"{'step dB':>8} {'hole dB':>8} {'mean dB':>8} {'tail dev':>9} "
+          f"{'post dev':>9}  flag")
     for r in rows:
-        flag = "FLAG >3dB" if r["stepDb"] > AUDIT_FLAG_DB else ""
+        flags = []
+        if r["holeDb"] is not None and r["holeDb"] > AUDIT_HOLE_DB:
+            flags.append(f"HOLE >{AUDIT_HOLE_DB:.0f}dB")
+        if r["stepDb"] > AUDIT_FLAG_DB:
+            flags.append(f"STEP >{AUDIT_FLAG_DB:.0f}dB")
+        hole = "n/a" if r["holeDb"] is None else f"{r['holeDb']:.2f}"
         print(f"{r['scene']:<16} {r['element']:<22} {r['variant']:<22} "
-              f"{r['period']:>4} {r['stepDb']:>8.2f} {r['meanDb']:>8.1f} "
-              f"{r['tailDevDb']:>+9.1f} {r['postWrapDevDb']:>+9.1f}  {flag}")
+              f"{r['period']:>4} {r['stepDb']:>8.2f} {hole:>8} {r['meanDb']:>8.1f} "
+              f"{r['tailDevDb']:>+9.1f} {r['postWrapDevDb']:>+9.1f}  {' '.join(flags)}")
     over = [r for r in rows if r["stepDb"] > AUDIT_FLAG_DB]
+    holes = [r for r in rows if (r["holeDb"] or 0) > AUDIT_HOLE_DB]
     print("")
-    print(f"{len(over)} of {len(rows)} variants over {AUDIT_FLAG_DB} dB.")
+    print(f"{len(holes)} of {len(rows)} variants with a hole in the wrap over "
+          f"{AUDIT_HOLE_DB} dB; {len(over)} with a step over {AUDIT_FLAG_DB} dB.")
     return rows
 
 
