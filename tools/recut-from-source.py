@@ -57,6 +57,9 @@ AGREE_S = 0.005
 # what each loop sounds like.
 REFERENCE_REV = "11507e7"
 
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+import seamfit  # noqa: E402
+
 _spec = importlib.util.spec_from_file_location(
     "loopify", os.path.join(ROOT, "tools", "loopify-scenes.py"))
 loopify = importlib.util.module_from_spec(_spec)
@@ -362,11 +365,17 @@ def contour_spread(seg, ref, period):
     return max(g) - min(g) if g else 0.0
 
 
-def recut(rel, period, src, start, out, filt, seg=None, side=None):
+def recut(rel, period, src, start, out, filt, seg=None, side=None, shift=0.0):
     """Rebuild the loop from the source at `start` (or a prebuilt `seg`,
     for a composite): the original recipe's filters and normaliser, a
-    static gain onto the shipped level, then `seamless_loop()`. Returns
-    (gain_db, corr_after, worst_band_db, contour_db, normaliser)."""
+    static gain onto the shipped level, then `seamless_loop()`.
+
+    With `shift` > 0 the recipe runs that much longer from the same cut
+    point and seamfit chooses the loop start within it, so a window that
+    opens in a lull (a level step at every wrap) can move later by up to
+    `shift` seconds. The checks then compare the overlapping audio.
+    Returns (gain_db, corr_after, worst_band_db, contour_db, normaliser,
+    loop_start_s, tilt_db)."""
     ref = git_audio(f"public/audio/{rel}", SR, 2)
     refm = ref.mean(axis=1)
     rms = lambda z: float(np.sqrt((z.astype(np.float64) ** 2).mean()))
@@ -385,7 +394,7 @@ def recut(rel, period, src, start, out, filt, seg=None, side=None):
         options = []
         for norm in normalizer_candidates(side or {}):
             chain = recipe_prefix(side or {}) + [f for f in (filt, norm) if f]
-            options.append((norm, process(src, start, period, chain)))
+            options.append((norm, process(src, start, period + shift, chain)))
     for norm, s in options:
         if len(s) < int((period + C) * SR):
             raise ValueError(f"source ends {len(s) / SR:.1f}s after the cut; "
@@ -405,14 +414,20 @@ def recut(rel, period, src, start, out, filt, seg=None, side=None):
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "f32le", "-ac", "2",
                         "-ar", str(SR), "-i", "-", "-c:a", "pcm_f32le", tmp],
                        input=(seg * gain).astype(np.float32).tobytes(), check=True)
-        loopify.seamless_loop(tmp, out, period, SR, start=0)
+        loop_start, tilt = 0, 0.0
+        if shift > 0:
+            fit = seamfit.find_loop_start(tmp, period)
+            loop_start = fit["start"]
+            tilt, _ = seamfit.tilt_for(fit, period)
+        loopify.seamless_loop(tmp, out, period, SR, start=loop_start, tilt_db=tilt)
     finally:
         os.remove(tmp)
     # Downmix both sides the same way: ffmpeg's -ac 1 is not a plain mean,
     # and mixing the two methods reads as a flat 3 dB error in every band.
     new = decode(out, SR, 2).mean(axis=1)
     m = min(len(new), len(ref))
-    x, y = new[a:m - SR], ref[a:m - SR].mean(axis=1)
+    o = int(loop_start * SR)       # the new loop starts this far into the old window
+    x, y = new[a:m - SR - o], ref[a + o:m - SR].mean(axis=1)
     corr = float(np.dot(x, y) / (np.linalg.norm(x) * np.linalg.norm(y) + 1e-20))
     # Same audio should have the same spectrum. A band off by more than the
     # tolerance means the recipe did something the notes don't record.
@@ -426,7 +441,7 @@ def recut(rel, period, src, start, out, filt, seg=None, side=None):
         os.remove(out)
         raise ValueError(f"spectrum differs from the shipped file by "
                          f"{worst:.1f} dB in some band; unrecorded processing?")
-    return 20 * np.log10(gain), corr, worst, spread, norm
+    return 20 * np.log10(gain), corr, worst, spread, norm, loop_start, tilt
 
 
 def tonal_repair_cmd():
@@ -468,6 +483,9 @@ def main():
     ap.add_argument("only", nargs="*", help="scene/element/variant prefixes")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--list", help="file of scene/element/variant.opus paths to re-cut")
+    ap.add_argument("--shift-search", type=float, default=0.0, metavar="S",
+                    help="let seamfit move the loop start up to S seconds later "
+                         "in the recording, to level-match a stepped wrap (0B)")
     args = ap.parse_args()
     wanted = None
     if args.list:
@@ -492,8 +510,8 @@ def main():
             out = os.path.join(AUDIO, rel)
             tmp = out + ".tmp.opus"
             try:
-                _, corr, worst, spread, norm = recut(rel, period, None, 0.0, tmp, None,
-                                                     seg=seg, side=side)
+                _, corr, worst, spread, norm, _, _ = recut(rel, period, None, 0.0, tmp, None,
+                                                           seg=seg, side=side)
             except ValueError as e:
                 print(f"  SKIP  {rel}: {e}")
                 continue
@@ -539,8 +557,8 @@ def main():
         tmp = out + ".tmp.opus"
         filt = recorded_filters(side, rel)
         try:
-            gain_db, corr, worst, spread, norm = recut(rel, period, src, start, tmp,
-                                                       filt, side=side)
+            gain_db, corr, worst, spread, norm, ls, tilt = recut(
+                rel, period, src, start, tmp, filt, side=side, shift=args.shift_search)
         except ValueError as e:
             print(f"  SKIP  {rel}: {e}")
             continue
@@ -556,7 +574,9 @@ def main():
             "date": today,
             "tool": "tools/recut-from-source.py",
             "source": os.path.relpath(src, SOUNDS),
-            "sourceStartSeconds": round(start, 4),
+            "sourceStartSeconds": round(start + ls, 4),
+            "windowShiftSeconds": ls,
+            "tiltDb": round(tilt, 2),
             "gainDb": round(gain_db, 2),
             "filter": filt,
             "filterWasUnrecorded": rel in UNRECORDED_FILTERS,
@@ -579,7 +599,7 @@ def main():
         with open(out[:-5] + ".json", "w", encoding="utf-8") as f:
             json.dump(side, f, indent=2)
             f.write("\n")
-        print(f"  recut {line} gain {gain_db:+.2f} dB, match {corr:.3f}, "
+        print(f"  recut {line} shift +{ls}s tilt {tilt:+.2f}, gain {gain_db:+.2f} dB, match {corr:.3f}, "
               f"worst band {worst:.2f} dB, contour {spread:.2f} dB, "
               f"{norm or 'static gain'}" + (f", {filt}" if filt else "")
               + (", birds re-repaired" if repaired else ""))
