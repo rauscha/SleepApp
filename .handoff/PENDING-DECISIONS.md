@@ -266,6 +266,13 @@ survival is now confirmed (6h, PR #13); session-owned protections were
 rewritten in `HowlScenePlayer`. Any remaining device validation is folded into
 roadmap 5.2. See DECISIONS.md for the pivot record.
 ## 4. Cleanup chores (low priority, only on "deferred clean-up work")
+
+**Keep, don't clean (Andrew, 2026-09-30: "always have to watch for more need
+for scenes"):** the FTUS zips in `~/Downloads/remote-browser/` (Immersive
+`ORTF3D_RAIN_01`, All In One `RAIN_08` glass and `RAIN_11` interior, ~40 GB).
+The AIOB metadata map, which says which zip holds what, is unpacked at
+`~/sounds/ftus/aiob-meta/`. `~/remote-browser.sh start` reopens a Gumroad
+browser on tikiserv for more downloads.
 - Worktree litter under `.git/worktrees/` + `.claude/worktrees/` (Drive holds
   handles — `prune`/`rm` fail with Permission denied; cosmetic).
 - `git remote prune origin` (remote-tracking refs bloated); delete any stray
