@@ -11,8 +11,9 @@ so this file is only live items.
 ## At a glance
 
 **Blocked on Andrew**
-- **2** — the device pass, which is the gate on tagging v1.0: PWA install, an
-  overnight on v18, and the mark button on a locked phone. **iOS Safari is
+- **2** — the device pass, which is the gate on tagging v1.0. PWA install: done
+  (reinstalled 2026-10-01 after the ghost-install fix). Overnight: **worked,
+  night of 2026-10-01 on v19/c317c60**. Left: the mark button on a locked phone. **iOS Safari is
   dropped for now** (Andrew, 2026-09-30).
 
 **Buildable without you**

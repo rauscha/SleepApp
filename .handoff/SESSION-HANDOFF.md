@@ -38,6 +38,13 @@ about 05:30Z. **Live now: build `c6f480e 2026-10-01 05:40Z`, CACHE v19.**
 After any push, confirm the deploy run completed and the live build stamp
 matches.
 
+## Overnight result
+**2026-10-01: SleepApp worked overnight** (Andrew) on the freshly installed
+build c317c60 / CACHE v19, with the wrap fix, the re-cuts, glass-4/5 and the
+leveled steps. Unless keepScreenAwake was switched on, this is the first
+confirmed overnight with the screen allowed to sleep (DECISIONS.md, "Let the
+screen sleep" asked to watch for exactly this).
+
 ## Next
 - rain-4 is exact (0K done); it shipped with the 0B re-cuts in v19.
 - 0B is fixed: the eight stepped wraps were re-cut with window search.
