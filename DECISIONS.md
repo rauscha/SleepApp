@@ -1289,3 +1289,24 @@ What the listening rounds taught, for the next splice job:
   --alt-boundary` (`dynaudnorm ...:b=1`) holds the edge gain. It is
   opt-in so the masters already cut stay reproducible; use it for any new
   source. glass-4's source was loud enough that the ramp did not matter.
+
+## Meditation beds, no singing bowls, no local voice, iOS later (2026-09-30)
+
+Andrew settled four open items in one message:
+
+- **Meditations get existing scenes as beds:** warm-room over fireplace,
+  forest-01 over forest-evening, lake-at-dusk over waterfall-valley,
+  under-a-slow-sky over forest-night, and the other six over
+  rain-on-window. A meditation's bed is only an underbed (stop-with-content),
+  so it has to sit under a voice, not survive the night.
+- **Singing bowls are ditched.** The 2026-07-01 plan for a sourced warm
+  pad/drone is dropped, and the FTUS map has no bowls or musical drones
+  anyway. The held-back scene stays on disk as history.
+- **No local TTS engine.** The library stays on ElevenLabs `stone`.
+- **iOS Safari testing is dropped for now.** The v1.0 device pass is PWA
+  install, an overnight, and the mark button on a locked phone.
+
+Photos: night-train finally has one (Andrew's own AI-generated image, his
+rights), and monsoon and forest-day are replaced with his photographs. All
+are graded to the catalogue's night luminance. Scene photos are
+stale-while-revalidate in the service worker, so no cache bump is needed.

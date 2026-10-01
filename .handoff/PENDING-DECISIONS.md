@@ -11,12 +11,9 @@ so this file is only live items.
 ## At a glance
 
 **Blocked on Andrew**
-- **1** — every meditation plays with no bed. Pick pairings, or wait for 0G.
-- **0G** — a source for the singing-bowl replacement bed. Pick a route.
-- **0E** — the narration voice. 31 audition files are on your phone. This one
-  gates the most: 7 written meditations cannot be rendered until it is picked.
-- **0F** — a photograph for `night-train`, plus the two still-off-brief ones.
-- **2** — the device pass, which is the gate on tagging v1.0.
+- **2** — the device pass, which is the gate on tagging v1.0: PWA install, an
+  overnight on v18, and the mark button on a locked phone. **iOS Safari is
+  dropped for now** (Andrew, 2026-09-30).
 
 **Buildable without you**
 - **0B** — 8 variants still step >3 dB at the wrap, the same 8 the 2026-09-02
@@ -43,7 +40,13 @@ rain-on-glass recording chosen by Andrew's ear (DECISIONS.md, "glass-1
 retired"). glass-5, the Guangzhou splatter spliced clean by ear, joined it the
 same day as an extra variant (DECISIONS.md, "glass-5").
 
-## 0G. OPEN 2026-09-16 — the bowls are OUT of the catalogue, and need sourcing
+## 0G. CLOSED 2026-09-30 — singing bowls ditched
+
+Andrew: "we ditch singing bowls." No replacement bed will be sourced. The ten
+meditations play over existing scenes (item 1). The held-back scene's files
+stay in `scenes/_held-back/` as history and can go in a cleanup.
+
+### (was: the bowls are OUT of the catalogue, and need sourcing)
 
 Andrew: "I thought we still need to resource the bowls? The old ones were
 hella disharmonious." Then: "We're replacing but need to source them. No
@@ -91,7 +94,12 @@ done well. Not reverted: the deploy had already published CACHE_VERSION v14,
 so a revert costs a second full re-download and returns nothing. The general
 finding in it is still worth having — see "Watch out for" in the hand-off.
 
-## 0E. OPEN 2026-09-14 — the audition is rendered and staged, waiting on ears
+## 0E. CLOSED 2026-09-30 — no local voice needed
+
+Andrew: "No local voice needed." The library stays on ElevenLabs `stone`.
+The audition record stays in `notes/engine-audition-2026-09-14.md`.
+
+### (was: the audition is rendered and staged, waiting on ears)
 
 **Narrowed 2026-09-19: the library no longer waits on this.** Andrew chose
 `stone` and the whole library is rendered in it (item 1). What is still open
@@ -144,7 +152,18 @@ refuting the craft sources); ceilings + a perceptual taper ship on every
 volume slider; the train scene's source is FTUS TRAINS_02's Thailand
 first-class cabin (602 s, "Railway Clicks").
 
-## 0F. OPEN 2026-09-15 — the train scene ships without a photograph
+## 0F. DONE 2026-09-30 — photos for night-train, monsoon and forest-day
+
+From Andrew's own set (Taildropped to `~/Taildrop/`; working copies in
+`~/incoming/photos-2026-09-30/`): night-train is his AI-generated lounge car
+(lamp against a rainy window); monsoon is his storm shelf over a skyline
+(window frame cropped, top-right darkened so the card's arrow reads);
+forest-day is his tall-forest path. All are graded to the catalogue's night
+luminance (YAVG ~35-42), and NOTICES.md records his rights. Unused but
+strong, kept in reserve: the dark beach with a lighthouse glint
+(IMG_1568), night leaves (L1010043), and the second AI train (corridor).
+
+### (was: the train scene ships without a photograph)
 
 `night-train` is cut, voiced, conformance-green and in the catalogue. It is
 the only scene with no photo, so it draws its gradient instead — supported,
@@ -199,7 +218,14 @@ and that file now opens with a status block saying which is which.
   `package.json` still reads `0.1.0` and there are no tags yet. **This is the
   gate on v1.0.**
 
-## 1. DONE 2026-09-19 — the library is rendered, on `stone`
+## 1. DONE 2026-09-30 — every meditation has a bed
+
+Andrew took the suggested pairings: warm-room over fireplace, forest-01 over
+forest-evening, lake-at-dusk over waterfall-valley, under-a-slow-sky over
+forest-night, the other six over rain-on-window. These are `sceneId`s in
+`public/meditations/index.json`; nothing was re-rendered.
+
+### (2026-09-19: the library is rendered, on `stone`)
 
 Andrew picked `stone` for the whole library rather than waiting for the
 engine audition to close. Ten meditations (3 re-rendered, 7 new) and all four

@@ -9,7 +9,7 @@
       "voiceId": "stone",
       "createdAt": "2026-05-18T00:35:14.694Z",
       "audioPath": "body-scan-01.mp3",
-      "sceneId": "singing-bowl"
+      "sceneId": "rain-on-window"
     },
     {
       "id": "breath-01",
@@ -20,7 +20,7 @@
       "voiceId": "stone",
       "createdAt": "2026-05-18T00:36:45.835Z",
       "audioPath": "breath-01.mp3",
-      "sceneId": "singing-bowl"
+      "sceneId": "rain-on-window"
     },
     {
       "id": "forest-01",
@@ -31,7 +31,7 @@
       "voiceId": "stone",
       "createdAt": "2026-05-18T00:38:35.885Z",
       "audioPath": "forest-01.mp3",
-      "sceneId": "singing-bowl"
+      "sceneId": "forest-evening"
     },
     {
       "id": "down-the-staircase",
@@ -41,7 +41,8 @@
       "durationSeconds": 480,
       "voiceId": "stone",
       "createdAt": "2026-09-19T19:01:51.304Z",
-      "audioPath": "down-the-staircase.mp3"
+      "audioPath": "down-the-staircase.mp3",
+      "sceneId": "rain-on-window"
     },
     {
       "id": "tense-and-release",
@@ -51,7 +52,8 @@
       "durationSeconds": 481,
       "voiceId": "stone",
       "createdAt": "2026-09-19T19:03:26.166Z",
-      "audioPath": "tense-and-release.mp3"
+      "audioPath": "tense-and-release.mp3",
+      "sceneId": "rain-on-window"
     },
     {
       "id": "lake-at-dusk",
@@ -61,7 +63,8 @@
       "durationSeconds": 486,
       "voiceId": "stone",
       "createdAt": "2026-09-19T19:04:44.705Z",
-      "audioPath": "lake-at-dusk.mp3"
+      "audioPath": "lake-at-dusk.mp3",
+      "sceneId": "waterfall-valley"
     },
     {
       "id": "warm-room",
@@ -71,7 +74,8 @@
       "durationSeconds": 478,
       "voiceId": "stone",
       "createdAt": "2026-09-19T19:07:27.471Z",
-      "audioPath": "warm-room.mp3"
+      "audioPath": "warm-room.mp3",
+      "sceneId": "fireplace"
     },
     {
       "id": "long-exhale",
@@ -81,7 +85,8 @@
       "durationSeconds": 478,
       "voiceId": "stone",
       "createdAt": "2026-09-19T19:08:42.443Z",
-      "audioPath": "long-exhale.mp3"
+      "audioPath": "long-exhale.mp3",
+      "sceneId": "rain-on-window"
     },
     {
       "id": "quiet-shuffle",
@@ -91,7 +96,8 @@
       "durationSeconds": 460,
       "voiceId": "stone",
       "createdAt": "2026-09-19T19:09:54.605Z",
-      "audioPath": "quiet-shuffle.mp3"
+      "audioPath": "quiet-shuffle.mp3",
+      "sceneId": "rain-on-window"
     },
     {
       "id": "under-a-slow-sky",
@@ -101,7 +107,8 @@
       "durationSeconds": 487,
       "voiceId": "stone",
       "createdAt": "2026-09-19T19:10:53.859Z",
-      "audioPath": "under-a-slow-sky.mp3"
+      "audioPath": "under-a-slow-sky.mp3",
+      "sceneId": "forest-night"
     }
   ]
 }
