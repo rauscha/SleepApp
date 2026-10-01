@@ -363,9 +363,10 @@ public/
   meditations/       narration audio + index.json + the .txt scripts
   stories/           narration audio + index.json + the .txt scripts
   sw.js              service worker; CACHE_VERSION lives here
-tools/               see "Scene authoring"; also the TTS audition rig
-                     (tts-audition/-verify/-ladder, accent-id,
-                     voice-similarity, bedmix)
+tools/               see "Scene authoring" (loopify, seamfit, recut,
+                     seam-review, level-ftus, tonal scan/repair, sparse
+                     layers, review-markers, loop-probe) plus the
+                     narration renderers gen-story.ts / gen-meditation.ts
 notes/               research and review history; read-only
 .handoff/            PENDING-DECISIONS.md + SESSION-HANDOFF.md — the live
                      state of the project

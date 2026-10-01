@@ -242,8 +242,9 @@ def align(rel, period, src, prior):
 # Processing the original recipe applied that its sidecar never recorded,
 # established by measurement (and now written into the re-cut's sidecar).
 # The rain-on-window rumbles: a 2-pole low-pass at 600 Hz, -3 dB at 630 Hz
-# and 12 dB/octave above, exactly as tools/grow-out-scenes.sh describes the
-# "rain-on-window convention" for distant thunder.
+# and 12 dB/octave above: the "rain-on-window convention" for distant
+# thunder that the 2026-05-28 grow-out builder applied (tools/grow-out-
+# scenes.sh, removed after v1.0; see tag v1.0.0).
 UNRECORDED_FILTERS = {
     "rain-on-window/distant-thunder-rumble/rumble-1.opus": "lowpass=f=600",
     "rain-on-window/distant-thunder-rumble/rumble-2.opus": "lowpass=f=600",

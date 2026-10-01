@@ -2,8 +2,8 @@
 //
 // Voice content (meditations, stories) shipped without this step had wide
 // loudness variance — body-scan-01 was ~12 dB louder than seaside-village,
-// jarring enough to surface as a real complaint. Scene audio went through
-// tools/transcode-scene-audio.sh's loudnorm step; voice content didn't.
+// jarring enough to surface as a real complaint. Scene audio was always
+// loudnormed by its pipeline; voice content wasn't.
 // This helper closes that gap.
 //
 // Target: I=-19 LUFS, TP=-1.0, LRA=7
