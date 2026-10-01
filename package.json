@@ -1,7 +1,7 @@
 {
   "name": "sleep-app",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Personal sleep app — soundscapes, AI sleep stories, AI guided meditations. PWA. Single user. The One Thing: put me to sleep and let me stay there.",
   "scripts": {

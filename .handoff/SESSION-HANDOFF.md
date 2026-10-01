@@ -38,6 +38,9 @@ about 05:30Z. **Live now: build `c6f480e 2026-10-01 05:40Z`, CACHE v19.**
 After any push, confirm the deploy run completed and the live build stamp
 matches.
 
+## v1.0.0 tagged (2026-10-01)
+After Andrew's clean overnight on v19. package.json reads 1.0.0; git tag `v1.0.0`.
+
 ## Overnight result
 **2026-10-01: SleepApp worked overnight** (Andrew) on the freshly installed
 build c317c60 / CACHE v19, with the wrap fix, the re-cuts, glass-4/5 and the

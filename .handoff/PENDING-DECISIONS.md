@@ -205,7 +205,12 @@ eight stepped wraps"). Steps are 0.02-0.65 dB now, and v19 ships them.
   leaving the hole. Measured, reproducible via `tools/loop-probe/run.sh`.
   Unmeasured on a real device; that is what the markers are for.
 
-## 2. Remaining v1.0 roadmap items (your input / hardware)
+## 2. DONE 2026-10-01 — v1.0.0 tagged
+
+The device pass was a PWA install plus a clean overnight on v19. iOS was dropped
+and marking isn't a release gate (Andrew). See DECISIONS.md, "v1.0.0".
+
+### (was: Remaining v1.0 roadmap items)
 
 These two are the whole remaining roadmap; everything else in
 `notes/shipping-review-2026-06-12/09-roadmap-to-v1.1.md` is done or obsolete,

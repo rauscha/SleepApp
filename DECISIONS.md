@@ -1332,3 +1332,17 @@ cut point, with seamfit free to start the loop up to 60 s later.
   469 Hz tone matches the 2-3 thunder resonances per 37 s it always
   carried.
 - CACHE_VERSION v18 -> v19. rain-4's exact re-cut rides along.
+
+## v1.0.0 (2026-10-01)
+
+Tagged after the device pass. Andrew reinstalled the PWA (once the
+ghost-install fix, the explicit manifest `id`, let Chrome install it
+again) and had a clean overnight on v19. iOS Safari was dropped from the
+pass, and the debug markers are a debug feature, not a release
+requirement (Andrew, 2026-10-01).
+
+What v1.0 is: 9 scenes on native html5 loops that wrap through real
+equal-power crossfades, with no holes and no steps over 3 dB anywhere in
+the catalogue; 4 stories and 10 meditations in one voice, each meditation
+over a scene bed; a photo on every scene; no generative AI at runtime; no
+alarm, notifications, telemetry or accounts.

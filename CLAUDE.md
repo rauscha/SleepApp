@@ -5,21 +5,22 @@ sleep and let me stay there.** Everything below serves that.
 
 ---
 
-## Where the project is (2026-09-19)
+## Where the project is (2026-10-01)
 
-A v1.0 ship candidate. The overnight-survival problem that gated v1.0 is
-solved — the scene bed runs on native Howler `html5` and was confirmed over a
-real 6h overnight (see "Audio engine invariants").
+**v1.0.0 is tagged and live.** The scene bed runs on native Howler `html5`
+(see "Audio engine invariants"). Every loop wraps through a real crossfade
+since the 2026-09-30 wrap fix, and Andrew confirmed a full overnight on v19
+with the screen allowed to sleep.
 
-- **9 scenes ship**, 1 is held back. 4 bundled stories, 3 meditations
-  rendered, 7 meditation scripts written and unrendered.
+- **9 scenes ship.** Singing bowls are ditched; the held-back scene stays on
+  disk as history. Every scene has a photo.
+- **4 stories and 10 meditations,** all in the ElevenLabs `stone` voice. Each
+  meditation plays over an existing scene as its bed. No local TTS.
 - **No generative AI at runtime.** The in-app story generator was stripped on
   2026-09-15; the library is fixed files in `public/`. See "The library is
   hand-made".
-- **What is actually left before tagging v1.0:** a narration voice (blocked on
-  Andrew's ear — the audition is on his phone), the 7 unrendered meditations
-  behind it, a replacement bed for the held-back singing-bowl scene, a photo
-  for `night-train`, and a device pass.
+- **The debug markers are a debug feature, not a release gate.** iOS Safari is
+  untested by choice (2026-09-30).
 
 **The live checklists are in `.handoff/`, not here.** `PENDING-DECISIONS.md`
 is what is open and who it is waiting on; `SESSION-HANDOFF.md` is newest-block
