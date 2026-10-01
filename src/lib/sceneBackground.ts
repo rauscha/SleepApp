@@ -17,7 +17,6 @@ const SCENE_PHOTOS: Record<string, string> = {
   'ocean-night':    resolvePublicUrl('/scenes/photos/ocean-night.jpg'),
   'fireplace':      resolvePublicUrl('/scenes/photos/fireplace.jpg'),
   'night-train':    resolvePublicUrl('/scenes/photos/night-train.jpg'),
-  'singing-bowl':   resolvePublicUrl('/scenes/photos/singing-bowl.jpg'),
 };
 
 const SCENE_GRADIENTS: Record<string, [string, string]> = {
@@ -30,7 +29,6 @@ const SCENE_GRADIENTS: Record<string, [string, string]> = {
   'ocean-night':    ['#10202A', '#0B0D10'],
   'fireplace':      ['#2A1810', '#0B0D10'],
   'night-train':    ['#231C22', '#0B0D10'],
-  'singing-bowl':   ['#1E1A10', '#0B0D10'],
 };
 
 // Card overlay — light darkening so the editorial title sits over the

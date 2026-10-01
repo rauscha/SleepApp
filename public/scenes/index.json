@@ -1,7 +1,4 @@
 {
-  "_heldBack": {
-    "singing-bowl": "Retired 2026-09-30: Andrew ditched singing bowls. Meditations play over existing scenes instead (public/meditations/index.json). Files kept in scenes/_held-back/ for history; safe to delete in a cleanup."
-  },
   "scenes": [
     {
       "id": "forest-day",

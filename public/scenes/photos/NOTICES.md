@@ -9,7 +9,6 @@ license does not strictly require it.
 | forest-evening   | forest-evening.jpg    | Jonathan Klok       | Unsplash — Unsplash License (free use)    |
 | ocean-night      | ocean-night.jpg       | Joakim Honkasalo    | Unsplash — Unsplash License (free use)    |
 | fireplace        | fireplace.jpg         | Elisabeth Arnold    | Unsplash — Unsplash License (free use)    |
-| singing-bowl     | singing-bowl.jpg      | Petr Sidorov        | Unsplash — Unsplash License (free use) — photo-1627764627459-ba29d6051fe0 |
 | waterfall-valley | waterfall-valley.jpg  | Andrew Rausch       | Own photograph (2026-09-02); tone-curved down to the catalogue's night luminance (YAVG ~40) |
 | forest-day       | forest-day.jpg        | Andrew Rausch       | Own photograph (IMG_20170812_085115, 2026-09-30); cropped 3:2 from portrait, tone-curved to YAVG ~42 |
 | monsoon          | monsoon.jpg           | Andrew Rausch       | Own photograph (IMG_20180515_170029, 2026-09-30); window frame cropped off, tone-curved to YAVG ~42 |

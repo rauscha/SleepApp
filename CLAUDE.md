@@ -12,8 +12,8 @@ sleep and let me stay there.** Everything below serves that.
 since the 2026-09-30 wrap fix, and Andrew confirmed a full overnight on v19
 with the screen allowed to sleep.
 
-- **9 scenes ship.** Singing bowls are ditched; the held-back scene stays on
-  disk as history. Every scene has a photo.
+- **9 scenes ship,** each with a photo. Singing bowls were dropped
+  (2026-09-30).
 - **4 stories and 10 meditations,** all in the ElevenLabs `stone` voice. Each
   meditation plays over an existing scene as its bed. No local TTS.
 - **No generative AI at runtime.** The in-app story generator was stripped on
@@ -258,8 +258,7 @@ A scene that is written but not fit to ship goes in
 `loopify-scenes.py`, not the app. A `_heldBack` key in `index.json` carries
 the note (JSON has no comments) and a README beside the scene carries the
 reasoning. Moving the file back and restoring one index entry un-holds it.
-`singing-bowl` is held back as of 2026-09-16, pending a source for its
-replacement bed.
+Nothing is held back at v1.0; singing-bowl was the last, retired 2026-09-30.
 
 ### Cache version
 

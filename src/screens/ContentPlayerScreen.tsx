@@ -250,7 +250,7 @@ export function ContentPlayerScreen({
 
   // Pull the bed gain down while narration is on top of it. The slider
   // below lets the user tune; default is 50% of the user's chosen master
-  // so the singing-bowl + story beds (mixed for standalone listening at
+  // so the scene beds (mixed for standalone listening at
   // ~0.55 primary element) don't drown out the voice. Restore the master
   // on unmount so the standalone Player and Tonight hear the bed at full
   // strength again.

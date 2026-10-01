@@ -15,7 +15,7 @@ decisions is in `DECISIONS.md` ("Clean single-producer audio source",
 
 ## Where the catalogue came from
 
-74 scene variants across 10 scenes, 9 shipping and 1 held back.
+67 scene variants across 9 scenes (counted at v1.0, 2026-10-01).
 
 | Source | Files | What it is |
 |---|---|---|
@@ -24,7 +24,6 @@ decisions is in `DECISIONS.md` ("Clean single-producer audio source",
 | **FOBOS PLANET** | 5 | The free "Fireplace 12h" YouTube release; the whole fireplace scene. |
 | **Pixabay** | 5 | Early material, mostly in rain-on-window. glass-1 was retired on 2026-09-30 (a rooster, 0I). Pixabay's licence fails a redistribution test, which is moot now the app is explicitly personal-use. |
 | **user-provided** | 2 | Andrew's own recordings. |
-| **audiocraft MusicGen** | 5 | Locally generated, **rejected**, and held back with the singing-bowl scene. |
 | **synthesized** | 3 | The pre-rendered brown/pink/white noise beds in `public/audio/_bed/`. |
 
 Per scene:
@@ -40,7 +39,6 @@ Per scene:
 | ocean-night | FTUS ×6, George Vlad ×5 |
 | rain-on-window | Pixabay ×4, FTUS ×4, user ×1 |
 | waterfall-valley | FTUS ×6 |
-| singing-bowl *(held back)* | MusicGen ×5, rejected |
 
 **Every shipped file has a `.json` sidecar beside it** recording its source,
 licence, and exactly what was done to it — which prime offset it was cut to,
@@ -61,7 +59,7 @@ Worth knowing so nobody re-walks these.
 - **AI generation.** audiocraft MusicGen-medium was generated locally for the
   singing-bowl bed and rejected layer by layer on 2026-06-21 — "screeching
   teapot", "industrial ghost music", "old-school mp3 warble". MusicGen stays
-  rejected. This is the one place the old document was right.
+  rejected, and singing bowls were dropped altogether on 2026-09-30. This is the one place the old document was right.
 - **Paid effects marketplaces** (ASoundEffect, Boom, Pro Sound Effects,
   SoundDogs) and the BBC archive were surveyed and never used. One bundle
   purchase covered more ground than a per-file budget would have.
@@ -106,12 +104,6 @@ public/audio/_bed/<color>.opus                            # synth beds
 ---
 
 ## Still wanted
-
-**A bed to replace singing-bowl.** The open sourcing task. The decision
-(2026-07-01) is a warm ambient pad/drone rather than bowls, voiced to sit
-under narration: HPF ~80–100 Hz, a 200–500 Hz dip, 2–4 kHz left clear for
-consonants. Two routes are on record in `.handoff/PENDING-DECISIONS.md` —
-the 99Sounds "Drones" library by Red Fog, or DSP synthesis.
 
 **A second variant for `waterfall-valley/falls-main`,** which ships one.
 

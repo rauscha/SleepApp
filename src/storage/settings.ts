@@ -18,8 +18,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   // Conservative default so first launch doesn't blast a sleeping user.
   // Settings has a master slider for those who want more.
   masterVolume: 0.4,
-  // Half-volume bed under narration is the starting point — the singing-bowl
-  // and story-bed scenes are mixed to sit on their own at the standalone
+  // Half-volume bed under narration is the starting point — the scenes used
+  // as story and meditation beds are mixed to sit on their own at the standalone
   // Player altitudes (primary element ~0.55), which drowns a voice track.
   // The slider in ContentPlayerScreen lets the user tune from here.
   contentBedAttenuation: 0.5,
