@@ -30,6 +30,14 @@
   the scene mix). `--audit` now reports holes. DECISIONS.md: "The wrap was a
   hole" and "Re-cut from source, never patched in place".
 
+## Deploy incident (2026-09-30/10-01)
+A GitHub Pages deploy job hung in "waiting" for 10 h (a GitHub-side hang:
+no reviewers, branch policy met). `concurrency: pages` queued every later
+push behind it, so v18 and v19 were not live until it was cancelled at
+about 05:30Z. **Live now: build `c6f480e 2026-10-01 05:40Z`, CACHE v19.**
+After any push, confirm the deploy run completed and the live build stamp
+matches.
+
 ## Next
 - rain-4 is exact (0K done); it shipped with the 0B re-cuts in v19.
 - 0B is fixed: the eight stepped wraps were re-cut with window search.
