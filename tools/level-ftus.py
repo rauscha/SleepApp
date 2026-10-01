@@ -49,8 +49,19 @@ only the two channels' standing levels move.
 import argparse, datetime, json, os, re, subprocess, sys
 
 DAN = "dynaudnorm=f=400:g=101:r=0.5:p=0.9:m=8"
+# dynaudnorm's default boundary mode assumes unity gain beyond the file's
+# edges, which on a quiet source (one that needs a big lift) is a ~20 s
+# fade-in and fade-out baked into the master -- and a loop cut near either
+# end inherits it as a dip at every wrap (glass-5, 2026-09-30: -39 dB
+# ramping to -22). `b=1` holds the edge frames' gain instead. Opt-in via
+# --alt-boundary so the masters already cut stay reproducible.
+DAN_ALT = DAN + ":b=1"
 FRONT = "pan=stereo|c0=c0|c1=c1"
 SR = 48000
+
+
+def leveller(alt):
+    return DAN_ALT if alt else DAN
 
 
 def downmix(layout, width, gl=1.0, gr=1.0):
@@ -103,9 +114,9 @@ def run(args):
     return subprocess.run(args, capture_output=True, text=True)
 
 
-def measure(src, target, tp, lra, pan=FRONT):
+def measure(src, target, tp, lra, pan=FRONT, dan=DAN):
     """Pass 1: downmix + dynaudnorm, loudnorm in measurement mode."""
-    fc = f"{pan},{DAN},loudnorm=I={target}:TP={tp}:LRA={lra}:print_format=json"
+    fc = f"{pan},{dan},loudnorm=I={target}:TP={tp}:LRA={lra}:print_format=json"
     r = run(["ffmpeg", "-hide_banner", "-nostats", "-i", src, "-af", fc,
              "-ar", str(SR), "-f", "null", "-"])
     txt = r.stderr
@@ -116,13 +127,13 @@ def measure(src, target, tp, lra, pan=FRONT):
     return json.loads(txt[i:j + 1])
 
 
-def render(src, out, m, target, tp, lra, pan=FRONT):
+def render(src, out, m, target, tp, lra, pan=FRONT, dan=DAN):
     """Pass 2: same chain, loudnorm in linear mode with pass-1 measurements."""
     ln = (f"loudnorm=I={target}:TP={tp}:LRA={lra}:linear=true"
           f":measured_I={m['input_i']}:measured_TP={m['input_tp']}"
           f":measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}"
           f":offset={m['target_offset']}:print_format=json")
-    fc = f"{pan},{DAN},{ln}"
+    fc = f"{pan},{dan},{ln}"
     r = run(["ffmpeg", "-y", "-hide_banner", "-nostats", "-i", src, "-af", fc,
              "-ar", str(SR), "-c:a", "pcm_s24le", out])
     if r.returncode:
@@ -146,6 +157,9 @@ def main():
                          "the filename prefix (L,R / M,S,Cs / W,Y,Z,X)")
     ap.add_argument("--width", type=float, default=0.7,
                     help="ambix only: weight on the Y figure-8 (0 = mono W)")
+    ap.add_argument("--alt-boundary", action="store_true",
+                    help="hold the edge gain instead of fading in/out at the "
+                         "file's ends (use for any new or quiet source)")
     ap.add_argument("--balance", action="store_true",
                     help="correct a standing L/R level difference")
     a = ap.parse_args()
@@ -162,9 +176,9 @@ def main():
         pan = downmix(a.layout, a.width, gl, gr)
         print(f"  balance {stem}: L-R {bal:+.2f} dB measured -> "
               f"{-bal / 2:+.2f}/{bal / 2:+.2f} dB applied")
-    m = measure(a.master, a.target, a.tp, a.lra, pan)
+    m = measure(a.master, a.target, a.tp, a.lra, pan, leveller(a.alt_boundary))
     print(f"  pass1 {stem}: I={m['input_i']} LRA={m['input_lra']} TP={m['input_tp']}")
-    o = render(a.master, out, m, a.target, a.tp, a.lra, pan)
+    o = render(a.master, out, m, a.target, a.tp, a.lra, pan, leveller(a.alt_boundary))
     print(f"  pass2 {stem}: I={o['output_i']} LRA={o['output_lra']} TP={o['output_tp']} -> {out}")
     dur = subprocess.check_output(["ffprobe", "-v", "error", "-show_entries",
                                    "format=duration", "-of", "csv=p=0", out], text=True).strip()
@@ -194,7 +208,7 @@ def main():
                 "the cabin really is louder on one side, but a bed played for "
                 "eight hours should not leave one ear hotter all night"
             ) if a.balance else None,
-            "leveling": DAN,
+            "leveling": leveller(a.alt_boundary),
             "loudnorm": f"two-pass linear, I={float(o['output_i']):.2f} LUFS, TP={a.tp} dBTP, LRA={a.lra}",
             "lengthSeconds": round(float(dur), 1),
             "sampleRate": SR,
