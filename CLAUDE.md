@@ -32,8 +32,10 @@ are the situation.
 ## Before you touch anything
 
 **Read the decision history before changing content, not after.** This repo
-carries fifteen months of decisions in `DECISIONS.md`, `.handoff/`, and
-`notes/`, and they are load-bearing. On 2026-09-15 a session spent an hour
+carries fifteen months of decisions in `DECISIONS.md`, and they are
+load-bearing. The research notes, reviews and session logs from before v1.0
+were pruned from the tree on 2026-10-01 and are intact at tag `v1.0.0`:
+`git grep <term> v1.0.0 -- notes .handoff` searches them. On 2026-09-15 a session spent an hour
 perfecting the loop seams on the singing-bowl scene; the decision to throw
 that audio away wholesale had been on record since 2026-06-21, in two
 places, one of which said "Singing-bowl: replace, don't re-cut." Measurements
@@ -367,18 +369,14 @@ tools/               see "Scene authoring" (loopify, seamfit, recut,
                      seam-review, level-ftus, tonal scan/repair, sparse
                      layers, review-markers, loop-probe) plus the
                      narration renderers gen-story.ts / gen-meditation.ts
-notes/               research and review history; read-only
+notes/               the three docs live files still cite: the FTUS
+                     source selection, voice design, and phone dev
+                     setup (dev-cert-android.md, for start-dev.bat)
 .handoff/            PENDING-DECISIONS.md + SESSION-HANDOFF.md — the live
                      state of the project
 DECISIONS.md         historical architecture decisions; APPEND, never rewrite
 NEXT_STEPS.md        personal current-state TODO; gitignored
 ```
-
-`notes/shipping-review-2026-06-12/` holds the 2026-06-12 eight-front shipping
-review (8 reports + executive summary) and `09-roadmap-to-v1.1.md`. The
-reports are read-only history; the roadmap is a checklist that has been
-partly overtaken by events — trust `.handoff/PENDING-DECISIONS.md` where they
-disagree.
 
 ---
 

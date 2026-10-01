@@ -1,0 +1,79 @@
+[
+  {
+    "file": "night-train-120wpm-speed.mp3",
+    "targetWpm": 120.0,
+    "actualWpm": 119.5,
+    "lever": "speed",
+    "speed": 0.658,
+    "pauseSeconds": 0.6,
+    "minutes": 22.4,
+    "words": 2677,
+    "voice": "bm_george"
+  },
+  {
+    "file": "night-train-125wpm-speed.mp3",
+    "targetWpm": 125.0,
+    "actualWpm": 124.9,
+    "lever": "speed",
+    "speed": 0.674,
+    "pauseSeconds": 0.6,
+    "minutes": 21.4,
+    "words": 2677,
+    "voice": "bm_george"
+  },
+  {
+    "file": "night-train-130wpm-speed.mp3",
+    "targetWpm": 130.0,
+    "actualWpm": 129.6,
+    "lever": "speed",
+    "speed": 0.701,
+    "pauseSeconds": 0.6,
+    "minutes": 20.7,
+    "words": 2677,
+    "voice": "bm_george"
+  },
+  {
+    "file": "night-train-135wpm-speed.mp3",
+    "targetWpm": 135.0,
+    "actualWpm": 134.5,
+    "lever": "speed",
+    "speed": 0.738,
+    "pauseSeconds": 0.6,
+    "minutes": 19.9,
+    "words": 2677,
+    "voice": "bm_george"
+  },
+  {
+    "file": "night-train-140wpm-speed.mp3",
+    "targetWpm": 140.0,
+    "actualWpm": 139.6,
+    "lever": "speed",
+    "speed": 0.772,
+    "pauseSeconds": 0.6,
+    "minutes": 19.2,
+    "words": 2677,
+    "voice": "bm_george"
+  },
+  {
+    "file": "night-train-145wpm-speed.mp3",
+    "targetWpm": 145.0,
+    "actualWpm": 141.6,
+    "lever": "speed",
+    "speed": 0.784,
+    "pauseSeconds": 0.6,
+    "minutes": 18.9,
+    "words": 2677,
+    "voice": "bm_george"
+  },
+  {
+    "file": "night-train-150wpm-speed.mp3",
+    "targetWpm": 150.0,
+    "actualWpm": 155.8,
+    "lever": "speed",
+    "speed": 0.811,
+    "pauseSeconds": 0.6,
+    "minutes": 17.2,
+    "words": 2677,
+    "voice": "bm_george"
+  }
+]

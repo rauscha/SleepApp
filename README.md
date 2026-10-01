@@ -7,7 +7,7 @@ stories, and guided meditations. No accounts, no backend, no telemetry, and
 **no generative AI at runtime** — the stories and meditations are audio files
 that ship with the build, rendered ahead of time by the scripts in `tools/`.
 
-Currently a v1.0 ship candidate.
+**v1.0.0** (2026-10-01), confirmed by a clean overnight.
 
 ## What it does
 
@@ -27,11 +27,11 @@ crossfades one scene into another after a set time, and a "3 a.m. Door" — open
 the app in the small hours with nothing playing and you get a single near-black
 panel offering to put the last scene back on, rather than a bright home screen.
 
-**Library.** Four narrated sleep stories and three guided meditations, each
-paired with a scene that plays underneath. Story narration fades down over its
+**Library.** Four narrated sleep stories and ten guided meditations, all in
+one voice, each paired with a scene that plays underneath. Story narration fades down over its
 final third so the voice submerges into the bed instead of stopping dead.
 
-**Offline.** A service worker caches the whole catalogue (~430 MB) so the app
+**Offline.** A service worker caches the whole catalogue (~470 MB) so the app
 opens and plays with no network.
 
 ## Design constraints
@@ -73,7 +73,8 @@ src/diagnostics/   page-lifecycle log and the debug-marker store
 public/scenes/     scene definitions as JSON; index.json is the catalogue
 public/audio/      scene variant audio as Opus, with a sidecar per file
                    recording its source, licence and exactly how it was cut
-tools/             the audio pipeline, the TTS rig, and the loop prober
+tools/             the audio pipeline (cut, re-cut, level, audit, seam
+                   review), the narration renderers, and the loop prober
 ```
 
 ## Audio provenance
@@ -84,13 +85,13 @@ cut to, where in the source the loop starts and why, and what level it was
 normalised to. Sources are a purchased Free To Use Sounds bundle (personal build only), free
 long-form YouTube releases from named field recordists, Pixabay, two
 user-provided recordings, and three synthesized noise beds.
-`public/scenes/photos/NOTICES.md` does the same for imagery, where one of the
-photographs is Andrew's own.
+`public/scenes/photos/NOTICES.md` does the same for imagery, where four of the
+images are Andrew's own.
 
 ## Working on it
 
 `CLAUDE.md` is the rulebook — scene authoring, the audio-engine invariants,
-and commit discipline. `.handoff/` holds the live state: what is open, what is
-blocked, and who it is waiting on. `DECISIONS.md` is the append-only record of
+and commit discipline. `.handoff/` holds the live state: what is open and who
+it is waiting on. `DECISIONS.md` is the append-only record of
 why things are the way they are, and it is worth grepping before changing
 anything that involves taste.
