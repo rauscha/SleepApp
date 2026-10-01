@@ -228,6 +228,16 @@ migration is complete** — all 74 scene variants are Opus and none are MP3.
   accordingly; feeding a B-format file through `front-pair` puts the omni in
   one ear and a figure-8 in the other. `--balance` corrects a standing L/R
   difference, which matters for a bed someone sleeps under all night.
+- **Use `level-ftus.py --alt-boundary` for any new source.** dynaudnorm's
+  default fades a quiet source's first and last ~20 s, and a loop cut near
+  an edge then dips at every wrap. It is off by default only so the
+  masters already cut stay reproducible.
+- **Splicing a source clean** (glass-5, 2026-09-30): cut around every
+  transient 12 dB or more above its local median in 1.5-5 kHz, whatever its
+  shape (a "splat" was heard as a click), and expect an isolated splat to
+  read as a click. Faint distant horns defeat every detector tried, so
+  send Andrew the full loop with the never-heard stretches timestamped and
+  cut where he says, round after round. Equal-power splices of 4-6 s passed.
 - **`tools/build-sparse-event-layer.py`** assembles a mostly-silent event
   layer — a few clips dropped into silence, low-passed, then **one fixed
   gain**. Never `loudnorm` a mostly-silent track; in a single pass it runs

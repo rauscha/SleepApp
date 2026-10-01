@@ -1256,3 +1256,36 @@ no CACHE_VERSION bump. glass-1's files are deleted; git keeps them.
 Possible next variant: Guangzhou's long take from 250 s on (after the last
 honk) joined to its clean 240 s take (01) makes about 427 s of the splatter
 Andrew liked, with no honks. Not built; offered.
+
+## glass-5: the Guangzhou splatter, spliced clean by ear (2026-09-30)
+
+Andrew loved the sound of FTUS #13925 (calm rain on a Guangzhou hotel
+window) but not its honks. He asked for it as an extra variant with the bad
+parts spliced out. glass-5 is built from clean stretches of its two
+Guangzhou takes (#13925, #13924, #13926), joined by 4 s equal-power
+crossfades, levelled to -23.9 LUFS and cut with the fixed loop tool. It took
+five listening rounds; every stretch in the loop was heard and cleared. It ships beside
+glass-4 in night-train and rain-on-window.
+
+What the listening rounds taught, for the next splice job:
+
+- **Shape cannot tell a click from a splat.** A transient I classed as a
+  bright raindrop was heard as a click. The rule became: cut around
+  everything 12 dB or more over its local median in 1.5-5 kHz (10 ms
+  frames), whatever its shape. Andrew's two clicks measured +20.
+- **An isolated splat reads as a click.** "It probably is a rain splat -
+  but only reads as one when there are others around." Density matters,
+  not just level.
+- **Faint distant train horns defeat every detector tried.** Frequency-
+  prominence and time-differential tonal detection both drown in the
+  room's AC hum and splatter. Andrew's timestamps found them, two rounds
+  running, so give him only never-heard stretches to clear, with their
+  timestamps. He rated 6 s splices "perfect"; 4 s were needed to fit the
+  loop from cleared audio, and passed too.
+- **dynaudnorm fades a quiet source's edges.** Its default boundary mode
+  assumes unity gain beyond the file, so a source needing a big lift came
+  out ramping -39 -> -22 dB over its first and last 20 s. A loop cut near
+  an edge inherits that as a dip at every wrap. `level-ftus.py
+  --alt-boundary` (`dynaudnorm ...:b=1`) holds the edge gain. It is
+  opt-in so the masters already cut stay reproducible; use it for any new
+  source. glass-4's source was loud enough that the ramp did not matter.

@@ -50,6 +50,11 @@
           "id": "glass-3",
           "url": "/audio/rain-on-window/rain-on-glass/glass-3.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. Shared with the rain-on-window scene. See /audio/rain-on-window/rain-on-glass/glass-3.json for source + license."
+        },
+        {
+          "id": "glass-5",
+          "url": "/audio/rain-on-window/rain-on-glass/glass-5.opus",
+          "attribution": "Free To Use Sounds \u2014 All In One Bundle (purchased); calm rain on a Guangzhou hotel window, three takes spliced clean (#13925, #13924, #13926). See /audio/rain-on-window/rain-on-glass/glass-5.json. Shared with the rain-on-window scene."
         }
       ],
       "maxVolume": 0.6

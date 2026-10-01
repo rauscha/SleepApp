@@ -1,0 +1,147 @@
+{
+  "source": "Free To Use Sounds \u2014 All In One Sound Library Bundle (purchased), 'Before 2026' RAIN_08 (GLASS)",
+  "recIds": [
+    "13925 (take 02, 457 s)",
+    "13924 (take 01, 240 s)",
+    "13926 (take 03, 271 s)"
+  ],
+  "bundleFiles": [
+    "RAINGlas-LR_China-Rain, Glass, Calm Drops, Behind Windows, Hotel Room, Room Movements, Air Condition, Hum, Low Thunder, Guangzhou, 02_FTUS_WOSB.wav",
+    "RAINGlas-LR_China-Rain, Glass, Calm Drops, Behind Windows, Hotel Room, Room Movements, Air Condition, Hum, Low Thunder, Guangzhou, 01_FTUS_WOSB.wav",
+    "RAINGlas-LR_China-Rain, Glass, Calm Drops, Behind Windows, Hotel Room, Room Movements, Air Condition, Hum, Low Thunder, Guangzhou, 03_FTUS_WOSB.wav"
+  ],
+  "license": "Purchased FTUS bundle; (c) Free To Use Sounds LLC, all rights reserved. Personal build only \u2014 do not redistribute.",
+  "downloadedAt": "2026-09-30",
+  "trimmedTo": "409s",
+  "outputFormat": "48 kHz / 128k / stereo Opus",
+  "processing": {
+    "composite": {
+      "parts": [
+        {
+          "take": "02",
+          "from": 40.3,
+          "to": 55.7,
+          "heardAndCleared": true
+        },
+        {
+          "take": "02",
+          "from": 58.7,
+          "to": 75.0,
+          "heardAndCleared": true
+        },
+        {
+          "take": "02",
+          "from": 81.0,
+          "to": 112.0,
+          "heardAndCleared": true
+        },
+        {
+          "take": "02",
+          "from": 155.3,
+          "to": 173.0,
+          "heardAndCleared": true
+        },
+        {
+          "take": "02",
+          "from": 187.0,
+          "to": 207.8,
+          "heardAndCleared": true
+        },
+        {
+          "take": "03",
+          "from": 120.0,
+          "to": 145.0,
+          "heardAndCleared": false
+        },
+        {
+          "take": "02",
+          "from": 250.1,
+          "to": 290.6,
+          "heardAndCleared": true
+        },
+        {
+          "take": "02",
+          "from": 293.6,
+          "to": 315.0,
+          "heardAndCleared": true
+        },
+        {
+          "take": "02",
+          "from": 324.0,
+          "to": 427.6,
+          "heardAndCleared": true
+        },
+        {
+          "take": "02",
+          "from": 430.7,
+          "to": 454.0,
+          "heardAndCleared": true
+        },
+        {
+          "take": "01",
+          "from": 3.0,
+          "to": 43.3,
+          "heardAndCleared": true
+        },
+        {
+          "take": "01",
+          "from": 68.0,
+          "to": 153.7,
+          "heardAndCleared": true
+        },
+        {
+          "take": "01",
+          "from": 160.8,
+          "to": 188.0,
+          "heardAndCleared": true
+        }
+      ],
+      "joinCrossfadeSeconds": 4.0,
+      "curve": "equal-power (sin/cos)",
+      "joinCentresSeconds": [
+        13.4,
+        25.7,
+        52.7,
+        66.4,
+        83.2,
+        104.2,
+        140.7,
+        158.1,
+        257.7,
+        277.0,
+        313.3,
+        395.0
+      ],
+      "newMaterialComposite": [
+        [
+          81.2,
+          106.2
+        ]
+      ],
+      "cutByEar": [
+        "take02 75-81 s isolated splat (reads as a click)",
+        "take02 173-187 s train horn",
+        "take02 315-324 s horn wind-up",
+        "take02 3-37 s (horn at ~11 s)",
+        "take01 188-221 s (horns at ~195 and ~207.5 s)"
+      ],
+      "cutByDetector": "every transient >=12 dB over its local median in 1.5-5 kHz, and every honk, avoided by >=1.5 s",
+      "loopStartSeconds": 0
+    },
+    "leveling": "dynaudnorm=f=400:g=101:r=0.5:p=0.9:m=8:b=1",
+    "loudnorm": "two-pass linear, I=-23.87 LUFS, TP=-1.0 dBTP, LRA=11",
+    "channelBalanceDb": -0.16,
+    "loopOffsetSeconds": 409,
+    "loopStartSeconds": 0,
+    "loopStartRationale": "seamfit start; wrap step 0.12 dB, hole 4.1 dB against a natural 4.2 dB",
+    "lengthSeconds": 409.007
+  },
+  "chosenBy": "Andrew by ear over five rounds, 2026-09-30: he loved the Guangzhou splatter, so honks, train horns, clicks and isolated splats were spliced out (his timestamps for the faint horns), and the final version approved: 'It's all good now'.",
+  "screened": {
+    "transients1500to5000HzOver12dB": 0,
+    "sustainedCalls400to2500Hz": "none",
+    "tonal2500to9000Hz": "none",
+    "byEar": "five rounds; every stretch in the loop heard and cleared"
+  },
+  "notes": "Splices are 4 s equal-power crossfades between clean stretches of three takes from the same Guangzhou hotel room. Seamless-looped to 409s with the fixed loop tool (real equal-power wrap crossfade)."
+}

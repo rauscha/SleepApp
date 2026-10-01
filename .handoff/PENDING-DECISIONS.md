@@ -40,8 +40,8 @@ now exact (DECISIONS.md addendum). The zips live in
 
 The rooster file is gone from both scenes. glass-4 is FTUS #14164, a real
 rain-on-glass recording chosen by Andrew's ear (DECISIONS.md, "glass-1
-retired"). **Offered, not built:** a Guangzhou variant from its honk-free
-stretches, if Andrew wants that splatter as an extra variant.
+retired"). glass-5, the Guangzhou splatter spliced clean by ear, joined it the
+same day as an extra variant (DECISIONS.md, "glass-5").
 
 ## 0G. OPEN 2026-09-16 — the bowls are OUT of the catalogue, and need sourcing
 
