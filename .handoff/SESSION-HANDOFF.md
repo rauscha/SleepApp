@@ -2,7 +2,7 @@
 # Newest block. Everything below is prior history.
 
 ## STATE
-- `main` clean, pushed, single worktree. CACHE_VERSION **v18**.
+- `main` clean, pushed, single worktree. CACHE_VERSION **v19**.
 - Green: tsc, eslint, vitest **294/294**, build. Two legacy
   `SceneCoordinator` tests time out when the box is under load (load avg ~8);
   they pass on a quiet box. This was logged the same way on 2026-09-14.
@@ -31,7 +31,11 @@
   hole" and "Re-cut from source, never patched in place".
 
 ## Next
-- rain-4 is exact now (0K done); its bytes ride the next CACHE_VERSION bump.
+- rain-4 is exact (0K done); it shipped with the 0B re-cuts in v19.
+- 0B is fixed: the eight stepped wraps were re-cut with window search.
+- Meditation beds are set, singing bowls are ditched, there is no local
+  voice, iOS is deferred, and Andrew's photos are in (night-train,
+  monsoon, forest-day).
 - glass-1 is retired; glass-4 (Sri Lanka rain on glass, #14164) replaces it in both
   scenes, and glass-5 (the Guangzhou splatter, spliced clean over three rounds
   of Andrew's ear) joins as an extra variant.

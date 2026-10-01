@@ -16,10 +16,6 @@ so this file is only live items.
   dropped for now** (Andrew, 2026-09-30).
 
 **Buildable without you**
-- **0B** — 8 variants still step >3 dB at the wrap, the same 8 the 2026-09-02
-  audit found. They come from content in their vetted windows (forest-evening
-  wind-1 starts in a lull). The fix is loopify's start search on a re-cut,
-  which shifts each window by seconds.
 - **C6 / variants** — two items carried out of the archived
   `notes/TODO_PHASE2-2026-05.md`; see "Carried forward" at the bottom. B4,
   the wake lock, was the third and is fixed.
@@ -177,7 +173,12 @@ white). 4.3's third, the singing-bowl Buddha statue, is moot while that scene
 is held back. The set-wide tonal grade 4.3 also asked for never happened —
 only `waterfall-valley.jpg` was graded, and it is Andrew's own photograph.
 
-## 0B. UPDATED 2026-09-11 — review done, markers built, seams still open
+## 0B. DONE 2026-09-30 — the eight stepped wraps are level
+
+Re-cut with `recut-from-source.py --shift-search 60` (DECISIONS.md, "The
+eight stepped wraps"). Steps are 0.02-0.65 dB now, and v19 ships them.
+
+### (was: review done, markers built, seams still open)
 
 - **Engine review: DONE.** Andrew ran it from the CLI on 2026-09-10. Its top
   four findings landed on main (60e3e95); the four its DECISIONS entry left

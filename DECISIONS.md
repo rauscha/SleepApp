@@ -1310,3 +1310,25 @@ Photos: night-train finally has one (Andrew's own AI-generated image, his
 rights), and monsoon and forest-day are replaced with his photographs. All
 are graded to the catalogue's night luminance. Scene photos are
 stale-while-revalidate in the service worker, so no cache bump is needed.
+
+## The eight stepped wraps, fixed by moving their windows (2026-09-30)
+
+Andrew: "Fix the small level steps." These were 0B's eight loops (forest-
+evening wind-1, wind-2, birds-2, forest-2; ocean-night wave-3, far-1,
+far-2; rain-on-window rumble-2), stepping 3.5-9.8 dB at every wrap
+because of the audio inside their vetted windows: wind-1 opened in a
+lull, the waves on a trough. They were re-cut with
+`recut-from-source.py --shift-search 60`, the same recipe from the same
+cut point, with seamfit free to start the loop up to 60 s later.
+
+- Shifts were 4-57 s. Steps are now 0.02-0.65 dB, and every wrap dips no
+  more than its file does naturally. The audit's last hole, wind-1's lull,
+  is gone with them.
+- Each loop gains, at its end, the seconds it shifted by: audio nobody had
+  vetted. That audio was screened for calls (two bands), speech
+  (faster-whisper VAD: none) and tonal events against equal stretches of
+  the old audio. far-2's high-band events (9 in 51 s) are below its own
+  baseline (11-15), an artefact of its 2.8 kHz low-pass. rumble-2's one
+  469 Hz tone matches the 2-3 thunder resonances per 37 s it always
+  carried.
+- CACHE_VERSION v18 -> v19. rain-4's exact re-cut rides along.
