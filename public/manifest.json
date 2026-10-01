@@ -1,6 +1,7 @@
 {
   "name": "Sleep",
   "short_name": "Sleep",
+  "id": "./?app=sleep",
   "description": "A quiet app that puts you to sleep and lets you stay there.",
   "start_url": "./",
   "scope": "./",
