@@ -1353,7 +1353,7 @@ Andrew, after the full Chrome data clear and reinstall: "No noise when I
 enter monsoon. Alert box keeps showing up. And monsoon had a bunch of
 birds in it." All three were real.
 
-- **The silent first scene.** `primeAudioUnlock()` (2026-09-xx) was meant to
+- **The silent first scene.** `primeAudioUnlock()` (2026-09-12) was meant to
   install Howler's unlock listeners at startup, so the tap that picks the
   first scene completes the autoplay unlock before any layer loads. But
   Howler 2.2.4's `_unlockAudio()` returns at once when Howler has no
