@@ -1,0 +1,19 @@
+{
+  "source": "George Vlad / Mindful Audio \u2014 free YouTube release: \u201cDelicate Rainforest Rain\u201d (YouTube AUBrM-ws5Co)",
+  "sourceUrl": "https://www.youtube.com/watch?v=AUBrM-ws5Co",
+  "license": "Free YouTube release used in a personal, non-commercial build (see DECISIONS.md 2026-06-30 'personal-use' entry). Not redistributed standalone; shipped file is a short processed excerpt (cut + loudnorm + Opus).",
+  "downloadedAt": "2026-06-30",
+  "notes": "2026-10-04 replacement for the bird-carrying Japanese-forest distant variants: cut @2700s of the delicate-rainforest master (the same recording as rain-1/rain-2), lowpass 2.8kHz (distance), stereo, 48 kHz, loudnorm I=-20 LUFS TP=-1.0 LRA=11 (the 2026-07-01 recipe). Screened before cutting: 0 tonal events 2.5-9 kHz, 0 sustained calls 400-2500 Hz, 0 speech segments (faster-whisper VAD) across the 480 s window. Seamless-looped to 409s (prime loopOffset) for native Howler looping: 6s fade-wrap of the post-loop tail over the head so the loop point is gapless. Encoded as Opus (128k) \u2014 see DECISIONS.md 'Ship scene audio as Opus, not MP3'.",
+  "processing": {
+    "screened": {
+      "tonal2500to9000Hz": 0,
+      "sustainedCalls400to2500Hz": 0,
+      "speech": 0
+    },
+    "loopStartSeconds": 36,
+    "loopOffsetSeconds": 409,
+    "loopStartRationale": "start chosen so the 6s before the wrap and the 6s after it sit at the same level at P=409s; trimming from 0 put a fade-in against a settled tail"
+  },
+  "trimmedTo": "409s",
+  "outputFormat": "48 kHz / 128k / stereo Opus"
+}

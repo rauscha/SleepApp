@@ -1346,3 +1346,37 @@ equal-power crossfades, with no holes and no steps over 3 dB anywhere in
 the catalogue; 4 stories and 10 meditations in one voice, each meditation
 over a scene bed; a photo on every scene; no generative AI at runtime; no
 alarm, notifications, telemetry or accounts.
+
+## The silent first scene, fixed for real; no fullscreen when installed; monsoon's birds out (2026-10-04)
+
+Andrew, after the full Chrome data clear and reinstall: "No noise when I
+enter monsoon. Alert box keeps showing up. And monsoon had a bunch of
+birds in it." All three were real.
+
+- **The silent first scene.** `primeAudioUnlock()` (2026-09-xx) was meant to
+  install Howler's unlock listeners at startup, so the tap that picks the
+  first scene completes the autoplay unlock before any layer loads. But
+  Howler 2.2.4's `_unlockAudio()` returns at once when Howler has no
+  AudioContext, and Howler builds that context lazily. At startup there is
+  none, so the primer had been a no-op all along. The unlock landed one tap
+  late and its `load()` pass aborted the scene's in-flight media: silent for
+  55 s+, then layers limping in as visibility changes retried them. The
+  markers show it exactly. Chrome's media-engagement history for the site
+  had been masking it until the data clear. The fix calls `Howler.volume()`
+  (a getter that builds the context) first, logs `audio-unlock-primed`, and
+  adds a test that fails against the old primer.
+- **No fullscreen in the installed app.** Android drops fullscreen whenever
+  the page is hidden, so every wake and every new scene re-entered it and
+  re-fired Chrome's bright "drag from the top to exit" toast. Installed, the
+  app has no browser bar anyway and the status bar takes the near-black theme
+  colour, so `requestFullscreenSafe()` now skips it there. A browser tab
+  still goes fullscreen.
+- **Monsoon's birds.** All five of Andrew's marks traced, looking back, to
+  `rain-3`. The Japanese-forest recording behind it, and behind both distant
+  variants, carries birds: 11 calls in rain-3, 23 in distant-1, 2 in
+  distant-2. All three are dropped, not repaired. Heavy rain keeps four clean
+  variants. The distant layer gets distant-3 and distant-4, cut from clean
+  windows (@1300 s, @2700 s) of the delicate-rainforest master behind
+  rain-1/rain-2. They use the same 2.8 kHz distance recipe, match the old
+  loudness (-20.4/-20.7 LUFS), and were screened clean in both call bands
+  and for speech. New filenames, so no CACHE_VERSION bump.

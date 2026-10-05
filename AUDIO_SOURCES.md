@@ -15,7 +15,7 @@ decisions is in `DECISIONS.md` ("Clean single-producer audio source",
 
 ## Where the catalogue came from
 
-67 scene variants across 9 scenes (counted at v1.0, 2026-10-01).
+66 scene variants across 9 scenes (counted 2026-10-04).
 
 | Source | Files | What it is |
 |---|---|---|
@@ -34,7 +34,7 @@ Per scene:
 | forest-day | George Vlad ×5, FTUS ×2, Pixabay ×1, user ×1 |
 | forest-evening | George Vlad ×6, FTUS ×5 |
 | forest-night | FTUS ×3 |
-| monsoon | George Vlad ×5, FTUS ×4 |
+| monsoon | George Vlad ×4, FTUS ×4 |
 | night-train | FTUS ×4 |
 | ocean-night | FTUS ×6, George Vlad ×5 |
 | rain-on-window | Pixabay ×4, FTUS ×4, user ×1 |

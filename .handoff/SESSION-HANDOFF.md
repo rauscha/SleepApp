@@ -19,6 +19,11 @@ Rewritten clean at v1.0.0 (2026-10-01). Earlier blocks are at tag
   `repair-tonal-events.py` needs librosa, which `recut-from-source.py` runs
   through `uv` automatically.
 
+## 2026-10-04
+Fixed: the silent first scene (the unlock primer was a no-op; see DECISIONS),
+Chrome's fullscreen toast in the installed app, and monsoon's birds (rain-3,
+distant-1, distant-2 out; distant-3, distant-4 in, all clean).
+
 ## How the catalogue is made now
 
 - **Cut a loop:** `tools/loopify-scenes.py`. The wrap is a real equal-power

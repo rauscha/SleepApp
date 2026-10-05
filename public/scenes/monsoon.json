@@ -31,11 +31,6 @@
           "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/monsoon/rain/rain-2.json for source + license."
         },
         {
-          "id": "rain-3",
-          "url": "/audio/monsoon/rain/rain-3.opus",
-          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/monsoon/rain/rain-3.json for source + license."
-        },
-        {
           "id": "rain-4",
           "url": "/audio/monsoon/rain/rain-4.opus",
           "attribution": "Free To Use Sounds \u2014 All In One Immersive Bundle (purchased); (c) Free To Use Sounds LLC \u2014 personal build only. See /audio/monsoon/rain/rain-4.json for source + license."
@@ -57,14 +52,14 @@
       "variantRotation": "random",
       "variants": [
         {
-          "id": "distant-1",
-          "url": "/audio/monsoon/rain-distant/distant-1.opus",
-          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/monsoon/rain-distant/distant-1.json for source + license."
+          "id": "distant-3",
+          "url": "/audio/monsoon/rain-distant/distant-3.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/monsoon/rain-distant/distant-3.json for source + license."
         },
         {
-          "id": "distant-2",
-          "url": "/audio/monsoon/rain-distant/distant-2.opus",
-          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/monsoon/rain-distant/distant-2.json for source + license."
+          "id": "distant-4",
+          "url": "/audio/monsoon/rain-distant/distant-4.opus",
+          "attribution": "George Vlad / Mindful Audio (YouTube) \u2014 see /audio/monsoon/rain-distant/distant-4.json for source + license."
         }
       ],
       "maxVolume": 0.6
