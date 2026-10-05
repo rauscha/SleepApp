@@ -24,7 +24,7 @@ recordEvent('build', BUILD_ID);
 // until the first Howl is built, the unlock lands one gesture too late and
 // aborts the scene's in-flight media requests — which is the "first scene of
 // the session plays silent until I tap around" bug. See primeAudioUnlock.
-primeAudioUnlock();
+recordEvent('audio-unlock-primed', primeAudioUnlock() ? 'armed' : 'no audio context');
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element');

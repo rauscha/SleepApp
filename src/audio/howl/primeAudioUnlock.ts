@@ -17,16 +17,38 @@
 // capture phase, before React's click handler runs and before any layer
 // starts loading — so nothing gets aborted.
 //
-// It is a private field, so this is defensive: if a future Howler renames
-// it, we are no worse off than before.
+// **_unlockAudio() returns immediately when Howler has no AudioContext yet**
+// (`if (self._audioUnlocked || !self.ctx) return;` in Howler 2.2.4), and
+// Howler only builds that context lazily, on the first volume()/mute() call
+// or the first Howl. At startup there is none. So until 2026-10-04 this
+// primer was a silent no-op, and the bug it describes was live: on
+// 2026-10-04 monsoon opened silent, the start fired only on the next tap
+// (`howl-bed-start-on-unlock`), and the layers limped in one by one as
+// visibility changes retried them. It had been hidden by Chrome's media
+// engagement history for the site, which a full data clear wiped.
+// Howler.volume() with no argument is a getter that also runs Howler's
+// context setup, so it is called first.
+//
+// These are private/implementation details, so this is defensive: if a
+// future Howler changes them, we are no worse off than before.
 
 import { Howler } from 'howler';
 
-export function primeAudioUnlock(): void {
+interface HowlerInternals {
+  ctx?: unknown;
+  volume?: () => unknown;
+  _unlockAudio?: () => void;
+}
+
+/** Returns true when Howler had a context to arm the unlock with. */
+export function primeAudioUnlock(): boolean {
   try {
-    const global = Howler as unknown as { _unlockAudio?: () => void };
-    global._unlockAudio?.();
+    const howler = Howler as unknown as HowlerInternals;
+    if (!howler.ctx) howler.volume?.(); // builds Howler's AudioContext
+    howler._unlockAudio?.();
+    return Boolean(howler.ctx);
   } catch {
     /* older/newer Howler — the app behaves as it did before this call */
+    return false;
   }
 }
