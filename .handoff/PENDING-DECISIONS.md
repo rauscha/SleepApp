@@ -49,7 +49,10 @@ optional.
   for a 199 s splice); metal roof 25-102, 120-197, 200-259 s (enough). So
   either bed means a spliced composite like glass-5, and thunder, if wanted,
   belongs on its own sparse layer at a long prime (as in monsoon). Both
-  full recordings were sent to Andrew to hear.
+  full recordings were sent to Andrew to hear. He then said "thunder might
+  be okay": a reel of every thunder moment per recording (A1-A14, M1-M7)
+  and a map of where they fall are in `~/incoming/apartment-rain-2026-10-06/`
+  (README has the table), not yet sent.
 - **Reserve photos,** unused but on-brief: the dark beach with a lighthouse
   glint (`IMG_1568`), night leaves (`L1010043`), and the second AI train
   (corridor). Originals are in `~/Taildrop/`, working copies in
