@@ -27,6 +27,11 @@ import type { HowlScene } from '../audio/howl/HowlScene';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { scenePlayerBackground } from '../lib/sceneBackground';
 import {
+  formatNightstandClock,
+  msUntilNextMinute,
+  nightstandClockDrift,
+} from '../lib/nightstandClock';
+import {
   forgetLayerVolumes,
   getSetting,
   rememberLayerVolume,
@@ -611,6 +616,8 @@ function NightstandOverlay({
       aria-label="Nightstand mode — tap anywhere to see controls"
       aria-hidden={!engaged}
     >
+      <NightstandClock engaged={engaged} />
+
       {/* Controls overlay — always in DOM; visibility driven by opacity only
           so the Stop button retains its position and tap area. */}
       <div
@@ -689,6 +696,55 @@ function NightstandOverlay({
         </button>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// NightstandClock
+//
+// Stands in for Android's status bar, which the installed app's fullscreen
+// display mode hides: a dim clock at the top, always shown while Nightstand
+// is engaged, so a lit black screen can be told from a phone that is off.
+// stone-500 on black is about a thirteenth of the white status-bar icons'
+// luminance. It ignores taps, which fall through to the overlay's wake.
+
+function NightstandClock({ engaged }: { engaged: boolean }) {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    if (!engaged) return;
+    setNow(new Date());
+    let timeout: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      const d = new Date();
+      setNow(d);
+      timeout = setTimeout(tick, msUntilNextMinute(d));
+    };
+    timeout = setTimeout(tick, msUntilNextMinute(new Date()));
+    // Android freezes timers while the screen is off, so a wake must not
+    // show the time the screen went dark at.
+    const onVisible = () => {
+      if (document.hidden) return;
+      clearTimeout(timeout);
+      tick();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearTimeout(timeout);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [engaged]);
+
+  const drift = nightstandClockDrift(now);
+  return (
+    <p
+      className="absolute top-3 left-1/2 text-stone-500 text-base tabular-nums
+                 tracking-wide pointer-events-none select-none"
+      style={{ transform: `translate(calc(-50% + ${drift.x}px), ${drift.y}px)` }}
+      aria-hidden
+    >
+      {formatNightstandClock(now)}
+    </p>
   );
 }
 

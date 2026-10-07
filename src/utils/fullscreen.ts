@@ -23,12 +23,13 @@ export function requestFullscreenSafe(): void {
   };
   try {
     if (document.fullscreenElement) return;
-    // Installed, the app already has no browser bar, and Android's status
-    // bar takes the manifest's near-black theme colour. Going fullscreen on
-    // top of that bought little and cost Chrome's bright "To exit full
-    // screen, drag from the top" toast every time the screen woke, since
-    // Android drops fullscreen whenever the page is hidden (Andrew,
-    // 2026-10-04: "Alert box keeps showing up"). A browser tab still gets it.
+    // Installed, the manifest's `fullscreen` display mode already hides the
+    // system bars (2026-10-05). The Fullscreen API on top of it cost Chrome's
+    // bright "To exit full screen, drag from the top" toast every time the
+    // screen woke, since Android drops API fullscreen whenever the page is
+    // hidden (Andrew, 2026-10-04: "Alert box keeps showing up"). The display
+    // mode is the app's own window state, so it shows no toast. A browser
+    // tab still gets the API.
     if (isInstalledApp()) return;
     const p = el.requestFullscreen
       ? el.requestFullscreen({ navigationUI: 'hide' })

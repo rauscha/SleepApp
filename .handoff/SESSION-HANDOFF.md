@@ -19,6 +19,12 @@ Rewritten clean at v1.0.0 (2026-10-01). Earlier blocks are at tag
   `repair-tonal-events.py` needs librosa, which `recut-from-source.py` runs
   through `uv` automatically.
 
+## 2026-10-05
+The installed app now uses the manifest's `fullscreen` display mode (no
+status bar, no toast), and Nightstand draws its own dim clock as the
+"screen is on" cue. The display change only reaches the phone through
+Chrome's WebAPK update (about daily, at launch). See DECISIONS.
+
 ## 2026-10-04
 Fixed: the silent first scene (the unlock primer was a no-op; see DECISIONS),
 Chrome's fullscreen toast in the installed app, and monsoon's birds (rain-3,

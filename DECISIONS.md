@@ -1380,3 +1380,31 @@ birds in it." All three were real.
   rain-1/rain-2. They use the same 2.8 kHz distance recipe, match the old
   loudness (-20.4/-20.7 LUFS), and were screened clean in both call bands
   and for speech. New filenames, so no CACHE_VERSION bump.
+
+## The installed app runs fullscreen; Nightstand draws its own dim clock (2026-10-05)
+
+Skipping the Fullscreen API in the installed app (2026-10-04) cleared
+Chrome's toast but brought back Android's status bar. Andrew liked having
+it, as the one way to tell Nightstand's black screen from a phone that is
+really off, but at full white it was too bright. The app can't dim the
+system's icons: Android draws them white on any dark bar, and dark only
+on a light grey one, which glows far more.
+
+- **The manifest's `display` is now `fullscreen`.** Chrome runs a
+  fullscreen WebAPK in immersive mode with both system bars hidden and the
+  camera cutout letterboxed in black. That is the app's own window state,
+  not the Fullscreen API, so Android doesn't drop it when the page is
+  hidden and Chrome shows no toast. This should have been the 2026-10-04
+  fix; it wasn't considered then. `id` is unchanged ("./?app=sleep";
+  `pwa-manifest-check.py` passes), and Chrome applies a `display` change
+  through its routine WebAPK update, which checks about once a day at
+  launch. Until then the phone keeps the standalone window and its bar.
+  `isInstalledApp()` already matches `display-mode: fullscreen`, so the
+  API stays off when installed. A browser tab still uses it.
+- **Nightstand shows a dim clock at the top** in place of the bar
+  (`src/lib/nightstandClock.ts`): stone-500 on black, about a thirteenth
+  of the white icons' luminance, the time with no AM/PM. It ticks on the
+  minute and drifts a few pixels each minute so it can't burn into an OLED
+  panel on a night with "keep screen awake" on. It takes no taps.
+- The other screens lose the status bar too. They were never where the
+  bar mattered.
