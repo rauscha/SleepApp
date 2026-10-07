@@ -17,6 +17,30 @@ export function isInstalledApp(): boolean {
   }
 }
 
+/** How the app's window is being shown right now. */
+export function currentDisplayMode(): 'fullscreen' | 'standalone' | 'browser' {
+  try {
+    if (window.matchMedia?.('(display-mode: fullscreen)').matches) return 'fullscreen';
+    const nav = navigator as Navigator & { standalone?: boolean };
+    if (nav.standalone === true || window.matchMedia?.('(display-mode: standalone)').matches) {
+      return 'standalone';
+    }
+  } catch {
+    /* fall through */
+  }
+  return 'browser';
+}
+
+/** True when nothing is showing Android's status bar: the installed app in
+ *  the manifest's fullscreen display mode, or a tab in API fullscreen. */
+export function isStatusBarHidden(): boolean {
+  try {
+    return currentDisplayMode() === 'fullscreen' || Boolean(document.fullscreenElement);
+  } catch {
+    return false;
+  }
+}
+
 export function requestFullscreenSafe(): void {
   const el = document.documentElement as HTMLElement & {
     webkitRequestFullscreen?: () => Promise<void>;

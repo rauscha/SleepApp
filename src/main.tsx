@@ -8,6 +8,7 @@ import {
 } from './diagnostics/lifecycleLog';
 import { BUILD_ID } from './lib/buildInfo';
 import { primeAudioUnlock } from './audio/howl/primeAudioUnlock';
+import { currentDisplayMode } from './utils/fullscreen';
 import './index.css';
 
 // Install lifecycle listeners BEFORE the first paint. We want to capture
@@ -19,6 +20,10 @@ installLifecycleListeners();
 // deploy only takes over on a cold start — after an overnight incident
 // this line is what settles "did the phone actually run the new code?"
 recordEvent('build', BUILD_ID);
+// Which window the phone gave us. The manifest asks for fullscreen, but an
+// installed app only picks that up when Chrome next updates its WebAPK, so
+// this settles "is the phone on the new display mode yet?"
+recordEvent('display-mode', currentDisplayMode());
 // Register Howler's audio-unlock listeners now, so the tap that picks the
 // first scene completes the unlock *before* that scene starts loading. Left
 // until the first Howl is built, the unlock lands one gesture too late and

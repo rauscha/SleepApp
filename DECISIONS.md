@@ -1411,3 +1411,9 @@ on a light grey one, which glows far more.
 - **Top left, not centre** (2026-10-06). The first cut centred the clock,
   right on the Pixel's camera hole. Android's own clock sits at the left
   for exactly that reason, and so does this one now.
+- **Only while the real bar is hidden** (2026-10-06). The phone was still
+  on the standalone WebAPK, so Andrew got two clocks, the bright system one
+  over the dim one. The clock now renders only when `display-mode:
+  fullscreen` matches or a tab is in API fullscreen
+  (`useStatusBarHidden`), and startup logs `display-mode` so a marker
+  export shows which window the phone gave.

@@ -24,6 +24,7 @@ import { getHowlScenePlayer } from '../audio/howl/HowlScenePlayer';
 import { SLEEP_TIMER_FADE_SECONDS } from '../audio/SleepTimer';
 import { gainToTaper, taperToGain } from '../audio/taper';
 import type { HowlScene } from '../audio/howl/HowlScene';
+import { useStatusBarHidden } from '../hooks/useStatusBarHidden';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { scenePlayerBackground } from '../lib/sceneBackground';
 import {
@@ -706,15 +707,19 @@ function NightstandOverlay({
 // display mode hides: a dim clock, always shown while Nightstand is engaged,
 // so a lit black screen can be told from a phone that is off. It sits top
 // left, where Android puts its own clock, because the Pixel's camera hole
-// is top centre (2026-10-06: the first cut sat right on it).
+// is top centre (2026-10-06: the first cut sat right on it). It shows only
+// while the real bar is hidden: in the standalone window the two clocks
+// stacked, bright over dim (2026-10-06).
 // stone-500 on black is about a thirteenth of the white status-bar icons'
 // luminance. It ignores taps, which fall through to the overlay's wake.
 
 function NightstandClock({ engaged }: { engaged: boolean }) {
   const [now, setNow] = useState(() => new Date());
+  const barHidden = useStatusBarHidden();
+  const shown = engaged && barHidden;
 
   useEffect(() => {
-    if (!engaged) return;
+    if (!shown) return;
     setNow(new Date());
     let timeout: ReturnType<typeof setTimeout>;
     const tick = () => {
@@ -735,8 +740,9 @@ function NightstandClock({ engaged }: { engaged: boolean }) {
       clearTimeout(timeout);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [engaged]);
+  }, [shown]);
 
+  if (!barHidden) return null;
   const drift = nightstandClockDrift(now);
   return (
     <p
