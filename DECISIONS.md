@@ -1408,3 +1408,6 @@ on a light grey one, which glows far more.
   panel on a night with "keep screen awake" on. It takes no taps.
 - The other screens lose the status bar too. They were never where the
   bar mattered.
+- **Top left, not centre** (2026-10-06). The first cut centred the clock,
+  right on the Pixel's camera hole. Android's own clock sits at the left
+  for exactly that reason, and so does this one now.

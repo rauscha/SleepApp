@@ -703,8 +703,10 @@ function NightstandOverlay({
 // NightstandClock
 //
 // Stands in for Android's status bar, which the installed app's fullscreen
-// display mode hides: a dim clock at the top, always shown while Nightstand
-// is engaged, so a lit black screen can be told from a phone that is off.
+// display mode hides: a dim clock, always shown while Nightstand is engaged,
+// so a lit black screen can be told from a phone that is off. It sits top
+// left, where Android puts its own clock, because the Pixel's camera hole
+// is top centre (2026-10-06: the first cut sat right on it).
 // stone-500 on black is about a thirteenth of the white status-bar icons'
 // luminance. It ignores taps, which fall through to the overlay's wake.
 
@@ -738,9 +740,9 @@ function NightstandClock({ engaged }: { engaged: boolean }) {
   const drift = nightstandClockDrift(now);
   return (
     <p
-      className="absolute top-3 left-1/2 text-stone-500 text-base tabular-nums
+      className="absolute top-3 left-6 text-stone-500 text-base tabular-nums
                  tracking-wide pointer-events-none select-none"
-      style={{ transform: `translate(calc(-50% + ${drift.x}px), ${drift.y}px)` }}
+      style={{ transform: `translate(${drift.x}px, ${drift.y}px)` }}
       aria-hidden
     >
       {formatNightstandClock(now)}
