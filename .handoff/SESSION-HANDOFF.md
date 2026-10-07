@@ -19,6 +19,12 @@ Rewritten clean at v1.0.0 (2026-10-01). Earlier blocks are at tag
   `repair-tonal-events.py` needs librosa, which `recut-from-source.py` runs
   through `uv` automatically.
 
+## 2026-10-06
+Nightstand's clock now shows only while the status bar is really hidden (the
+phone was still on the standalone WebAPK and showed two clocks); startup
+logs `display-mode`. Apartment-rain beds screened (thunder in both; see
+PENDING). Waterfall source picked; its download waits on a Gumroad login.
+
 ## 2026-10-05
 The installed app now uses the manifest's `fullscreen` display mode (no
 status bar, no toast), and Nightstand draws its own dim clock as the
